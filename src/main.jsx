@@ -8,7 +8,7 @@ document.body.appendChild(canvas);
 
 const hud=document.createElement("div");
 hud.className="pc-hud";
-hud.innerHTML=`<div class="pc-help">WASD / ARROWS · DRAG TO LOOK · WHEEL TO ZOOM</div>`;
+hud.innerHTML=`<div class="brand"><span class="brand-mark">A</span><div><strong>AFEC CITY</strong><small>OPEN WORLD</small></div></div><div class="pc-help"><span>WASD / ARROWS</span><span>DRAG TO LOOK</span><span>WHEEL TO ZOOM</span></div><div class="status-pill"><i></i> LIVE</div>`;
 document.body.appendChild(hud);
 
 const mobileUI=document.createElement("div");
@@ -58,15 +58,15 @@ const material=(hex,roughness=.82,metalness=0)=>{
 };
 
 const M={
-  grass:material("#7fa66f"),
-  grass2:material("#86a978"),
-  road:material("#3b4246"),
-  roadLight:material("#4a5155"),
+  grass:material("#9fbe87"),
+  grass2:material("#a9c98f"),
+  road:material("#505a60"),
+  roadLight:material("#626d72"),
   sidewalk:material("#b7b4a8"),
-  curb:material("#c9c6bc"),
-  wall:material("#d7c5a8"),
-  wall2:material("#eee2c9"),
-  wall3:material("#c9d6d8"),
+  curb:material("#d8d5cb"),
+  wall:material("#e4d5bb"),
+  wall2:material("#f4ead8"),
+  wall3:material("#dce7e8"),
   roof:material("#8d4b39"),
   roofDark:material("#6f3b31"),
   roofBlue:material("#536d82"),
@@ -79,7 +79,7 @@ const M={
   tree2:material("#5c8c4d"),
   trunk:material("#6b4a32"),
   lamp:material("#24292b",.35,.2),
-  gold:material("#d7ad45",.35,.2),
+  gold:material("#e0bb58",.35,.2),
   car1:material("#c74a3e",.4),
   car2:material("#4d78a8",.4),
   car3:material("#e2b24b",.4),
@@ -304,7 +304,7 @@ realHumanPromise.then(({entity,asset})=>{
 
 const camera=new pc.Entity("Camera");
 camera.addComponent("camera",{
-  clearColor:color("#b9d8e8"),
+  clearColor:color("#d9edf7"),
   fov:62,
   nearClip:.35,
   farClip:500,
@@ -317,7 +317,7 @@ const sun=new pc.Entity("Sun");
 sun.addComponent("light",{
   type:"directional",
   color:color("#fff1d2"),
-  intensity:4.0,
+  intensity:5.2,
   castShadows:true,
   shadowDistance:120,
   shadowResolution:2048,
@@ -332,7 +332,7 @@ const fill=new pc.Entity("Fill");
 fill.addComponent("light",{
   type:"omni",
   color:color("#b8d4df"),
-  intensity:3.2,
+  intensity:4.4,
   range:180
 });
 fill.setPosition(0,45,0);
@@ -425,7 +425,7 @@ app.on("update",dt=>{
   time+=dt;
   const keyboardX=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
   const keyboardY=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
-  let mx=Math.abs(joyX)>.04?-joyX:keyboardX;
+  let mx=Math.abs(joyX)>.04?joyX:keyboardX;
   let my=Math.abs(joyY)>.04?-joyY:keyboardY;
   const mag=Math.hypot(mx,my);
   if(mag>1){mx/=mag;my/=mag}
