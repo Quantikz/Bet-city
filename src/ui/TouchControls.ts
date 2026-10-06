@@ -8,7 +8,6 @@ import {
   Crosshair,
   ChevronsUp,
   RotateCcw,
-  Radio,
   Grab,
   Maximize,
   Minimize,
@@ -126,7 +125,7 @@ export class TouchControls {
     const pad = div(
       root,
       'tc-buttons',
-      'position:absolute;right:calc(3vw + env(safe-area-inset-right));bottom:calc(3vw + env(safe-area-inset-bottom));' +
+      'position:absolute;right:calc(3vw + env(safe-area-inset-right));bottom:calc(3vw + env(safe-area-inset-bottom));z-index:3;' +
         'display:grid;grid-template-columns:repeat(2,62px);grid-auto-rows:62px;gap:9px;pointer-events:none;',
     );
     this.holdButton(pad, 'tc-fire', Crosshair, 'fire', () => (this.fireHeld = true), () => (this.fireHeld = false));
