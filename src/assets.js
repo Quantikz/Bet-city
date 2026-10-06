@@ -1,34 +1,4 @@
 const KENNEY="https://raw.githubusercontent.com/shorepine/kenney/main/3d/";
 const QBASE="https://raw.githubusercontent.com/kirbycope/godot-3d-player-controller-v2/main/assets/universal_base_characters/Base%20Characters/";
 const CITY="https://raw.githubusercontent.com/anshaneja5/skyline-run/main/public/assets/models/";
-
-export const A={
-  road:KENNEY+"city-roads/road-straight.glb",
-  roadCross:KENNEY+"city-roads/road-crossroad.glb",
-  lamp:KENNEY+"city-roads/light-curved.glb",
-  buildings:[
-    CITY+"b_small.glb",
-    CITY+"b_medium.glb",
-    CITY+"b_large.glb"
-  ],
-  homes:[
-    KENNEY+"city-suburban/building-type-a.glb",
-    KENNEY+"city-suburban/building-type-b.glb",
-    KENNEY+"city-suburban/building-type-c.glb",
-    KENNEY+"city-suburban/building-type-d.glb"
-  ],
-  trees:[
-    KENNEY+"city-suburban/tree-large.glb",
-    KENNEY+"city-suburban/tree-small.glb"
-  ],
-  cars:[
-    KENNEY+"car/sedan.glb",
-    KENNEY+"car/suv.glb",
-    KENNEY+"car/taxi.glb",
-    KENNEY+"car/hatchback-sports.glb"
-  ],
-  people:[
-    QBASE+"Superhero_Male_FullBody.gltf",
-    QBASE+"Superhero_Female_FullBody.gltf"
-  ]
-};
+export const A={road:KENNEY+"city-roads/road-straight.glb",roadCross:KENNEY+"city-roads/road-crossroad.glb",lamp:KENNEY+"city-roads/light-curved.glb",buildings:[CITY+"b_small.glb",CITY+"b_medium.glb",CITY+"b_large.glb"],homes:[KENNEY+"city-suburban/building-type-a.glb",KENNEY+"city-suburban/building-type-b.glb",KENNEY+"city-suburban/building-type-c.glb",KENNEY+"city-suburban/building-type-d.glb"],trees:[KENNEY+"city-suburban/tree-large.glb",KENNEY+"city-suburban/tree-small.glb"],cars:[KENNEY+"car/sedan.glb",KENNEY+"car/suv.glb",KENNEY+"car/taxi.glb",KENNEY+"car/hatchback-sports.glb"],people:[QBASE+"Superhero_Male_FullBody.gltf",QBASE+"Superhero_Female_FullBody.gltf"]};
