@@ -300,7 +300,7 @@ const runOverQuery = (x: number, z: number) => vehicles.pedestrianImpact(x, z, t
 // Pedestrians (like the player on foot) get pushed out of cars they'd clip.
 const resolveCars = (x: number, z: number, r: number) => vehicles.resolveActor(x, z, r);
 
-/** Sound the car wrecks from this step; a wrecked player car means WASTED. */
+/** Consume vehicle wreck effects without triggering player death/arrest state. */
 function flushCarWrecks(): void {
   const n = vehicles.consumeExplosions();
   for (let k = 0; k < Math.min(n, 3); k++) sfx.explosion();
@@ -458,7 +458,6 @@ function render(alpha: number, frameDt: number): void {
   hud.setRadio(mode === 'driving' ? (radio ? radio.label() : '📻 OFF') : '');
   // Wanted UI removed for AFEC City beta.
   hud.setClock(timeOfDay);
-  // BUSTED UI removed for AFEC City beta.
 
   const fireOrigin = new THREE.Vector3(ax, ay + 1.35, az);
   const fireDir = new THREE.Vector3(Math.cos(follow.yaw), 0, -Math.sin(follow.yaw)).normalize();
