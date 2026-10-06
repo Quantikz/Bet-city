@@ -7,13 +7,19 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
 const players = new Map();
 const matches = new Map();
+const wallets = new Map();
 let broadcast = { channel: "news", scope: "screen", by: null, title: "BET CITY NEWS" };
 
-app.get("/health", (_, res) => res.json({ ok: true, players: players.size, matches: matches.size, broadcast }));
+function walletFor(id) {
+  if (!wallets.has(id)) wallets.set(id, { balance: 10000, locked: 0, ledger: [] });
+  return wallets.get(id);
+}
+
+app.get("/health", (_, res) => res.json({ ok: true, players: players.size, matches: matches.size, wallets: wallets.size, broadcast }));
 
 io.on("connection", (socket) => {
   players.set(socket.id, { id: socket.id, x: 0, y: 0, z: 6, rotation: 0, name: `Player-${socket.id.slice(0, 4)}` });
-  socket.emit("world:init", { playerId: socket.id, players: [...players.values()], broadcast });
+  socket.emit("world:init", { playerId: socket.id, players: [...players.values()], broadcast, wallet: walletFor(socket.id) });
   socket.broadcast.emit("player:join", players.get(socket.id));
 
   socket.on("player:move", (state) => {
@@ -73,6 +79,28 @@ io.on("connection", (socket) => {
     io.to(match.host).emit("duel:settled", match);
     io.to(match.guest).emit("duel:settled", match);
     matches.delete(matchId);
+  });
+
+  socket.on("wallet:stake", ({ amount }) => {
+    const w = walletFor(socket.id);
+    const value = Math.max(100, Math.floor(Number(amount) || 0));
+    if (value > w.balance - w.locked) return socket.emit("wallet:state", { ...w, error: "INSUFFICIENT BET" });
+    w.balance -= value;
+    w.locked += value;
+    w.ledger.push({ type: "stake", amount: value, at: new Date().toISOString() });
+    socket.emit("wallet:state", w);
+  });
+  socket.on("wallet:settle", ({ stake, won }) => {
+    const w = walletFor(socket.id);
+    const value = Math.max(0, Math.floor(Number(stake) || 0));
+    w.locked = Math.max(0, w.locked - value);
+    if (won) {
+      const fee = Math.floor(value * 0.05);
+      const payout = value * 2 - fee;
+      w.balance += payout;
+      w.ledger.push({ type: "win", amount: payout, fee, at: new Date().toISOString() });
+    } else w.ledger.push({ type: "loss", amount: value, at: new Date().toISOString() });
+    socket.emit("wallet:state", w);
   });
 
   socket.on("disconnect", () => {
