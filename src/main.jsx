@@ -150,6 +150,7 @@ const obstacles=[];
 function addObstacle(x,z,halfX,halfZ,padding=.45){ obstacles.push({x,z,halfX:halfX+padding,halfZ:halfZ+padding}); }
 
 const BUILDING_BASE="https://github.com/bevyengine/bevy_asset_files/raw/main/kenney";
+const REAL_TREE_URLS=["https://github.com/bevyengine/bevy_asset_files/raw/main/kenney/city-kit-suburban/tree-small.glb","https://github.com/bevyengine/bevy_asset_files/raw/main/kenney/city-kit-suburban/tree-large.glb"];
 const RESIDENTIAL_BUILDINGS=["b","c","d","e","f","g","h","i","k","l","o","u"];
 const COMMERCIAL_BUILDINGS=["a","b","c","d","f","g","h"];
 
