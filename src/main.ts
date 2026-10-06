@@ -322,12 +322,10 @@ function enterBusted(): void {
 }
 
 /** A chasing cop pinning you slow fills the bust meter; sustained → BUSTED. */
-function updateBusted(dt: number): void {
-  const t = chaseTarget();
-  const speed = mode === 'driving' ? Math.abs(vehicles.playerForwardSpeed()) : player.speed;
-  const pinned = vehicles.nearestPoliceDistance(t.x, t.z) < BUST_RADIUS && speed < BUST_SPEED;
-  bustFill = pinned ? bustFill + dt : Math.max(0, bustFill - 2 * dt); // fills slow, clears fast
-  if (bustFill >= BUST_FILL_TIME) enterBusted();
+function updateBusted(_dt: number): void {
+  // AFEC City beta intentionally has no BUSTED/arrest mechanic.
+  busted = false;
+  bustFill = 0;
 }
 
 /** Active player pose + velocity the police intercept (the car, or the avatar on foot). */
@@ -350,24 +348,11 @@ function chaseTarget(): { x: number; z: number; vx: number; vz: number } {
  * cop has line of sight to you (broke LOS behind a building, or outran their
  * sight range), the heat cools after a short grace and the stars drop.
  */
-function updateWanted(dt: number): void {
-  const over = peds.runOverCount;
-  const t = chaseTarget();
-  const seen = stars > 0 && vehicles.anyPoliceSeesTarget(t.x, t.z, city.colliders);
-  if (over > prevRunOver) {
-    sfx.gib();
-    heat = Math.min(100, heat + (over - prevRunOver) * CRIME_HEAT);
-    sinceUnseen = 0;
-  } else if (seen) {
-    sinceUnseen = 0; // they have eyes on you — wanted holds
-  } else {
-    sinceUnseen += dt;
-    if (sinceUnseen > HEAT_GRACE) heat = Math.max(0, heat - HEAT_DECAY * dt);
-  }
-  prevRunOver = over;
-  wantedCooling = stars > 0 && !seen && sinceUnseen > HEAT_GRACE;
-  stars = starsFromHeat(heat);
-  vehicles.setWanted(stars, t, city);
+function updateWanted(_dt: number): void {
+  // AFEC City beta intentionally has no wanted/police system.
+  heat = 0;
+  wantedCooling = false;
+  vehicles.setWanted(0, { x: 0, z: 0 }, city);
 }
 
 /** While on foot, take damage from cars that hit us; trigger WASTED at zero. */
@@ -543,9 +528,9 @@ function render(alpha: number, frameDt: number): void {
   // Radio readout is a dashboard thing — only show it while driving (the audio
   // itself still fades out with distance as you walk away).
   hud.setRadio(mode === 'driving' ? (radio ? radio.label() : '📻 OFF') : '');
-  hud.setWanted(stars, wantedCooling);
+  // Wanted UI removed for AFEC City beta.
   hud.setClock(timeOfDay);
-  hud.setBusted(busted);
+  // BUSTED UI removed for AFEC City beta.
 
   const driving = mode === 'driving';
   if (driving) {
