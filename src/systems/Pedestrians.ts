@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { City } from '../world/City';
 import { createRng, type Rng } from '../core/rng';
 import { lerp, angleLerp } from '../core/math';
-import { makePed, updateHumanAnimation } from '../render/Assets';
+import { makePed, updateHumanAnimation, freezeHumanAnimation } from '../render/Assets';
 import { Debris } from './Debris';
 import { World, defineComponent } from '../ecs/World';
 
@@ -301,7 +301,8 @@ export class Pedestrians {
         sz = Math.cos(this.tick * 1.3 + ped.x) * 0.18;
         roll = Math.sin(this.tick * 1.7 + ped.x) * 0.4; // a real visible shudder
       }
-      updateHumanAnimation(ped.group, ped.scared ? FLEE_SPEED : ped.speed, 1 / 60);
+      if (ped.state === 'shoved') freezeHumanAnimation(ped.group);
+      else updateHumanAnimation(ped.group, ped.scared ? FLEE_SPEED : ped.speed, 1 / 60);
       ped.group.position.set(
         lerp(ped.px, ped.x, alpha) + sx,
         lerp(ped.py, ped.y, alpha),
