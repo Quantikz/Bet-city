@@ -24,7 +24,7 @@ const REAL_HUMAN_URL = '/models/human.glb';
 let realisticHumanTemplate: THREE.Group | null = null;
 let realisticHumanAnimations: THREE.AnimationClip[] = [];
 let realisticHumanLoading: Promise<void> | null = null;
-const realisticHumanTargets: Array<{ target: THREE.Group; shirtColor: number }> = [];
+const realisticHumanTargets: Array<{ target: THREE.Group; shirtColor: number; skinTone: number }> = [];
 
 interface HumanRig {
   mixer: THREE.AnimationMixer;
@@ -35,7 +35,7 @@ interface HumanRig {
 
 const humanRigs = new WeakMap<THREE.Group, HumanRig>();
 
-function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 0x3b82f6): void {
+function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 0x3b82f6, skinTone = 0x8b5a3c): void {
   target.clear();
 
   // Normalize every imported human to real-world game scale. Cars are roughly
@@ -66,7 +66,7 @@ function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 
         // Preserve embedded textures, but ensure untextured/material-only body
         // parts still have natural human/clothing colors.
         if (label.includes('skin') || label.includes('face') || label.includes('body')) {
-          material.color.setHex(0x8b5a3c);
+          material.color.setHex(skinTone);
         } else if (label.includes('hair')) {
           material.color.setHex(0x17120f);
         } else if (!material.map) {
@@ -96,7 +96,7 @@ function beginRealisticHumanLoad(): void {
       realisticHumanTemplate = gltf.scene;
       realisticHumanAnimations = gltf.animations;
       for (const pending of realisticHumanTargets) {
-        setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor);
+        setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
       }
       realisticHumanTargets.length = 0;
       resolve();
@@ -438,10 +438,12 @@ export function makePed(color: number): THREE.Group {
   // an immediate fallback so the city never waits for a network asset.
   const group = new THREE.Group();
   if (realisticHumanTemplate) {
-    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color);
+    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color, skinTone);
     return group;
   }
-  realisticHumanTargets.push({ target: group, shirtColor: color });
+  const SKIN_TONES = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68];
+  const skinTone = SKIN_TONES[Math.abs(Math.trunc(color)) % SKIN_TONES.length];
+  realisticHumanTargets.push({ target: group, shirtColor: color, skinTone });
   beginRealisticHumanLoad();
 
   const skin = new THREE.MeshStandardMaterial({ color: 0xb97850, roughness: 0.72 });
