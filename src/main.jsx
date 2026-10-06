@@ -8,10 +8,7 @@ document.body.appendChild(canvas);
 
 const hud=document.createElement("div");
 hud.className="pc-hud";
-hud.innerHTML=`
-  <div class="brand"><b>BET CITY</b><span>OPEN CITY · LAGOS DISTRICT</span></div>
-  <div class="hudRight"><span class="pc-chip">FREE ROAM</span><span class="pc-help">WASD · SHIFT · DRAG</span></div>
-`;
+hud.innerHTML=`<div class="pc-help">WASD / ARROWS · DRAG TO LOOK · WHEEL TO ZOOM</div>`;
 document.body.appendChild(hud);
 
 const mobileUI=document.createElement("div");
@@ -149,6 +146,9 @@ function windowRow(x,y,z,count,spacing,rot=0){
   }
 }
 
+const obstacles=[];
+function addObstacle(x,z,halfX,halfZ,padding=.45){ obstacles.push({x,z,halfX:halfX+padding,halfZ:halfZ+padding}); }
+
 function house(x,z,variant=0){
   const w=16,h=variant===1?7:8,d=14;
   const body=[M.wall2,M.wall,M.wall3][variant%3];
@@ -162,6 +162,7 @@ function house(x,z,variant=0){
   box("Door",[x,2.0,front-.06],[2.5,4,.16],M.door);
   box("DoorTrim",[x,2.1,front-.15],[2.9,4.25,.12],M.trim);
   box("Porch",[x,0.32,z-d/2-1.05],[6,.3,2.2],M.sidewalk);
+  addObstacle(x,z,w/2,d/2,.9);
 
   if(variant!==1){
     box("Balcony",[x,5.5,front-1.05],[6,.28,1.8],M.trim);
@@ -188,6 +189,7 @@ function shop(x,z){
   box("ShopFront",[x,3.2,z-6.58],[15,5.4,.18],M.glass);
   box("ShopDoor",[x+6,3.1,z-6.72],[2.2,5.6,.16],M.door);
   box("Awning",[x,6.3,z-7.6],[18,1,2],M.roofBlue);
+  addObstacle(x,z,9.5,6.5,1);
   box("Sign",[x,7.9,z-6.7],[10,1.4,.18],M.gold);
 }
 shop(-34,0);
@@ -197,6 +199,7 @@ function tree(x,z,scale=1){
   cyl("Trunk",[x,1.5,z],[.5*scale,3*scale,.5*scale],M.trunk);
   sphere("Crown",[x,4.2*scale,z],[2.8*scale,3.2*scale,2.8*scale],M.tree);
   sphere("Crown",[x-1.1*scale,4*scale,z+.8*scale],[1.8*scale,2.1*scale,1.8*scale],M.tree2);
+  addObstacle(x,z,1.2*scale,1.2*scale,.25);
 }
 for(let i=0;i<55;i++){
   const x=((i*47)%190)-95,z=((i*73)%190)-95;
@@ -248,7 +251,7 @@ const camera=new pc.Entity("Camera");
 camera.addComponent("camera",{
   clearColor:color("#9ec7dc"),
   fov:62,
-  farClip:260,
+  farClip:500,
   toneMapping:pc.TONEMAP_ACES
 });
 app.root.addChild(camera);
@@ -304,7 +307,7 @@ document.getElementById("runBtn").addEventListener("pointerup",()=>runHeld=false
 document.getElementById("runBtn").addEventListener("pointercancel",()=>runHeld=false);
 document.getElementById("jumpBtn").addEventListener("pointerdown",()=>jump=true);
 
-let yaw=0,pitch=-0.16;
+let yaw=0,pitch=-0.16,camDistance=11.5;
 let lookId=null,lastLookX=0,lastLookY=0;
 const lookZone=document.getElementById("lookZone");
 lookZone.addEventListener("pointerdown",e=>{
@@ -312,7 +315,7 @@ lookZone.addEventListener("pointerdown",e=>{
 });
 lookZone.addEventListener("pointermove",e=>{
   if(e.pointerId!==lookId)return;
-  yaw-=(e.clientX-lastLookX)*.004;
+  yaw+=(e.clientX-lastLookX)*.004;
   pitch=Math.max(-.48,Math.min(.25,pitch-(e.clientY-lastLookY)*.0025));
   lastLookX=e.clientX;lastLookY=e.clientY;
 });
@@ -326,11 +329,34 @@ canvas.addEventListener("pointerdown",e=>{
 });
 canvas.addEventListener("pointermove",e=>{
   if(e.pointerType!=="mouse"||e.pointerId!==lookId)return;
-  yaw-=(e.clientX-lastLookX)*.003;
+  yaw+=(e.clientX-lastLookX)*.003;
   pitch=Math.max(-.48,Math.min(.25,pitch-(e.clientY-lastLookY)*.002));
   lastLookX=e.clientX;lastLookY=e.clientY;
 });
 window.addEventListener("pointerup",()=>lookId=null);
+
+canvas.addEventListener("wheel",e=>{
+  e.preventDefault();
+  camDistance=Math.max(6,Math.min(85,camDistance+e.deltaY*.035));
+},{passive:false});
+
+let pinchStart=null;
+canvas.addEventListener("touchstart",e=>{
+  if(e.touches.length===2){
+    const a=e.touches[0],b=e.touches[1];
+    pinchStart=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  }
+},{passive:false});
+canvas.addEventListener("touchmove",e=>{
+  if(e.touches.length===2 && pinchStart!==null){
+    e.preventDefault();
+    const a=e.touches[0],b=e.touches[1];
+    const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    camDistance=Math.max(6,Math.min(85,camDistance-(d-pinchStart)*.035));
+    pinchStart=d;
+  }
+},{passive:false});
+canvas.addEventListener("touchend",()=>{pinchStart=null;},{passive:false});
 
 let velocityY=0,grounded=true,time=0;
 const forward=new pc.Vec3(),right=new pc.Vec3();
@@ -352,10 +378,14 @@ app.on("update",dt=>{
   const moveZ=right.z*mx+forward.z*my;
   if(mag>.08){
     const p=playerRoot.getPosition();
-    p.x+=moveX*speed*dt;
-    p.z+=moveZ*speed*dt;
-    p.x=Math.max(-99,Math.min(99,p.x));
-    p.z=Math.max(-99,Math.min(99,p.z));
+    const nx=Math.max(-99,Math.min(99,p.x+moveX*speed*dt));
+    const nz=Math.max(-99,Math.min(99,p.z+moveZ*speed*dt));
+    const canMove=(x,z)=>{
+      const r=.48;
+      return !obstacles.some(o=>Math.abs(x-o.x)<o.halfX+r && Math.abs(z-o.z)<o.halfZ+r);
+    };
+    if(canMove(nx,p.z)) p.x=nx;
+    if(canMove(p.x,nz)) p.z=nz;
     playerRoot.setPosition(p);
     playerRoot.setEulerAngles(0,Math.atan2(moveX,moveZ)*180/Math.PI,0);
     body.setLocalScale(.8,2.5+Math.sin(time*12)*.04,.55);
@@ -376,7 +406,7 @@ app.on("update",dt=>{
   }
 
   const target=playerRoot.getPosition();
-  const dist=11.5;
+  const dist=camDistance;
   const cp=Math.cos(pitch),sp=Math.sin(pitch);
   const desired=new pc.Vec3(
     target.x-Math.sin(yaw)*dist*cp,
