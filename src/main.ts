@@ -258,6 +258,7 @@ function updateFoot(dt: number): void {
   const dirX = cos * m.y + sin * m.x;
   const dirZ = -sin * m.y + cos * m.x;
 
+  player.setCrouched(controls.crouchHeld());
   player.update(dirX, dirZ, controls.sprint(true), dt);
 
   const fixed = city.grid.resolve(player.x, player.z, FOOT_RADIUS);
@@ -332,7 +333,6 @@ function update(dt: number): void {
     vehicles.update(city, dt, null, { x: player.x, z: player.z }, chase);
     flushCarWrecks();
     updateFoot(dt);
-    player.setCrouched(controls.crouchHeld());
     if (controls.jumpPressed()) player.jump();
     // After damage is sampled, push the on-foot actor out of slow/parked cars.
     // Fast cars remain an intentional gameplay collision for the impact system.
