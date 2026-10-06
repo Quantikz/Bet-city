@@ -70,7 +70,12 @@ function Player({input,out,onNear,cameraState}){
      r.current.rotation.y=THREE.MathUtils.lerp(r.current.rotation.y,Math.atan2(v.current.x,v.current.z),Math.min(1,dt*12));
    }else v.current.lerp(new THREE.Vector3(),1-Math.pow(.000001,dt));
    const next=r.current.position.clone().addScaledVector(v.current,dt);
-   const blocked=buildings.some(([x,z])=>Math.abs(next.x-x)<5.8&&Math.abs(next.z-z)<5.8);
+   const buildingBlocked=buildings.some(([x,z])=>Math.abs(next.x-x)<5.8&&Math.abs(next.z-z)<5.8);
+   const obstacleBlocked=worldObstacles.some(([x,z,type])=>{
+     const radius=type==="pole"?.9:type==="bin"?1.1:1.5;
+     return Math.hypot(next.x-x,next.z-z)<radius;
+   });
+   const blocked=buildingBlocked||obstacleBlocked;
    if(!blocked){r.current.position.copy(next)}
    r.current.position.x=THREE.MathUtils.clamp(r.current.position.x,-40,40);
    r.current.position.z=THREE.MathUtils.clamp(r.current.position.z,-40,40);
@@ -150,6 +155,32 @@ function TrafficCar({src,axis,lane,index}){
 }
 
 
+const worldObstacles=[
+ [-12,10,"barrier"],[12,10,"barrier"],[-12,-10,"barrier"],[12,-10,"barrier"],
+ [-6,27,"bin"],[6,27,"bin"],[-27,6,"pole"],[27,-6,"pole"],
+ [-27,-6,"barrier"],[27,6,"barrier"]
+];
+
+function StreetObstacles(){
+ return <group>
+   {worldObstacles.map(([x,z,type],i)=>{
+     if(type==="pole") return <group key={"o"+i} position={[x,0,z]}>
+       <mesh position={[0,2.2,0]} castShadow><cylinderGeometry args={[.12,.15,4.4,8]}/><meshStandardMaterial color="#4a4d49" metalness={.5}/></mesh>
+       <mesh position={[0,4.25,0]} castShadow><boxGeometry args={[1.5,.12,.12]}/><meshStandardMaterial color="#252a28" metalness={.4}/></mesh>
+     </group>;
+     if(type==="bin") return <group key={"o"+i} position={[x,0,z]}>
+       <mesh position={[0,.55,0]} castShadow><cylinderGeometry args={[.38,.32,1.1,12]}/><meshStandardMaterial color="#34413d" roughness={.9}/></mesh>
+       <mesh position={[0,1.13,0]}><cylinderGeometry args={[.4,.4,.08,12]}/><meshStandardMaterial color="#202522"/></mesh>
+     </group>;
+     return <group key={"o"+i} position={[x,0,z]} rotation={[0,(i%2)*Math.PI/2,0]}>
+       <mesh position={[0,.35,0]} castShadow><boxGeometry args={[2.2,.7,.55]}/><meshStandardMaterial color="#a87535" roughness={.8}/></mesh>
+       <mesh position={[-.75,.75,0]}><cylinderGeometry args={[.07,.07,.35,8]}/><meshStandardMaterial color="#ded8bd"/></mesh>
+       <mesh position={[.75,.75,0]}><cylinderGeometry args={[.07,.07,.35,8]}/><meshStandardMaterial color="#ded8bd"/></mesh>
+     </group>;
+   })}
+ </group>;
+}
+
 function TownDetails(){
  const sidewalks=[];
  for(let i=-3;i<=3;i++){
@@ -192,7 +223,7 @@ function Town(){
  const tallScale=[2.35,2.7,3.1,2.5,3.25,2.8];
  return <group>
   <mesh receiveShadow rotation={[-Math.PI/2,0,0]}position={[0,-.1,0]}><planeGeometry args={[150,150]}/><meshStandardMaterial color="#55605b"roughness={.95}/></mesh>
-  <Roads/><StreetFurniture/><TownDetails/>
+  <Roads/><StreetFurniture/><TownDetails/><StreetObstacles/>
   {buildings.map(([x,z],i)=><Model key={"b"+i}src={A.buildings[i%A.buildings.length]}position={[x,0,z]}rotation={[0,(i%4)*Math.PI/2,0]}scale={tallScale[i%tallScale.length]}/>)}
   {[[-38,-36],[-38,36],[38,-36],[38,36]].map(([x,z],i)=><Model key={"t"+i}src={A.trees[i%2]}position={[x,0,z]}scale={2.7}/>)}
   {[-24,0,24].map((lane,i)=><TrafficCar key={"vz"+i}src={A.cars[i%A.cars.length]}axis="z"lane={lane}index={i}/>)}
