@@ -4,6 +4,7 @@ import type { Building, Streetlight, Prop } from '../world/City';
 import type { FacadeStyle, PropType } from '../world/biome';
 import { makeFacadeTexture, makeGlowTexture } from './textures';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SkeletonUtils } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const LAMP_HEIGHT = 5.2;
 
