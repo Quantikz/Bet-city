@@ -68,7 +68,8 @@ export class HUD {
     this.modeEl = document.createElement('div');
     this.modeEl.style.cssText =
       'position:absolute;left:20px;top:58px;font-size:14px;font-weight:700;letter-spacing:1px;' + CHIP;
-    root.appendChild(this.modeEl);
+    // Mode chip removed for a cleaner in-world HUD.
+    this.modeEl.style.display = 'none';
 
     this.wantedEl = document.createElement('div');
     this.wantedEl.style.cssText =
@@ -88,12 +89,16 @@ export class HUD {
     this.healthFill.style.cssText =
       'height:100%;width:100%;background:linear-gradient(90deg,#3ad17a,#7dffa6);transition:width .1s linear;';
     healthTrack.appendChild(this.healthFill);
+    // Health bar removed from the beta HUD; health still drives gameplay/WASTED.
+    healthTrack.style.display = 'none';
     root.appendChild(healthTrack);
 
     this.scoreEl = document.createElement('div');
     this.scoreEl.style.cssText =
       'position:absolute;left:50%;top:12px;transform:translateX(-50%);font-size:13px;font-weight:700;' + CHIP;
     this.scoreEl.textContent = '🚶 0';
+    // Run-over counter removed from the beta HUD; the counter remains available internally.
+    this.scoreEl.style.display = 'none';
     root.appendChild(this.scoreEl);
 
     this.radioEl = document.createElement('div');
@@ -101,6 +106,8 @@ export class HUD {
       'position:absolute;left:50%;top:48px;transform:translateX(-50%);font-size:12px;' +
       'max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + CHIP;
     this.radioEl.textContent = '📻 OFF';
+    // Radio chip removed from the beta HUD; radio audio continues to work in cars.
+    this.radioEl.style.display = 'none';
     root.appendChild(this.radioEl);
 
     // Time-of-day clock. On touch the top-right is the speedo, so it sits on the
