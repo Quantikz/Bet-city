@@ -24,7 +24,7 @@ const REAL_HUMAN_URL = '/models/human.glb';
 let realisticHumanTemplate: THREE.Group | null = null;
 let realisticHumanAnimations: THREE.AnimationClip[] = [];
 let realisticHumanLoading: Promise<void> | null = null;
-const realisticHumanTargets: THREE.Group[] = [];
+const realisticHumanTargets: Array<{ target: THREE.Group; shirtColor: number }> = [];
 
 interface HumanRig {
   mixer: THREE.AnimationMixer;
@@ -95,9 +95,10 @@ function beginRealisticHumanLoad(): void {
     new GLTFLoader().load(REAL_HUMAN_URL, (gltf) => {
       realisticHumanTemplate = gltf.scene;
       realisticHumanAnimations = gltf.animations;
-      for (const target of realisticHumanTargets) {
-        setupHumanRig(target, SkeletonUtils.clone(realisticHumanTemplate), 0x3b82f6);
+      for (const pending of realisticHumanTargets) {
+        setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor);
       }
+      realisticHumanTargets.length = 0;
       resolve();
     }, undefined, reject);
   }).catch((err) => {
@@ -440,7 +441,7 @@ export function makePed(color: number): THREE.Group {
     setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color);
     return group;
   }
-  realisticHumanTargets.push(group);
+  realisticHumanTargets.push({ target: group, shirtColor: color });
   beginRealisticHumanLoad();
 
   const skin = new THREE.MeshStandardMaterial({ color: 0xb97850, roughness: 0.72 });
