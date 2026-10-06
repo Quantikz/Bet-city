@@ -46,6 +46,7 @@ export class SceneEnv {
   private followX = 0;
   private followZ = 0;
   private readonly shadowHalf: number;
+  private readonly houseLights: THREE.PointLight[];
 
   constructor(container: HTMLElement, city: City, quality: SceneQuality = {}) {
     const maxPixelRatio = quality.maxPixelRatio ?? 2;
@@ -78,6 +79,12 @@ export class SceneEnv {
     this.camera.position.set(0, 30, 30);
 
     this.addLights(city, shadowMapSize);
+    this.houseLights = Array.from({ length: 18 }, () => {
+      const light = new THREE.PointLight(0xffd6a0, 7, 18, 2);
+      light.castShadow = false;
+      this.scene.add(light);
+      return light;
+    });
     this.addGround(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
@@ -210,6 +217,21 @@ export class SceneEnv {
       v.receiveShadow = true;
       this.scene.add(v);
     }
+  }
+
+  /** Place a small pool of warm non-shadowing lights at the nearest buildings. */
+  updateHouseLights(x: number, z: number, buildings: City['buildings']): void {
+    const nearest = buildings
+      .map((b) => ({ b, d2: (b.cx - x) ** 2 + (b.cz - z) ** 2 }))
+      .sort((a, b) => a.d2 - b.d2)
+      .slice(0, this.houseLights.length);
+    this.houseLights.forEach((light, i) => {
+      const item = nearest[i];
+      if (!item) { light.intensity = 0; return; }
+      const b = item.b;
+      light.position.set(b.cx + Math.min(b.width * 0.45, 4), Math.min(Math.max(2.5, b.height * 0.45), 7), b.cz + b.depth * 0.45);
+      light.intensity = item.d2 < 22 * 22 ? 7 : 0;
+    });
   }
 
   render(): void {
