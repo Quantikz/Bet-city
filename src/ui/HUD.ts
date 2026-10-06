@@ -33,6 +33,7 @@ export class HUD {
   private readonly carEl: HTMLElement;
   private readonly wantedEl: HTMLElement;
   private readonly clockEl: HTMLElement;
+  private readonly ammoEl: HTMLElement;
   private viewX = 0; // streamed-radar centre (the player), set each update
   private viewZ = 0;
 
@@ -129,8 +130,7 @@ export class HUD {
         ? 'position:absolute;left:20px;top:126px;'
         : 'position:absolute;right:20px;top:16px;') +
       'font-size:14px;font-weight:700;letter-spacing:1px;' + CHIP;
-    this.clockEl.style.display = 'none';
-    this.clockEl.style.display = 'none';
+    this.clockEl.style.display = 'block';
     root.appendChild(this.clockEl);
 
     // Current car make/model, above the speedometer (driving only).
@@ -162,8 +162,16 @@ export class HUD {
     const afec = document.createElement('div');
     afec.textContent = 'AFEC CITY';
     afec.style.cssText = 'position:absolute;left:20px;top:14px;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(12,18,24,.28);backdrop-filter:blur(10px);font:800 11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:#f4f8ff;';
-    afec.style.display = 'none';
+    afec.style.display = 'block';
     root.appendChild(afec);
+    const ammo = document.createElement('div');
+    ammo.style.cssText = touch
+      ? 'position:absolute;right:18px;top:78px;font-size:18px;font-weight:800;letter-spacing:1px;' + CHIP
+      : 'position:absolute;right:20px;top:58px;font-size:18px;font-weight:800;letter-spacing:1px;' + CHIP;
+    ammo.textContent = '30 / 120';
+    this.ammoEl = ammo;
+    root.appendChild(ammo);
+
     // Control legend now lives in the title/pause menu — keep the HUD clean.
 
     // (Decorative wordmark dropped — the splash/title menu carry the name; the
@@ -231,16 +239,14 @@ export class HUD {
     mode: Mode,
     player: { x: number; z: number; heading: number },
     cars: ReadonlyArray<{ x: number; z: number }>,
-    health: number,
-    wasted: boolean,
+  _health = 100,
+    _wasted = false,
   ): void {
     this.speedEl.textContent = String(Math.round(speedKmh));
     this.modeEl.textContent = mode === 'driving' ? '🚗 DRIVING' : '🚶 ON FOOT';
 
-    const h = Math.max(0, Math.min(100, health));
-    this.healthFill.style.width = `${h}%`;
-    this.healthFill.style.background = h > 50 ? '#54ff84' : h > 20 ? '#ffd24a' : '#ff5a4a';
-    this.wastedEl.style.display = wasted ? 'flex' : 'none';
+    this.wastedEl.style.display = 'none';
+    this.bustedEl.style.display = 'none';
 
     const ctx = this.mapCtx;
     ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
@@ -282,6 +288,10 @@ export class HUD {
   }
 
   /** Time-of-day clock from `t` in [0,1) (0 = midnight) → 🕐 HH:MM (24h). */
+  setAmmo(current: number, reserve: number, reloading = false): void {
+    this.ammoEl.textContent = reloading ? 'RELOADING…' : `${current} / ${reserve}`;
+  }
+
   setClock(t: number): void {
     const mins = Math.floor(t * 24 * 60) % (24 * 60);
     const hh = Math.floor(mins / 60);
