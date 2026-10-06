@@ -70,7 +70,7 @@ function Player({input,out,onNear,cameraState}){
      r.current.rotation.y=THREE.MathUtils.lerp(r.current.rotation.y,Math.atan2(v.current.x,v.current.z),Math.min(1,dt*12));
    }else v.current.lerp(new THREE.Vector3(),1-Math.pow(.000001,dt));
    const next=r.current.position.clone().addScaledVector(v.current,dt);
-   const blocked=buildings.some(([x,z])=>Math.abs(next.x-x)<5.2&&Math.abs(next.z-z)<5.2);
+   const blocked=buildings.some(([x,z])=>Math.abs(next.x-x)<5.8&&Math.abs(next.z-z)<5.8);
    if(!blocked){r.current.position.copy(next)}
    r.current.position.x=THREE.MathUtils.clamp(r.current.position.x,-40,40);
    r.current.position.z=THREE.MathUtils.clamp(r.current.position.z,-40,40);
@@ -82,10 +82,10 @@ function Player({input,out,onNear,cameraState}){
  return <group ref={r}position={[0,0,12]}><Human src={A.people[0]}moving={cameraState.current.speed>.15}run={input.current.run}scale={1.05}/></group>;
 }
 
-function Camera({player,state}){
+function Camera({player,state,zoom}){
  const{camera}=useThree(),look=useMemo(()=>new THREE.Vector3(),[]);
  useFrame((_,dt)=>{
-   const p=player.current?.position||new THREE.Vector3(0,0,12),s=state.current,r=8.5;
+   const p=player.current?.position||new THREE.Vector3(0,0,12),s=state.current,r=zoom;
    const cp=Math.cos(s.pitch),sp=Math.sin(s.pitch);
    const desired=new THREE.Vector3(
      p.x-Math.sin(s.yaw)*r*cp,
@@ -121,10 +121,10 @@ function MovingNPC({src,start,index}){
  useFrame(({clock})=>{
    if(!r.current)return;
    const t=clock.elapsedTime*.35+phase,rad=3.5+(index%3)*1.4;
-   const x=start[0]+Math.sin(t)*rad,z=start[1]+Math.cos(t*.8)*rad;
+   const x=start[0]+Math.sin(t)*rad,z=start[1]+Math.cos(t)*rad;
    const dx=x-r.current.position.x,dz=z-r.current.position.z;
    r.current.position.x=x;r.current.position.z=z;
-   r.current.rotation.y=Math.atan2(dx,dz);
+   if(Math.hypot(dx,dz)>.001)r.current.rotation.y=THREE.MathUtils.lerp(r.current.rotation.y,Math.atan2(dx,dz),.18);
  });
  return <group ref={r}position={[start[0],0,start[1]]}><Human src={src}scale={1.03}phase={phase}/></group>;
 }
@@ -164,7 +164,7 @@ function Town(){
 
 function App(){
  const input=useRef({x:0,z:0,run:false}),keys=useRef(new Set()),player=useRef(),state=useRef({yaw:0,pitch:.28,speed:0}),drag=useRef({active:false,x:0,y:0});
- const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28);
+ const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5);
  useEffect(()=>{
    const sync=()=>{const k=keys.current;input.current.x=(k.has("a")||k.has("arrowleft")?-1:0)+(k.has("d")||k.has("arrowright")?1:0);input.current.z=(k.has("w")||k.has("arrowup")?-1:0)+(k.has("s")||k.has("arrowdown")?1:0);input.current.run=k.has("shift");setSpeed(input.current.run?"RUN":"WALK")};
    const down=e=>{keys.current.add(e.key.toLowerCase());sync()};const up=e=>{keys.current.delete(e.key.toLowerCase());sync()};
@@ -172,21 +172,21 @@ function App(){
  },[]);
  useEffect(()=>{const id=setInterval(()=>setTime(t=>(t+.0015)%1),1000);return()=>clearInterval(id)},[]);
  const down=e=>{if(e.target.closest(".joystick"))return;drag.current={active:true,x:e.clientX,y:e.clientY}};
- const moveLook=e=>{if(!drag.current.active)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current.x=e.clientX;drag.current.y=e.clientY;state.current.yaw-=dx*.006;state.current.pitch=THREE.MathUtils.clamp(state.current.pitch-dy*.005,-.18,1.02)};
+ const moveLook=e=>{if(!drag.current.active)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current.x=e.clientX;drag.current.y=e.clientY;state.current.yaw-=dx*.006;state.current.pitch=THREE.MathUtils.clamp(state.current.pitch-dy*.005,-.12,1.05)};
  const up=()=>drag.current.active=false;
  const move=e=>{const r=e.currentTarget.getBoundingClientRect(),p=e.touches?.[0]||e;const x=THREE.MathUtils.clamp((p.clientX-r.left-r.width/2)/(r.width/2),-1,1),z=THREE.MathUtils.clamp((p.clientY-r.top-r.height/2)/(r.height/2),-1,1);input.current.x=x;input.current.z=z;setJoy({x,z})};
- const stop=()=>{input.current.x=0;input.current.z=0;setJoy({x:0,z:0})};
+ const stop=()=>{input.current.x=0;input.current.z=0;setJoy({x:0,z:0})};\n const wheel=e=>setZoom(z=>THREE.MathUtils.clamp(z+e.deltaY*.008,4,14));\n const pinch=useRef({d:0});\n const touchStart=e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinch.current.d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}};\n const touchMove=e=>{if(e.touches.length===2){e.preventDefault();const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(pinch.current.d){setZoom(z=>THREE.MathUtils.clamp(z-(d-pinch.current.d)*.025,4,14))}pinch.current.d=d}};
  const sun=Math.sin(time*Math.PI*2)*.5+.5;
- return <div className="game"onPointerDown={down}onPointerMove={moveLook}onPointerUp={up}onPointerCancel={up}>
+ return <div className="game"onPointerDown={down}onPointerMove={moveLook}onPointerUp={up}onPointerCancel={up}onWheel={wheel}onTouchStart={touchStart}onTouchMove={touchMove}onTouchEnd={()=>pinch.current.d=0}>
   <Canvas shadows dpr={[1,1.8]}camera={{position:[0,6,20],fov:55}}gl={{antialias:true}}>
    <color attach="background"args={["#87b9df"]}/><Sky distance={450000}sunPosition={[-80,55,-30]}rayleigh={.45}turbidity={7}mieCoefficient={.008}mieDirectionalG={.82}/>
    <fog attach="fog"args={["#a7c4d4",55,150]}/><hemisphereLight intensity={.6+sun*.35}groundColor="#344238"color="#d9edff"/>
    <ambientLight intensity={.28+sun*.3}/><directionalLight castShadow position={[-30,50,20]}intensity={.9+sun*1.8}shadow-mapSize-width={2048}shadow-mapSize-height={2048}shadow-bias={-.00012}/>
-   <Town/><Player input={input}out={player}onNear={setNear}cameraState={state}/><Camera player={player}state={state}/>
+   <Town/><Player input={input}out={player}onNear={setNear}cameraState={state}/><Camera player={player}state={state}zoom={zoom}/>
   </Canvas>
   <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
   {near&&<div className="interaction">ENTER {near}<small>Move closer to interact</small></div>}
-  <div className="lookHint">DRAG TO LOOK · DRAG UP TO LOOK AT SKY</div>
+  <div className="lookHint">DRAG RIGHT SIDE TO LOOK · PINCH / WHEEL TO ZOOM</div>
   <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
 }
