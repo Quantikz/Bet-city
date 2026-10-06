@@ -535,12 +535,9 @@ window.__game = {
   get mode() {
     return mode;
   },
-,
   get carHealth() {
     return vehicles.playerCarHealth();
   },
-,
-,
   get runOverCount() {
     return peds.runOverCount;
   },
