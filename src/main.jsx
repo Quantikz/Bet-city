@@ -174,12 +174,12 @@ function house(x,z,variant=0){
 }
 
 const plots=[];
-for(let gx=-2;gx<=2;gx++){
-  for(let gz=-2;gz<=2;gz++){
-    if(Math.abs(gx)<=0&&Math.abs(gz)<=0) continue;
-    const x=gx*STEP+(gz%2)*3;
-    const z=gz*STEP+(gx%2)*3;
-    plots.push(house(x,z,(gx+gz+6)%3));
+for(let gx=-3;gx<=2;gx++){
+  for(let gz=-3;gz<=2;gz++){
+    const x=gx*STEP+17+(gz%2)*4;
+    const z=gz*STEP+17+(gx%2)*4;
+    if(Math.abs(x)>88||Math.abs(z)>88) continue;
+    plots.push(house(x,z,(gx+gz+9)%3));
   }
 }
 
@@ -192,8 +192,8 @@ function shop(x,z){
   addObstacle(x,z,9.5,6.5,1);
   box("Sign",[x,7.9,z-6.7],[10,1.4,.18],M.gold);
 }
-shop(-34,0);
-shop(34,34);
+shop(-51,-17);
+shop(51,51);
 
 function tree(x,z,scale=1){
   cyl("Trunk",[x,1.5,z],[.5*scale,3*scale,.5*scale],M.trunk);
@@ -217,43 +217,57 @@ for(let i=-3;i<=3;i++) for(let j=-3;j<=3;j++){
 }
 
 const cars=[];
-for(let i=0;i<12;i++){
-  const horizontal=i%2===0;
-  const lane=(Math.floor(i/2)%6-2.5)*5;
-  const e=box("Car",
-    horizontal?[-96,.72,lane]:[lane,.72,-96],
-    horizontal?[3.9,1.25,1.9]:[1.9,1.25,3.9],
-    [M.car1,M.car2,M.car3,M.car4][i%4]
-  );
-  cars.push({e,horizontal,dir:i%4<2?1:-1,speed:7+(i%3)*1.5});
-}
-
-function person(x,z){
-  const root=box("NPC",[x,1.15,z],[.8,2.3,.55],M.shirt);
-  sphere("Head",[x,2.75,z],[.65,.65,.65],M.skin);
-  return root;
-}
-for(let i=0;i<14;i++) person(((i*31)%120)-60,((i*43)%120)-60);
-
+const npcs=[];
 const playerRoot=new pc.Entity("Player");
 app.root.addChild(playerRoot);
-const body=box("PlayerBody",[0,1.25,0],[.8,2.5,.55],M.shirt);
-body.reparent(playerRoot);
-const head=sphere("PlayerHead",[0,2.8,0],[.7,.7,.7],M.skin);
-head.reparent(playerRoot);
-const legL=box("PlayerLegL",[-.23,-.1,0],[.28,1.2,.4],M.pants);
-legL.reparent(playerRoot);
-const legR=box("PlayerLegR",[.23,-.1,0],[.28,1.2,.4],M.pants);
-legR.reparent(playerRoot);
-const armL=box("PlayerArmL",[-.62,.45,0],[.25,1.35,.3],M.skin,[0,0,-10]);
-armL.reparent(playerRoot);
-const armR=box("PlayerArmR",[.62,.45,0],[.25,1.35,.3],M.skin,[0,0,10]);
-armR.reparent(playerRoot);
-const shoeL=box("PlayerShoeL",[-.23,-.72,-.12],[.34,.22,.62],M.dark);
-shoeL.reparent(playerRoot);
-const shoeR=box("PlayerShoeR",[.23,-.72,-.12],[.34,.22,.62],M.dark);
-shoeR.reparent(playerRoot);
-playerRoot.setPosition(0,1,18);
+
+const REAL_CAR_URL="https://developer.playcanvas.com/assets/porsche-911-carrera-4s.glb";
+const REAL_HUMAN_URL="https://three.ws/avatars/cesium-man.glb";
+
+function loadGLB(url,name,scale=[1,1,1]){
+  return new Promise((resolve,reject)=>{
+    app.assets.loadFromUrlAndFilename(url,name,"container",(err,asset)=>{
+      if(err){ console.warn("GLB load failed:",url,err); reject(err); return; }
+      const entity=asset.resource.instantiateRenderEntity();
+      entity.setLocalScale(...scale);
+      app.root.addChild(entity);
+      resolve({entity,asset});
+    });
+  });
+}
+
+const realCarPromise=loadGLB(REAL_CAR_URL,"real-car",[.62,.62,.62]);
+const realHumanPromise=loadGLB(REAL_HUMAN_URL,"real-human",[1.0,1.0,1.0]);
+
+realCarPromise.then(({entity})=>{
+  entity.setPosition(-96,.05,-5);
+  cars.push({e:entity,horizontal:true,dir:1,speed:9,halfX:3.0,halfZ:1.35});
+  for(let i=1;i<8;i++){
+    const clone=entity.clone();
+    app.root.addChild(clone);
+    clone.setPosition(-96-i*26,.05, i%2===0?5:-5);
+    cars.push({e:clone,horizontal:true,dir:i%2?1:-1,speed:8+(i%3),halfX:3.0,halfZ:1.35});
+  }
+}).catch(()=>{});
+
+realHumanPromise.then(({entity,asset})=>{
+  playerRoot.addChild(entity);
+  entity.setLocalPosition(0,0,0);
+  playerRoot.setPosition(0,0,51);
+  playerRoot.setLocalScale(1.0,1.0,1.0);
+  // Visual character is loaded as a real skinned GLB; movement remains script-controlled.
+  const anim=entity.findComponent("anim");
+  if(anim) anim.play("Idle");
+  for(let i=0;i<12;i++){
+    const npc=new pc.Entity("NPC");
+    const npcModel=asset.resource.instantiateRenderEntity();
+    npc.addChild(npcModel);
+    npc.setLocalScale(.9,.9,.9);
+    npc.setPosition(((i%4)-1.5)*10,0,((Math.floor(i/4))-1)*18);
+    app.root.addChild(npc);
+    npcs.push({e:npc,dir:i%2?1:-1,speed:1.2+(i%3)*.25,model:npcModel});
+  }
+}).catch(()=>{});
 
 const camera=new pc.Entity("Camera");
 camera.addComponent("camera",{
@@ -396,7 +410,8 @@ app.on("update",dt=>{
     if(canMove(p.x,nz)) p.z=nz;
     playerRoot.setPosition(p);
     playerRoot.setEulerAngles(0,Math.atan2(moveX,moveZ)*180/Math.PI,0);
-    body.setLocalScale(.8,2.5+Math.sin(time*12)*.04,.55);
+    const pAnim=playerRoot.findComponent("anim");
+    if(pAnim) pAnim.play((keys.shift||runHeld)?"Run":"Walk");
   }
 
   if((jump||keys[" "])&&grounded){velocityY=7;grounded=false;jump=false}
@@ -408,9 +423,24 @@ app.on("update",dt=>{
 
   for(const c of cars){
     const p=c.e.getPosition();
-    if(c.horizontal){p.x+=c.speed*c.dir*dt;if(p.x>104)p.x=-104;if(p.x<-104)p.x=104}
-    else{p.z+=c.speed*c.dir*dt;if(p.z>104)p.z=-104;if(p.z<-104)p.z=104}
+    if(c.horizontal){
+      p.x+=c.speed*c.dir*dt;
+      if(p.x>108)p.x=-108;
+      if(p.x<-108)p.x=108;
+    }else{
+      p.z+=c.speed*c.dir*dt;
+      if(p.z>108)p.z=-108;
+      if(p.z<-108)p.z=108;
+    }
     c.e.setPosition(p);
+  }
+
+  for(const n of npcs){
+    const p=n.e.getPosition();
+    p.x+=n.speed*n.dir*dt;
+    if(p.x>82)p.x=-82;
+    if(p.x<-82)p.x=82;
+    n.e.setPosition(p);
   }
 
   const target=playerRoot.getPosition();
