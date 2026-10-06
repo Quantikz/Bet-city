@@ -36,9 +36,9 @@ function Model({src,position=[0,0,0],rotation=[0,0,0],scale=1}){
 
 function Human({src,position=[0,0,0],scale=1,moving=true,run=false,phase=0}){
  const r=useRef(),mixer=useRef(),actions=useRef({});
- useEffect(()=>{let live=true;loadModel(src).then(scene=>{
-   if(!live||!scene||!r.current)return;
-   const clone=scene.clone(true);
+ useEffect(()=>{let live=true;loadModel(src).then(gltf=>{
+   if(!live||!gltf||!r.current)return;
+   const clone=gltf.scene.clone(true);
    clone.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
    r.current.clear();r.current.add(clone);
    if(gltf.animations?.length){
@@ -74,7 +74,8 @@ function Player({input,out,onNear,cameraState}){
    if(!blocked){r.current.position.copy(next)}
    r.current.position.x=THREE.MathUtils.clamp(r.current.position.x,-40,40);
    r.current.position.z=THREE.MathUtils.clamp(r.current.position.z,-40,40);
-   cameraState.current.speed=v.current.length();\n   if(r.current.userData.jumping){r.current.userData.jumpT+=dt;const jt=r.current.userData.jumpT;r.current.position.y=Math.sin(Math.min(jt*5,Math.PI))*1.15;if(jt>=Math.PI/5){r.current.position.y=0;r.current.userData.jumping=false}}
+   cameraState.current.speed=v.current.length();
+   if(r.current.userData.jumping){r.current.userData.jumpT+=dt;const jt=r.current.userData.jumpT;r.current.position.y=Math.sin(Math.min(jt*5,Math.PI))*1.15;if(jt>=Math.PI/5){r.current.position.y=0;r.current.userData.jumping=false}}
    let near=null,min=999;
    shops.forEach(([x,z,name])=>{const d=Math.hypot(r.current.position.x-x,r.current.position.z-z);if(d<6&&d<min){min=d;near=name}});
    onNear(near);
@@ -175,7 +176,14 @@ function App(){
  const moveLook=e=>{if(!drag.current.active)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current.x=e.clientX;drag.current.y=e.clientY;state.current.yaw-=dx*.006;state.current.pitch=THREE.MathUtils.clamp(state.current.pitch-dy*.005,-.12,1.05)};
  const up=()=>drag.current.active=false;
  const move=e=>{const r=e.currentTarget.getBoundingClientRect(),p=e.touches?.[0]||e;const x=THREE.MathUtils.clamp((p.clientX-r.left-r.width/2)/(r.width/2),-1,1),z=THREE.MathUtils.clamp((p.clientY-r.top-r.height/2)/(r.height/2),-1,1);input.current.x=x;input.current.z=z;setJoy({x,z})};
- const stop=()=>{input.current.x=0;input.current.z=0;setJoy({x:0,z:0})};\n const pressRun=()=>{input.current.run=true;setSpeed("RUN")};\n const releaseRun=()=>{input.current.run=false;setSpeed("WALK")};\n const jump=()=>{if(player.current&&!player.current.userData.jumping){player.current.userData.jumping=true;player.current.userData.jumpT=0}};\n const wheel=e=>setZoom(z=>THREE.MathUtils.clamp(z+e.deltaY*.008,4,14));\n const pinch=useRef({d:0});\n const touchStart=e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinch.current.d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}};\n const touchMove=e=>{if(e.touches.length===2){e.preventDefault();const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(pinch.current.d){setZoom(z=>THREE.MathUtils.clamp(z-(d-pinch.current.d)*.025,4,14))}pinch.current.d=d}};
+ const stop=()=>{input.current.x=0;input.current.z=0;setJoy({x:0,z:0})};
+ const pressRun=()=>{input.current.run=true;setSpeed("RUN")};
+ const releaseRun=()=>{input.current.run=false;setSpeed("WALK")};
+ const jump=()=>{if(player.current&&!player.current.userData.jumping){player.current.userData.jumping=true;player.current.userData.jumpT=0}};
+ const wheel=e=>setZoom(z=>THREE.MathUtils.clamp(z+e.deltaY*.008,4,14));
+ const pinch=useRef({d:0});
+ const touchStart=e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinch.current.d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}};
+ const touchMove=e=>{if(e.touches.length===2){e.preventDefault();const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(pinch.current.d){setZoom(z=>THREE.MathUtils.clamp(z-(d-pinch.current.d)*.025,4,14))}pinch.current.d=d}};
  const sun=Math.sin(time*Math.PI*2)*.5+.5;
  return <div className="game"onPointerDown={down}onPointerMove={moveLook}onPointerUp={up}onPointerCancel={up}onWheel={wheel}onTouchStart={touchStart}onTouchMove={touchMove}onTouchEnd={()=>pinch.current.d=0}>
   <Canvas shadows dpr={[1,1.8]}camera={{position:[0,6,20],fov:55}}gl={{antialias:true}}>
@@ -186,7 +194,8 @@ function App(){
   </Canvas>
   <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
   {near&&<div className="interaction">ENTER {near}<small>Move closer to interact</small></div>}
-  <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div>\n  <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setNear(null)}>ENTER</button>}</div>
+  <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div>
+  <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setNear(null)}>ENTER</button>}</div>
   <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
 }
