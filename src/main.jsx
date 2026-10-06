@@ -4,6 +4,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { io } from "socket.io-client";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { available, createWallet, settle, stake } from "./economy.js";
 import { ROUTES, slide } from "./world.js";
 import "./style.css";
@@ -253,7 +254,10 @@ function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef 
       <Citizen position={[0, 0, -3]} name="ZEE" shirt="#3f8a73" />
       <Citizen position={[-6, 0, 1]} name="AMAKA" shirt="#d05c55" />
       <Citizen position={[6, 0, -1]} name="TUNDE" shirt="#d7b456" />
-      <ContactShadows opacity={0.4} scale={70} blur={2.2} far={16} />
+      <mesh position={[12, 1.6, 16.2]}><cylinderGeometry args={[0.7, 0.7, 0.08, 20]} /><meshStandardMaterial color="#b34b3d" /></mesh>
+      <Text position={[12, 2.4, 16.2]} fontSize={0.2} color="#fff" anchorX="center">E TO THROW</Text>
+      <StandIn url="/assets/vehicles/sedan.glb" position={[4.2, 0.6, 8]} scale={1} />
+      {peers.map((p) => <RemoteAvatar key={p.id} peer={p} />)}
     </>
   );
 }
@@ -277,7 +281,57 @@ function CameraRig({ playerRef, mode, partnerRef, movementRef }) {
   return null;
 }
 
-function DartsBoard({ throws, onThrow }) {
+function StandIn({ url, position = [0, 0, 0], scale = 1 }) {
+  const ref = useRef();
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    new GLTFLoader().load(url, (gltf) => {
+      if (!alive || !ref.current) return;
+      const root = gltf.scene;
+      root.scale.setScalar(scale);
+      ref.current.add(root);
+      setReady(true);
+    }, undefined, () => setReady(false));
+    return () => { alive = false; };
+  }, [url, scale]);
+  return <group ref={ref} position={position} visible={ready} />;
+}
+
+function RemoteAvatar({ peer }) {
+  const ref = useRef();
+  useFrame(() => {
+    if (!ref.current) return;
+    ref.current.position.lerp(new THREE.Vector3(peer.x, 0, peer.z), 0.35);
+    ref.current.rotation.y = peer.rotation || 0;
+  });
+  return (
+    <group ref={ref}>
+      <StandIn url="/assets/characters/player.glb" scale={1} />
+      <mesh castShadow position={[0, 1.2, 0]}><capsuleGeometry args={[0.38, 0.62, 6, 12]} /><meshStandardMaterial color="#d7b456" /></mesh>
+      <mesh position={[0, 2.05, 0]}><sphereGeometry args={[0.32, 16, 12]} /><meshStandardMaterial color="#c49a78" /></mesh>
+      <Text position={[0, 2.7, 0]} fontSize={0.22} color="#fff" anchorX="center">{peer.name || "PLAYER"}</Text>
+    </group>
+  );
+}
+
+function ShopInterior({ onExit, peers, onChallenge, playerRef, movementRef }) {
+  return (
+    <group>
+      <ambientLight intensity={0.8} />
+      <mesh position={[0, 2, 0]}><boxGeometry args={[12, 4, 10]} /><meshStandardMaterial color="#2a241e" side={THREE.BackSide} /></mesh>
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[12, 10]} /><meshStandardMaterial color="#4a3b30" /></mesh>
+      <mesh position={[0, 1.1, -3]}><boxGeometry args={[6, 1.1, 1]} /><meshStandardMaterial color="#6b4038" /></mesh>
+      <Text position={[0, 2.4, -3]} fontSize={0.35} color="#f2c56b" anchorX="center">LUCKY SHOP</Text>
+      <StandIn url="/assets/buildings/shop.glb" position={[0, 2.5, -4]} scale={0.25} />
+      {peers.map((p, i) => <group key={p.id} position={[-3 + i * 1.6, 0, -1]} onClick={() => onChallenge(p)}><mesh><capsuleGeometry args={[0.3, 0.5, 4, 8]} /><meshStandardMaterial color="#3c78ad" /></mesh><Text position={[0, 1.5, 0]} fontSize={0.18} color="#fff" anchorX="center">{p.name}</Text></group>)}
+      <Citizen position={[0, 0, 2]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} />
+      <mesh position={[0, 1, 4.6]} onClick={onExit}><boxGeometry args={[1.4, 2, 0.1]} /><meshStandardMaterial color="#111" /></mesh>
+      <Text position={[0, 2.2, 4.7]} fontSize={0.22} color="#fff" anchorX="center">EXIT</Text>
+    </group>
+  );
+}
+  function DartsBoard({ throws, onThrow }) {
   const [aim, setAim] = useState({ x: 0.1, y: -0.1 });
   return (
     <div className="darts-game">
@@ -310,6 +364,10 @@ function App() {
   const keys = useRef({});
   const trafficRef = useRef({});
   const socketRef = useRef(null);
+  const [peers, setPeers] = useState([]);
+  const [interior, setInterior] = useState(null);
+  const [serverOn, setServerOn] = useState(false);
+  const pending = useRef({});
   const channelRef = useRef("news");
   channelRef.current = channel;
   channelRef.scope = scope;
@@ -320,7 +378,23 @@ function App() {
     socket.on("tv:state", (state) => {
       if (state?.scope === "city") { setChannel(state.channel); setScope("city"); setMessage(`CITY BROADCAST · ${state.title || state.channel}`); }
     });
-    socket.on("player:move", (p) => { partnerRef.current = { position: new THREE.Vector3(p.x, 0, p.z) }; });
+    socket.on("connect", () => setServerOn(true));
+    socket.on("disconnect", () => setServerOn(false));
+    socket.on("world:init", (world) => {
+      setPeers((world.players || []).filter((p) => p.id !== world.playerId));
+      if (world.wallet) { walletRef.current = { ...createWallet(), ...world.wallet }; setWallet(walletRef.current); }
+    });
+    socket.on("player:join", (p) => setPeers((list) => [...list.filter((x) => x.id !== p.id), p]));
+    socket.on("player:leave", ({ id }) => setPeers((list) => list.filter((x) => x.id !== id)));
+    socket.on("player:move", (p) => {
+      partnerRef.current = { position: new THREE.Vector3(p.x, 0, p.z) };
+      setPeers((list) => list.map((x) => x.id === p.id ? p : x).concat(list.some((x) => x.id === p.id) ? [] : [p]));
+    });
+    socket.on("wallet:result", (result) => {
+      const done = pending.current[result.requestId];
+      if (done) { delete pending.current[result.requestId]; done(result); }
+      if (result.wallet) { walletRef.current = { ...walletRef.current, ...result.wallet }; setWallet(walletRef.current); }
+    });
     return () => socket.close();
   }, []);
 
@@ -332,6 +406,13 @@ function App() {
       movementRef.current = { ...movementRef.current, x: (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), z: (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0), sprint: sprinting || !!k.shift };
       const p = playerRef.current;
       if (p && socketRef.current?.connected) socketRef.current.emit("player:move", { x: p.position.x, y: 0, z: p.position.z, rotation: p.rotation.y, name: "YOU" });
+      if (k.e && p && !interior) {
+        const nearShop = Math.hypot(p.position.x + 12, p.position.z + 12) < 4;
+        const nearDarts = Math.hypot(p.position.x - 12, p.position.z - 13) < 4;
+        if (nearShop) setInterior("shop");
+        if (nearDarts) setModal("duel");
+        keys.current.e = false;
+      }
     }, 50);
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); clearInterval(id); };
@@ -344,21 +425,39 @@ function App() {
     socketRef.current?.emit("tv:set", { channel: nextChannel, scope: nextScope, title: found.title });
   };
   const openDuel = () => { setMessage("DARTS DUEL READY"); setModal("duel"); };
-  const confirmDuel = () => {
-    const result = stake(walletRef.current, stake);
-    if (!result.ok) { setMessage(result.error); return; }
-    stakeRef.current = result.stake;
-    walletRef.current = result.wallet;
-    setWallet({ ...result.wallet, ledger: result.wallet.ledger.slice() });
+  const askServer = (event, payload) => new Promise((resolve) => {
+    if (!socketRef.current?.connected) return resolve({ ok: false, offline: true });
+    const requestId = Math.random().toString(36).slice(2);
+    pending.current[requestId] = resolve;
+    socketRef.current.emit(event, { ...payload, requestId });
+    setTimeout(() => { if (pending.current[requestId]) { delete pending.current[requestId]; resolve({ ok: false, error: "SERVER TIMEOUT" }); } }, 2500);
+  });
+  const confirmDuel = async () => {
+    const server = await askServer("wallet:stake", { amount: Math.floor(Number(stake) || 0) });
+    if (server.offline) {
+      const local = stake(walletRef.current, stake);
+      if (!local.ok) { setMessage(local.error); return; }
+      walletRef.current = local.wallet;
+      stakeRef.current = local.stake;
+      setWallet({ ...local.wallet, ledger: local.wallet.ledger.slice() });
+      setMessage("OFFLINE LEDGER");
+    } else {
+      if (!server.ok) { setMessage(server.error || "STAKE REJECTED"); return; }
+      stakeRef.current = server.stake;
+      setMessage("SERVER STAKE LOCKED");
+    }
     setPlayerScore(0); setNpcScore(0); setThrows(0); setLocked(true); setModal("playing");
-    socketRef.current?.emit("wallet:stake", { amount: result.stake });
   };
-  const finishDuel = (win) => {
-    const result = settle(walletRef.current, stakeRef.current, win);
-    walletRef.current = result.wallet;
-    setWallet({ ...result.wallet, ledger: result.wallet.ledger.slice() });
-    setLocked(false); setModal(null); setMessage(win ? `WON ${result.payout} BET` : "YOU LOST");
-    socketRef.current?.emit("wallet:settle", { stake: stakeRef.current, won: win });
+  const finishDuel = async (win) => {
+    const server = await askServer("wallet:settle", { stake: stakeRef.current, won: win });
+    if (server.offline) {
+      const local = settle(walletRef.current, stakeRef.current, win);
+      walletRef.current = local.wallet;
+      setWallet({ ...local.wallet, ledger: local.wallet.ledger.slice() });
+      setMessage(win ? `WON ${local.payout} BET` : "YOU LOST");
+    } else if (!server.ok) setMessage(server.error || "SETTLE REJECTED");
+    else setMessage(win ? `WON ${server.payout} BET` : "YOU LOST");
+    setLocked(false); setModal(null);
   };
   const playerThrow = (score) => {
     const nextThrows = throws + 1; const nextPlayer = playerScore + score;
@@ -375,8 +474,8 @@ function App() {
         <Canvas shadows dpr={[1, 1.25]} camera={{ position: [16, 8, 18], fov: 50 }} gl={{ antialias: true, powerPreference: "high-performance" }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
           <color attach="background" args={["#e7b48a"]} />
           <fog attach="fog" args={["#e7c3a2", 26, 110]} />
-          <City onShop={() => setModal("info")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} />
-          <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={cameraMode} movementRef={movementRef} />
+          {interior === "shop" ? <ShopInterior peers={[{ id: "kay", name: "KAY" }, ...peers]} onExit={() => setInterior(null)} onChallenge={() => { setInterior(null); openDuel(); }} playerRef={playerRef} movementRef={movementRef} /> : <City onShop={() => setInterior("shop")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} />}
+          <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={interior ? "hood" : cameraMode} movementRef={movementRef} />
         </Canvas>
       </div>
       <header className="topbar">
@@ -386,7 +485,7 @@ function App() {
           <label>TELE<select value={channel} onChange={(e) => applyTv(e.target.value, scope)}>{CHANNELS.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
           <label>BROADCAST<select value={scope} onChange={(e) => applyTv(channel, e.target.value)}><option value="screen">This screen</option><option value="city">City broadcast</option></select></label>
         </div>
-        <div className="wallet"><span>BET</span><strong>{available(wallet).toLocaleString()}</strong></div>
+        <div className="wallet"><span>{serverOn ? "SERVER" : "LOCAL"}</span><strong>{available(wallet).toLocaleString()}</strong></div>
       </header>
       <div className="status-pill"><i className={locked || scope === "city" ? "live" : ""} />{message}</div>
       <div className="hud-left"><div className="mini-map"><span /></div><div className="quest"><b>ON THE SHOP TVS</b><span>{current.title}</span><small>{current.line}</small></div></div>
@@ -396,7 +495,7 @@ function App() {
       <div className="bottom-ui"><button className="glass-btn" onClick={() => setModal("tv")}>TELEVISION</button><button className="primary-btn" onClick={openDuel}>CHALLENGE KAY</button></div>
       {modal === "duel" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">DARTS DUEL</div><h2>Challenge Kay</h2><p>Stake virtual BET.</p><div className="stake-row"><input value={stake} type="number" min="100" step="100" onChange={(e) => setStake(e.target.value)} /><span>BET</span></div><div className="modal-actions"><button className="glass-btn" onClick={() => setModal(null)}>CANCEL</button><button className="primary-btn" onClick={confirmDuel}>START</button></div></div></div>}
       {modal === "playing" && <div className="modal-backdrop"><div className="modal compact"><div className="duel-score"><div><small>YOU</small><strong>{playerScore}</strong></div><span>VS</span><div><small>KAY</small><strong>{npcScore}</strong></div></div><DartsBoard throws={throws} onThrow={playerThrow} /></div></div>}
-      {modal === "info" && <div className="modal-backdrop"><div className="modal compact"><h2>Lucky Shop</h2><button className="primary-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
+      {interior === "shop" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">LUCKY SHOP</div><h2>Opponents</h2><div className="channel-grid"><button onClick={() => { setInterior(null); openDuel(); }}>KAY</button>{peers.map((p) => <button key={p.id} onClick={() => { setInterior(null); openDuel(); }}>{p.name}</button>)}</div><button className="glass-btn full" onClick={() => setInterior(null)}>EXIT</button></div></div>}
       {modal === "map" && <div className="modal-backdrop"><div className="modal compact"><h2>Bet City</h2><p>Shops, houses, towers. TV screens are on the storefronts.</p><button className="glass-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
       {modal === "tv" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">TELEVISION</div><h2>{current.title}</h2><p>This changes the screens on the 3D shops.</p><div className="channel-grid">{CHANNELS.map((c) => <button key={c.id} className={c.id === channel ? "on" : ""} onClick={() => applyTv(c.id, scope)}>{c.title}</button>)}</div><div className="scope-row"><button className={scope === "screen" ? "on" : ""} onClick={() => applyTv(channel, "screen")}>This screen</button><button className={scope === "city" ? "on" : ""} onClick={() => applyTv(channel, "city")}>City broadcast</button></div><button className="glass-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
     </div>
