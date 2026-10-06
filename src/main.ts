@@ -225,12 +225,14 @@ function toggleVehicle(): void {
     player.heading = pose.heading;
     vehicles.exit();
     mode = 'foot';
+    follow.resetOrbit();
     sfx.exitCar();
   } else {
     const i = vehicles.nearest(player.x, player.z, ENTER_DISTANCE);
     if (i >= 0) {
       vehicles.enter(i);
       mode = 'driving';
+      follow.resetOrbit();
       radio?.enterCar(i);
       radioCarIndex = i;
       radioPrimed = true;
