@@ -13,6 +13,8 @@ echo "Applying Bet City Phase 1..."
 curl -fL "$BASE/scripts/bet_city.gd" -o "$GAME/scripts/bet_city.gd"
 curl -fL "$BASE/scripts/bet_hud.gd" -o "$GAME/scripts/bet_hud.gd"
 curl -fL "$BASE/scripts/bet_touch_controls.gd" -o "$GAME/scripts/bet_touch_controls.gd"
+curl -fL "$BASE/scripts/darts_duel.gd" -o "$GAME/scripts/darts_duel.gd"
+curl -fL "$BASE/scripts/bet_city.gd" -o "$GAME/scripts/bet_city.gd"
 curl -fL "$BASE/project.godot" -o "$GAME/project.godot"
 curl -fL "$BASE/scenes/main.tscn" -o "$GAME/scenes/main.tscn"
 
