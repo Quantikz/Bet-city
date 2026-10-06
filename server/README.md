@@ -1,13 +1,20 @@
 # Bet City realtime server
 
-The server owns multiplayer state. It does not handle real-money payments.
+The server owns multiplayer presence, co-op camera hints, and television broadcast state. It does not handle real-money payments.
 
 ## Run
 
-`npm install`
-`node server/index.js`
+```bash
+npm install
+node server/index.js
+```
 
 Health: `/health`
+
+Events:
+- `player:move` position sync
+- `tv:set` choose a channel and scope (`screen` or `city`)
+- `tv:state` current city broadcast
 
 ## Production
 

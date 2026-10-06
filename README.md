@@ -1,66 +1,35 @@
 # Bet City
 
-Browser-first 3D open-world social wagering game prototype.
+Browser-first 3D open-world social wagering prototype.
 
-## Current visual target
+Visuals are original Bet City assets and procedural geometry. This project does not use GTA V characters, maps, textures, vehicles, UI, or other copyrighted game content. The target is cinematic open-world quality, not a copy of another game.
 
-The game is being developed toward a cinematic AAA open-world visual language with original Bet City assets. It is not using GTA V assets, characters, maps, textures, or other copyrighted game content.
+## This graphics pass
 
-## Current 15-step development pass
-
-1. Rebuilt the town as a larger open-world street grid.
-2. Added third-person follow camera.
-3. Added WASD/arrow movement.
-4. Added mobile virtual joystick movement.
-5. Added sprint/run input.
-6. Rebuilt the player/NPC bodies with separate head, neck, torso, arms, legs, hands and shoes.
-7. Added procedural walking/idle animation.
-8. Added a distant high-rise skyline with window grids.
-9. Added residential houses with roofs, doors and windows.
-10. Added moving traffic vehicles.
-11. Added traffic lights, crosswalks and road markings.
-12. Added palm-lined streets, lamps and urban props.
-13. Added betting billboards and stronger venue presentation.
-14. Added cinematic tone mapping, fog, shadows, HDR environment lighting and vignette.
-15. Added a game-style HUD with minimap, quest panel, actions, wallet and mobile controls.
+- Dusk city with wet asphalt, lane markings, crosswalks, lamps, palms, bins, benches and a bus shelter
+- Detailed houses with balconies, roofs, garage doors and lit windows
+- Storefront shops with awnings, neon signs and interior glow
+- Original cars: sedan, SUV and coupe, with glass, plates, spinning wheels and headlights
+- Original citizens with jackets, hair and shoes. Not likenesses from any shipped game
+- Selectable cameras: follow, shoulder, hood, cinematic, co-op
+- Selectable television channels, and a choosable scope: this screen only, or city broadcast synced through the realtime server
 
 ## Controls
 
-Desktop:
-- WASD / Arrow keys: move
-- Shift: sprint
-- Click NPCs/venues: interact
-
-Mobile:
-- Left joystick: move
-- RUN: sprint
-- FIGHT: open Darts Duel
-- MAP: open city map
+- WASD / arrows: move
+- Shift or RUN: sprint
+- Top selectors: camera, TV channel, broadcast scope
+- PHONE: television panel
+- FIGHT / CHALLENGE KAY: virtual BET darts duel
 
 ## Run
 
 ```bash
 npm install
 npm run dev -- --host 0.0.0.0
+npm run server
 ```
 
-This build uses virtual BET only. No real-money payment, cash-out, or unofficial token marketplace is implemented.
+The client talks to `http://localhost:3001` for co-op presence and city TV broadcast. If the server is down, the city still runs locally.
 
-## Next AAA asset phase
-
-The procedural geometry is intentionally a fallback. Reaching genuinely near-AAA visual quality requires original optimized GLB/GLTF assets for the hero character, NPCs, vehicles, houses, shops, street furniture and vegetation, plus PBR texture sets, animation clips, LODs, compressed textures and baked/real-time lighting. Those assets must be original or properly licensed; the target is GTA-like visual quality, not copied GTA content.
-
-
-## Parallel AAA foundation pass
-
-The current build now has:
-- improved third-person acceleration, sprinting and camera follow
-- playable three-throw Darts Duel prototype
-- asset-ready GLTF loading foundation
-- original-asset pipeline under `public/assets`
-- virtual BET ledger primitives
-- Socket.IO realtime server foundation for player movement and duel events
-- server-owned match state foundation
-- mobile-responsive darts HUD
-
-The procedural city remains the fallback while original/licensed GLB assets are added. The project does not use GTA V assets, maps, characters or textures.
+Virtual BET only. No real-money payment, cash-out, or token marketplace.
