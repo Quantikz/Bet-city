@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { available, createWallet, settle, stake } from "./economy.js";
 import { ROUTES, slide } from "./world.js";
+import { ASSETS, assetUrl } from "./assetSources.js";
 import "./style.css";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -225,41 +226,61 @@ function Citizen({ position, name, shirt, player, movementRef, playerRef, traffi
 }
 
 function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef, peers = [] }) {
+  const buildingSpots = [
+    [-16,0,-4,0,0],[16,0,-3,Math.PI,0],[-16,0,16,0,1],[16,0,16,Math.PI,2],
+    [-30,0,-28,0,3],[30,0,-28,Math.PI,4],[-30,0,24,0,5],[30,0,24,Math.PI,6],
+    [-22,0,38,0,7],[22,0,38,Math.PI,8]
+  ];
   return (
     <>
-      <hemisphereLight args={["#9eb7d8", "#2a211c", 0.65]} />
-      <directionalLight castShadow position={[-18, 24, 10]} intensity={2.2} color="#ffd2a8" shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <hemisphereLight args={["#9eb7d8","#2a211c",0.65]} />
+      <directionalLight castShadow position={[-18,24,10]} intensity={2.2} color="#ffd2a8" shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <Environment preset="sunset" />
-      <Road />
-      <Tower position={[-28, 0, -36]} height={32} />
-      <Tower position={[-12, 0, -42]} height={44} width={11} color="#687480" />
-      <Tower position={[14, 0, -40]} height={38} color="#4c5864" />
-      <Tower position={[30, 0, -32]} height={48} width={12} />
-      <House position={[-16, 0, -4]} /><House position={[16, 0, -3]} color="#b7a48f" />
-      <House position={[-16, 0, 16]} color="#c3ad98" /><House position={[16, 0, 16]} />
-      <Shop position={[-12, 0, -12]} color="#6b4038" name="LUCKY SHOP" accent="#e15b4c" onClick={onShop} channelRef={channelRef} />
-      <Shop position={[12, 0, -12]} color="#24566c" name="POOL HOUSE" accent="#49b4d4" channelRef={channelRef} />
-      <Shop position={[-12, 0, 13]} color="#4a3d6e" name="ARCADE" accent="#9a74e0" channelRef={channelRef} />
-      <Shop position={[12, 0, 13]} color="#6e4a2e" name="DARTS BAR" accent="#e0a15a" onClick={onDarts} channelRef={channelRef} />
-      <Lamp position={[-10, 0, -7]} /><Lamp position={[10, 0, -7]} /><Lamp position={[-10, 0, 9]} /><Lamp position={[10, 0, 9]} />
-      <Palm position={[-9.6, 0, -1]} /><Palm position={[9.6, 0, -1]} /><Palm position={[-9.6, 0, 6]} /><Palm position={[9.6, 0, 6]} />
-      <Car route={ROUTES[0]} color="#8d2e2a" pace={8} offset={0} trafficRef={trafficRef} playerRef={playerRef} />
-      <Car route={ROUTES[1]} color="#1e2833" pace={6.5} offset={1} trafficRef={trafficRef} playerRef={playerRef} />
-      <Car route={ROUTES[2]} color="#b08a3e" pace={7.2} offset={2} trafficRef={trafficRef} playerRef={playerRef} />
-      <mesh position={[-7.2, 0.4, 3]} castShadow><boxGeometry args={[1.5, 0.08, 0.4]} /><meshStandardMaterial color="#6a5344" /></mesh>
-      <mesh position={[7.4, 0.45, 4]} castShadow><cylinderGeometry args={[0.26, 0.3, 0.8, 10]} /><meshStandardMaterial color="#2c3338" metalness={0.4} /></mesh>
-      <Citizen position={[0, 0, 6]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} trafficRef={trafficRef} />
-      <Citizen position={[-4, 0, 4]} name="KAY" shirt="#3c78ad" onClick={onDarts} />
-      <Citizen position={[4, 0, 3]} name="MUSA" shirt="#9b4c8f" />
-      <Citizen position={[0, 0, -3]} name="ZEE" shirt="#3f8a73" />
-      <Citizen position={[-6, 0, 1]} name="AMAKA" shirt="#d05c55" />
-      <Citizen position={[6, 0, -1]} name="TUNDE" shirt="#d7b456" />
-      <mesh position={[12, 1.6, 16.2]}><cylinderGeometry args={[0.7, 0.7, 0.08, 20]} /><meshStandardMaterial color="#b34b3d" /></mesh>
-      <Text position={[12, 2.4, 16.2]} fontSize={0.2} color="#fff" anchorX="center">E TO THROW</Text>
-      <StandIn url="/assets/vehicles/sedan.glb" position={[4.2, 0.6, 8]} scale={1} />
-      {peers.map((p) => <RemoteAvatar key={p.id} peer={p} />)}
+      <CC0Asset url={assetUrl(ASSETS.roads.straight)} position={[0,0,0]} scale={[2.2,1,2.2]} />
+      <CC0Asset url={assetUrl(ASSETS.roads.crossing)} position={[0,0,14]} scale={[2.2,1,2.2]} />
+      <CC0Asset url={assetUrl(ASSETS.roads.intersection)} position={[0,0,0]} scale={[2.2,1,2.2]} />
+      <CC0Asset url={assetUrl(ASSETS.roads.lamp)} position={[-7,0,-6]} scale={2.2} />
+      <CC0Asset url={assetUrl(ASSETS.roads.lamp)} position={[7,0,6]} rotation={[0,Math.PI,0]} scale={2.2} />
+      {buildingSpots.map(([x,y,z,r,i]) => <CC0Asset key={i} url={assetUrl(ASSETS.buildings[i % ASSETS.buildings.length])} position={[x,y,z]} rotation={[0,r,0]} scale={3.2} />)}
+      <NamedBuilding position={[-12,0,-12]} name="LUCKY SHOP" accent="#e15b4c" onClick={onShop} />
+      <NamedBuilding position={[12,0,-12]} name="POOL HOUSE" accent="#49b4d4" />
+      <NamedBuilding position={[-12,0,13]} name="ARCADE" accent="#9a74e0" />
+      <NamedBuilding position={[12,0,13]} name="DARTS BAR" accent="#e0a15a" onClick={onDarts} />
+      {[[-10,-7],[10,-7],[-10,9],[10,9]].map((p,i)=><CC0Asset key={"l"+i} url={assetUrl(ASSETS.roads.lamp)} position={[p[0],0,p[1]]} scale={2} />)}
+      {ROUTES.slice(0,4).map((route,i)=><TrafficCC0 key={i} route={route} asset={ASSETS.cars[i % ASSETS.cars.length]} pace={[8,6.5,7.2,6.8][i]} offset={i} trafficRef={trafficRef} playerRef={playerRef} />)}
+      {["KAY","MUSA","ZEE","AMAKA","TUNDE"].map((name,i)=><CC0Person key={name} name={name} index={i} position={[[ -4,0,4],[4,0,3],[0,0,-3],[-6,0,1],[6,0,-1]][i]} onClick={name==="KAY"?onDarts:undefined} />)}
+      <CC0Person name="YOU" index={0} position={[0,0,6]} player movementRef={movementRef} playerRef={playerRef} />
+      {peers.map(p=><RemoteAvatar key={p.id} peer={p} />)}
     </>
   );
+}
+
+function NamedBuilding({ position, name, accent, onClick }) {
+  return <group position={position} onClick={onClick}>
+    <CC0Asset url={assetUrl(ASSETS.buildings[0])} position={[0,0,0]} scale={3.2} />
+    <Text position={[0,4.4,2.4]} fontSize={0.34} color={accent} anchorX="center">{name}</Text>
+  </group>;
+}
+
+function CC0Asset({ url, position=[0,0,0], rotation=[0,0,0], scale=1 }) {
+  const ref=useRef();
+  useEffect(()=>{let alive=true;new GLTFLoader().load(url,g=>{if(!alive||!ref.current)return;const root=g.scene;root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});ref.current.clear();ref.current.add(root);},undefined,()=>{});return()=>{alive=false;};},[url]);
+  return <group ref={ref} position={position} rotation={rotation} scale={scale} />;
+}
+
+function CC0Person({ position, name, index=0, player=false, movementRef, playerRef, onClick }) {
+  const ref=useRef();
+  useEffect(()=>{if(player&&playerRef)playerRef.current=ref.current;},[player,playerRef]);
+  return <group ref={ref} position={position} onClick={onClick}>
+    <CC0Asset url={assetUrl(ASSETS.people[index % ASSETS.people.length])} scale={1.8} />
+    <Text position={[0,2.9,0]} fontSize={0.2} color="#fff" anchorX="center">{name}</Text>
+  </group>;
+}
+
+function TrafficCC0({ route, asset, pace, offset, trafficRef }) {
+  const ref=useRef(); const cursor=useRef(offset);
+  useFrame((_,dt)=>{if(!ref.current)return;const i=Math.floor(cursor.current)%route.length;const n=route[(i+1)%route.length];const h=route[i];const dx=n[0]-h[0],dz=n[1]-h[1],len=Math.hypot(dx,dz)||1;cursor.current+=dt*pace/len;ref.current.position.set(h[0]+dx*(cursor.current%1),0.2,h[1]+dz*(cursor.current%1));ref.current.rotation.y=Math.atan2(dx,dz);});
+  return <group ref={ref}><CC0Asset url={assetUrl(asset)} scale={1.5}/></group>;
 }
 
 function CameraRig({ playerRef, mode, partnerRef, movementRef }) {
@@ -299,37 +320,26 @@ function StandIn({ url, position = [0, 0, 0], scale = 1 }) {
 }
 
 function RemoteAvatar({ peer }) {
-  const ref = useRef();
-  useFrame(() => {
-    if (!ref.current) return;
-    ref.current.position.lerp(new THREE.Vector3(peer.x, 0, peer.z), 0.35);
-    ref.current.rotation.y = peer.rotation || 0;
-  });
-  return (
-    <group ref={ref}>
-      <StandIn url="/assets/characters/player.glb" scale={1} />
-      <mesh castShadow position={[0, 1.2, 0]}><capsuleGeometry args={[0.38, 0.62, 6, 12]} /><meshStandardMaterial color="#d7b456" /></mesh>
-      <mesh position={[0, 2.05, 0]}><sphereGeometry args={[0.32, 16, 12]} /><meshStandardMaterial color="#c49a78" /></mesh>
-      <Text position={[0, 2.7, 0]} fontSize={0.22} color="#fff" anchorX="center">{peer.name || "PLAYER"}</Text>
-    </group>
-  );
+  const ref=useRef();
+  useFrame(()=>{if(!ref.current)return;ref.current.position.lerp(new THREE.Vector3(peer.x,0,peer.z),0.35);ref.current.rotation.y=peer.rotation||0;});
+  return <group ref={ref}><CC0Asset url={assetUrl(ASSETS.people[0])} scale={1.8}/><Text position={[0,2.9,0]} fontSize={0.2} color="#fff" anchorX="center">{peer.name||"PLAYER"}</Text></group>;
 }
 
 function ShopInterior({ onExit, peers, onChallenge, playerRef, movementRef }) {
-  return (
-    <group>
-      <ambientLight intensity={0.8} />
-      <mesh position={[0, 2, 0]}><boxGeometry args={[12, 4, 10]} /><meshStandardMaterial color="#2a241e" side={THREE.BackSide} /></mesh>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[12, 10]} /><meshStandardMaterial color="#4a3b30" /></mesh>
-      <mesh position={[0, 1.1, -3]}><boxGeometry args={[6, 1.1, 1]} /><meshStandardMaterial color="#6b4038" /></mesh>
-      <Text position={[0, 2.4, -3]} fontSize={0.35} color="#f2c56b" anchorX="center">LUCKY SHOP</Text>
-      <StandIn url="/assets/buildings/shop.glb" position={[0, 2.5, -4]} scale={0.25} />
-      {peers.map((p, i) => <group key={p.id} position={[-3 + i * 1.6, 0, -1]} onClick={() => onChallenge(p)}><mesh><capsuleGeometry args={[0.3, 0.5, 4, 8]} /><meshStandardMaterial color="#3c78ad" /></mesh><Text position={[0, 1.5, 0]} fontSize={0.18} color="#fff" anchorX="center">{p.name}</Text></group>)}
-      <Citizen position={[0, 0, 2]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} />
-      <mesh position={[0, 1, 4.6]} onClick={onExit}><boxGeometry args={[1.4, 2, 0.1]} /><meshStandardMaterial color="#111" /></mesh>
-      <Text position={[0, 2.2, 4.7]} fontSize={0.22} color="#fff" anchorX="center">EXIT</Text>
-    </group>
-  );
+  return <group>
+    <ambientLight intensity={0.9} />
+    <CC0Asset url={assetUrl(ASSETS.buildings[0])} position={[0,0,-3]} scale={3.2} />
+    <CC0Asset url={assetUrl(ASSETS.interior.counter)} position={[0,0,-1.8]} scale={1.5} />
+    <CC0Asset url={assetUrl(ASSETS.interior.table)} position={[-2.6,0,0.8]} scale={1.2} />
+    <CC0Asset url={assetUrl(ASSETS.interior.sofa)} position={[2.4,0,0.8]} scale={1.15} />
+    <CC0Asset url={assetUrl(ASSETS.interior.tv)} position={[0,1.7,-3.1]} scale={1.4} />
+    {peers.map((p,i)=><group key={p.id} position={[-3+i*1.6,0,-0.3]} onClick={()=>onChallenge(p)}>
+      <CC0Asset url={assetUrl(ASSETS.people[i%ASSETS.people.length])} scale={1.7}/><Text position={[0,2.8,0]} fontSize={0.18} color="#fff" anchorX="center">{p.name}</Text>
+    </group>)}
+    <CC0Person position={[0,0,2.2]} name="YOU" index={0} player movementRef={movementRef} playerRef={playerRef} />
+    <Text position={[0,4.3,-1]} fontSize={0.35} color="#f2c56b" anchorX="center">LUCKY SHOP</Text>
+    <group position={[0,0,4.5]} onClick={onExit}><Text fontSize={0.25} color="#fff" anchorX="center">EXIT</Text></group>
+  </group>;
 }
   function DartsBoard({ throws, onThrow }) {
   const [aim, setAim] = useState({ x: 0.1, y: -0.1 });
