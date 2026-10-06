@@ -61,8 +61,9 @@ export class SceneEnv {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.65;
+    this.renderer.toneMappingExposure = 1.45;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -102,6 +103,7 @@ export class SceneEnv {
     this.scene.add(this.hemi);
 
     const sun = new THREE.DirectionalLight(NIGHT.sun.color, NIGHT.sun.intensity);
+    sun.shadow.normalBias = 0.025;
     sun.position.set(city.half * 0.6, city.half * 1.2, city.half * 0.4);
     sun.castShadow = true;
     sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
@@ -112,7 +114,7 @@ export class SceneEnv {
     cam.bottom = -this.shadowHalf;
     cam.near = 1;
     cam.far = city.extent * 2.5;
-    sun.shadow.bias = -0.0006;
+    sun.shadow.bias = -0.00025;
     this.scene.add(sun);
     this.scene.add(sun.target); // target stays at origin; moving the light sweeps shadows
     this.sun = sun;
