@@ -4,6 +4,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { io } from "socket.io-client";
+import { available, createWallet, settle, stake } from "./economy.js";
+import { ROUTES, slide } from "./world.js";
 import "./style.css";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -127,17 +129,42 @@ function Shop({ position, color, name, accent, onClick, channelRef }) {
   );
 }
 
-function Car({ position, color = "#1d242c", speed = 2.2, axis = "z" }) {
+function Car({ route = ROUTES[0], color = "#1d242c", pace = 7, offset = 0, trafficRef, playerRef }) {
   const ref = useRef();
   const wheels = useRef();
+  const cursor = useRef(offset % route.length);
   useFrame((_, dt) => {
     if (!ref.current) return;
-    ref.current.position[axis] += speed * dt;
-    if (ref.current.position[axis] > 70) ref.current.position[axis] = -70;
-    if (wheels.current) wheels.current.rotation.x -= speed * dt * 1.5;
+    const i = Math.floor(cursor.current) % route.length;
+    const next = route[(i + 1) % route.length];
+    const here = route[i];
+    const tx = next[0] - here[0];
+    const tz = next[1] - here[1];
+    const len = Math.hypot(tx, tz) || 1;
+    let speed = pace;
+    const player = playerRef?.current?.position;
+    if (player) {
+      const aheadX = ref.current.position.x + (tx / len) * 4;
+      const aheadZ = ref.current.position.z + (tz / len) * 4;
+      if (Math.hypot(player.x - aheadX, player.z - aheadZ) < 2.2) speed = 0.4;
+    }
+    if (Math.abs(here[0]) < 6 && Math.abs(here[1]) < 6) speed *= 0.55;
+    cursor.current = (cursor.current + (speed * dt) / len) % route.length;
+    const i = Math.floor(cursor.current) % route.length;
+    const next = route[(i + 1) % route.length];
+    const here = route[i];
+    const tx = next[0] - here[0];
+    const tz = next[1] - here[1];
+    const t = cursor.current - i;
+    const x = here[0] + tx * t;
+    const z = here[1] + tz * t;
+    ref.current.position.set(x, 0, z);
+    ref.current.rotation.y = Math.atan2(tx, tz);
+    if (wheels.current) wheels.current.rotation.x -= speed * dt * 1.4;
+    if (trafficRef) trafficRef.current[offset] = { x, z, hx: 2.2, hz: 1 };
   });
   return (
-    <group ref={ref} position={position} rotation={[0, axis === "x" ? Math.PI / 2 : 0, 0]}>
+    <group ref={ref}>
       <mesh castShadow position={[0, 0.55, 0]}><boxGeometry args={[4.2, 0.62, 1.75]} /><meshStandardMaterial color={color} metalness={0.78} roughness={0.24} /></mesh>
       <mesh castShadow position={[-0.15, 1.08, 0]}><boxGeometry args={[1.9, 0.52, 1.55]} /><meshPhysicalMaterial color="#101820" roughness={0.08} metalness={0.15} transmission={0.25} transparent opacity={0.8} /></mesh>
       <mesh position={[2.02, 0.55, 0]}><boxGeometry args={[0.1, 0.16, 1.35]} /><meshStandardMaterial color="#fff4d2" emissive="#fff1c4" emissiveIntensity={1.4} /></mesh>
@@ -149,26 +176,37 @@ function Car({ position, color = "#1d242c", speed = 2.2, axis = "z" }) {
   );
 }
 
-function Citizen({ position, name, shirt, player, movementRef, playerRef, onClick }) {
+function Citizen({ position, name, shirt, player, movementRef, playerRef, trafficRef, onClick }) {
   const ref = useRef();
   const armL = useRef(); const armR = useRef(); const legL = useRef(); const legR = useRef();
+  const velocity = useRef(new THREE.Vector3());
   useEffect(() => { if (player && playerRef) playerRef.current = ref.current; }, [player, playerRef]);
   useFrame((state, dt) => {
     if (!ref.current) return;
-    if (player) {
-      const m = movementRef.current;
-      const input = new THREE.Vector3(m.x, 0, m.z);
-      const moving = input.lengthSq() > 0.01;
-      if (moving) input.normalize();
-      const next = ref.current.position.clone().addScaledVector(input, (m.sprint ? 7.2 : 4.2) * dt);
-      next.x = clamp(next.x, -24, 24); next.z = clamp(next.z, -24, 24);
-      ref.current.position.copy(next);
-      if (moving) ref.current.rotation.y = Math.atan2(input.x, input.z);
-      const walk = state.clock.elapsedTime * (m.sprint ? 11 : 8);
-      const amt = moving ? 0.5 : 0;
-      legL.current.rotation.x = Math.sin(walk) * amt; legR.current.rotation.x = -Math.sin(walk) * amt;
-      armL.current.rotation.x = -Math.sin(walk) * amt; armR.current.rotation.x = Math.sin(walk) * amt;
-    }
+    if (!player) return;
+    const m = movementRef.current;
+    const yaw = m.yaw || 0;
+    const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const wish = new THREE.Vector3();
+    if (m.z) wish.addScaledVector(forward, -m.z);
+    if (m.x) wish.addScaledVector(right, m.x);
+    const moving = wish.lengthSq() > 0.01;
+    if (moving) wish.normalize();
+    const target = wish.multiplyScalar(m.sprint ? 7.4 : 4.3);
+    velocity.current.lerp(target, 1 - Math.pow(0.001, dt));
+    const step = velocity.current.clone().multiplyScalar(dt);
+    const extra = Object.values(trafficRef?.current || {});
+    const next = slide(ref.current.position.x, ref.current.position.z, ref.current.position.x + step.x, ref.current.position.z + step.z, 0.42, extra);
+    ref.current.position.x = clamp(next.x, -24, 24);
+    ref.current.position.z = clamp(next.z, -24, 24);
+    if (velocity.current.lengthSq() > 0.2) ref.current.rotation.y = Math.atan2(velocity.current.x, velocity.current.z);
+    const walk = state.clock.elapsedTime * (m.sprint ? 11 : 8);
+    const amt = moving ? 0.5 : 0;
+    if (legL.current) legL.current.rotation.x = Math.sin(walk) * amt;
+    if (legR.current) legR.current.rotation.x = -Math.sin(walk) * amt;
+    if (armL.current) armL.current.rotation.x = -Math.sin(walk) * amt;
+    if (armR.current) armR.current.rotation.x = Math.sin(walk) * amt;
   });
   return (
     <group ref={ref} position={position} onClick={onClick}>
@@ -185,7 +223,7 @@ function Citizen({ position, name, shirt, player, movementRef, playerRef, onClic
   );
 }
 
-function City({ onShop, onDarts, playerRef, movementRef, channelRef }) {
+function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef }) {
   return (
     <>
       <hemisphereLight args={["#9eb7d8", "#2a211c", 0.65]} />
@@ -204,12 +242,12 @@ function City({ onShop, onDarts, playerRef, movementRef, channelRef }) {
       <Shop position={[12, 0, 13]} color="#6e4a2e" name="DARTS BAR" accent="#e0a15a" onClick={onDarts} channelRef={channelRef} />
       <Lamp position={[-10, 0, -7]} /><Lamp position={[10, 0, -7]} /><Lamp position={[-10, 0, 9]} /><Lamp position={[10, 0, 9]} />
       <Palm position={[-9.6, 0, -1]} /><Palm position={[9.6, 0, -1]} /><Palm position={[-9.6, 0, 6]} /><Palm position={[9.6, 0, 6]} />
-      <Car position={[-4.2, 0, -55]} color="#8d2e2a" speed={2.8} />
-      <Car position={[4.2, 0, -18]} color="#1e2833" speed={2.1} />
-      <Car position={[-36, 0, 3.2]} color="#b08a3e" speed={1.8} axis="x" />
+      <Car route={ROUTES[0]} color="#8d2e2a" pace={8} offset={0} trafficRef={trafficRef} playerRef={playerRef} />
+      <Car route={ROUTES[1]} color="#1e2833" pace={6.5} offset={1} trafficRef={trafficRef} playerRef={playerRef} />
+      <Car route={ROUTES[2]} color="#b08a3e" pace={7.2} offset={2} trafficRef={trafficRef} playerRef={playerRef} />
       <mesh position={[-7.2, 0.4, 3]} castShadow><boxGeometry args={[1.5, 0.08, 0.4]} /><meshStandardMaterial color="#6a5344" /></mesh>
       <mesh position={[7.4, 0.45, 4]} castShadow><cylinderGeometry args={[0.26, 0.3, 0.8, 10]} /><meshStandardMaterial color="#2c3338" metalness={0.4} /></mesh>
-      <Citizen position={[0, 0, 6]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} />
+      <Citizen position={[0, 0, 6]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} trafficRef={trafficRef} />
       <Citizen position={[-4, 0, 4]} name="KAY" shirt="#3c78ad" onClick={onDarts} />
       <Citizen position={[4, 0, 3]} name="MUSA" shirt="#9b4c8f" />
       <Citizen position={[0, 0, -3]} name="ZEE" shirt="#3f8a73" />
@@ -220,7 +258,7 @@ function City({ onShop, onDarts, playerRef, movementRef, channelRef }) {
   );
 }
 
-function CameraRig({ playerRef, mode, partnerRef }) {
+function CameraRig({ playerRef, mode, partnerRef, movementRef }) {
   const look = useMemo(() => new THREE.Vector3(), []);
   useFrame((state, dt) => {
     const p = playerRef.current?.position || new THREE.Vector3(0, 0, 6);
@@ -234,6 +272,7 @@ function CameraRig({ playerRef, mode, partnerRef }) {
     else look.set(p.x, p.y + 1.35, p.z);
     state.camera.position.lerp(desired, 1 - Math.pow(0.001, dt));
     state.camera.lookAt(look);
+    if (movementRef) movementRef.current.yaw = Math.atan2(state.camera.position.x - p.x, state.camera.position.z - p.z) + Math.PI;
   });
   return null;
 }
@@ -250,7 +289,10 @@ function DartsBoard({ throws, onThrow }) {
 }
 
 function App() {
-  const [balance, setBalance] = useState(10000);
+  const [wallet, setWallet] = useState(() => createWallet(10000));
+  const walletRef = useRef(wallet);
+  const [stick, setStick] = useState({ x: 0, z: 0 });
+  const stakeRef = useRef(1000);
   const [modal, setModal] = useState(null);
   const [stake, setStake] = useState(1000);
   const [message, setMessage] = useState("FREE ROAM");
@@ -266,6 +308,7 @@ function App() {
   const partnerRef = useRef({ position: new THREE.Vector3(-4, 0, 4) });
   const movementRef = useRef({ x: 0, z: 0, sprint: false });
   const keys = useRef({});
+  const trafficRef = useRef({});
   const socketRef = useRef(null);
   const channelRef = useRef("news");
   channelRef.current = channel;
@@ -286,7 +329,7 @@ function App() {
     const up = (e) => { keys.current[e.key.toLowerCase()] = false; if (e.key === "Shift") setSprinting(false); };
     const id = setInterval(() => {
       const k = keys.current;
-      movementRef.current = { x: (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), z: (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0), sprint: sprinting || !!k.shift };
+      movementRef.current = { ...movementRef.current, x: (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), z: (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0), sprint: sprinting || !!k.shift };
       const p = playerRef.current;
       if (p && socketRef.current?.connected) socketRef.current.emit("player:move", { x: p.position.x, y: 0, z: p.position.z, rotation: p.rotation.y, name: "YOU" });
     }, 50);
@@ -302,14 +345,20 @@ function App() {
   };
   const openDuel = () => { setMessage("DARTS DUEL READY"); setModal("duel"); };
   const confirmDuel = () => {
-    const a = Math.max(100, Math.floor(Number(stake) || 0));
-    if (a > balance) { setMessage("INSUFFICIENT BET"); return; }
-    setBalance((b) => b - a); setPlayerScore(0); setNpcScore(0); setThrows(0); setLocked(true); setModal("playing");
+    const result = stake(walletRef.current, stake);
+    if (!result.ok) { setMessage(result.error); return; }
+    stakeRef.current = result.stake;
+    walletRef.current = result.wallet;
+    setWallet({ ...result.wallet, ledger: result.wallet.ledger.slice() });
+    setPlayerScore(0); setNpcScore(0); setThrows(0); setLocked(true); setModal("playing");
+    socketRef.current?.emit("wallet:stake", { amount: result.stake });
   };
   const finishDuel = (win) => {
-    const a = Math.max(100, Math.floor(Number(stake) || 0));
-    if (win) setBalance((b) => b + Math.floor(a * 1.9));
-    setLocked(false); setModal(null); setMessage(win ? "YOU WON" : "YOU LOST");
+    const result = settle(walletRef.current, stakeRef.current, win);
+    walletRef.current = result.wallet;
+    setWallet({ ...result.wallet, ledger: result.wallet.ledger.slice() });
+    setLocked(false); setModal(null); setMessage(win ? `WON ${result.payout} BET` : "YOU LOST");
+    socketRef.current?.emit("wallet:settle", { stake: stakeRef.current, won: win });
   };
   const playerThrow = (score) => {
     const nextThrows = throws + 1; const nextPlayer = playerScore + score;
@@ -326,8 +375,8 @@ function App() {
         <Canvas shadows dpr={[1, 1.25]} camera={{ position: [16, 8, 18], fov: 50 }} gl={{ antialias: true, powerPreference: "high-performance" }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
           <color attach="background" args={["#e7b48a"]} />
           <fog attach="fog" args={["#e7c3a2", 26, 110]} />
-          <City onShop={() => setModal("info")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} />
-          <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={cameraMode} />
+          <City onShop={() => setModal("info")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} />
+          <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={cameraMode} movementRef={movementRef} />
         </Canvas>
       </div>
       <header className="topbar">
@@ -337,12 +386,12 @@ function App() {
           <label>TELE<select value={channel} onChange={(e) => applyTv(e.target.value, scope)}>{CHANNELS.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
           <label>BROADCAST<select value={scope} onChange={(e) => applyTv(channel, e.target.value)}><option value="screen">This screen</option><option value="city">City broadcast</option></select></label>
         </div>
-        <div className="wallet"><span>BET</span><strong>{balance.toLocaleString()}</strong></div>
+        <div className="wallet"><span>BET</span><strong>{available(wallet).toLocaleString()}</strong></div>
       </header>
       <div className="status-pill"><i className={locked || scope === "city" ? "live" : ""} />{message}</div>
       <div className="hud-left"><div className="mini-map"><span /></div><div className="quest"><b>ON THE SHOP TVS</b><span>{current.title}</span><small>{current.line}</small></div></div>
       <div className="hud-right"><button className={cameraMode === "coop" ? "on" : ""} onClick={() => setCameraMode(cameraMode === "coop" ? "follow" : "coop")}>CO-OP</button><button className="on" onClick={() => setModal("tv")}>TELE</button><button onClick={() => setModal("map")}>MAP</button></div>
-      <div className="joystick" onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={(e) => { if (!e.buttons) return; const r = e.currentTarget.getBoundingClientRect(); movementRef.current = { ...movementRef.current, x: clamp((e.clientX - (r.left + r.width / 2)) / (r.width * 0.42), -1, 1), z: clamp((e.clientY - (r.top + r.height / 2)) / (r.height * 0.42), -1, 1) }; }} onPointerUp={() => { movementRef.current = { ...movementRef.current, x: 0, z: 0 }; }}><div className="stick" /></div>
+      <div className="joystick" onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={(e) => { if (!e.buttons) return; const r = e.currentTarget.getBoundingClientRect(); const x = clamp((e.clientX - (r.left + r.width / 2)) / (r.width * 0.42), -1, 1); const z = clamp((e.clientY - (r.top + r.height / 2)) / (r.height * 0.42), -1, 1); movementRef.current = { ...movementRef.current, x, z }; setStick({ x, z }); }} onPointerUp={() => { movementRef.current = { ...movementRef.current, x: 0, z: 0 }; setStick({ x: 0, z: 0 }); }}><div className="stick" style={{ transform: `translate(calc(-50% + ${stick.x * 28}px), calc(-50% + ${stick.z * 28}px))` }} /></div>
       <div className="action-pad"><button onPointerDown={() => setSprinting(true)} onPointerUp={() => setSprinting(false)}>RUN</button><button onClick={openDuel}>FIGHT</button><button onClick={() => setModal("tv")}>TELE</button><button onClick={() => setModal("map")}>MAP</button></div>
       <div className="bottom-ui"><button className="glass-btn" onClick={() => setModal("tv")}>TELEVISION</button><button className="primary-btn" onClick={openDuel}>CHALLENGE KAY</button></div>
       {modal === "duel" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">DARTS DUEL</div><h2>Challenge Kay</h2><p>Stake virtual BET.</p><div className="stake-row"><input value={stake} type="number" min="100" step="100" onChange={(e) => setStake(e.target.value)} /><span>BET</span></div><div className="modal-actions"><button className="glass-btn" onClick={() => setModal(null)}>CANCEL</button><button className="primary-btn" onClick={confirmDuel}>START</button></div></div></div>}
