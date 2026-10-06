@@ -495,19 +495,13 @@ export function makeCar(color: number, shape: CarShape = CAR_SHAPES[0]): CarMesh
   return { group, steerWheels };
 }
 export function makePed(color: number): THREE.Group {
-  // Use a textured real-scale human when available. Keep the procedural model as
-  // an immediate fallback so the city never waits for a network asset.
+  // Keep the beta character renderer deterministic and dependency-free.
+  // The GLB rig is retained in the repo for the next character pass, but we
+  // do not replace a visible character asynchronously until its render path
+  // has been validated on mobile GPUs.
   const group = new THREE.Group();
-  const SKIN_TONES = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68];
-  const skinTone = SKIN_TONES[Math.abs(Math.trunc(color)) % SKIN_TONES.length];
-  if (realisticHumanTemplate) {
-    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color, skinTone);
-    return group;
-  }
-  realisticHumanTargets.push({ target: group, shirtColor: color, skinTone });
-  beginRealisticHumanLoad();
-
-  const skin = new THREE.MeshStandardMaterial({ color: 0xb97850, roughness: 0.72 });
+  const skinTone = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68][Math.abs(Math.trunc(color)) % 5];
+  const skin = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.72 });
   const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
   const pants = new THREE.MeshStandardMaterial({ color: 0x263142, roughness: 0.9 });
   const shoes = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.92 });
@@ -515,12 +509,13 @@ export function makePed(color: number): THREE.Group {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
     m.castShadow = true;
+    m.receiveShadow = true;
     group.add(m);
   };
   add(new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
   add(new THREE.SphereGeometry(0.105, 10, 8), skin, 0, 1.42);
   add(new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
-  add(new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e }), 0, 1.77);
+  add(new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 }), 0, 1.77);
   add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, -0.30, 1.08);
   add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, 0.30, 1.08);
   add(new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
@@ -531,3 +526,4 @@ export function makePed(color: number): THREE.Group {
   add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
   return group;
 }
+
