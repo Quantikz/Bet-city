@@ -193,16 +193,25 @@ export class Pedestrians {
       ped.x = Math.max(-city.half, Math.min(city.half, fixed.x));
       ped.z = Math.max(-city.half, Math.min(city.half, fixed.z));
 
-      // Don't walk through cars (parked or standing); fast cars still gib below.
+      // Check impact BEFORE static car separation. Otherwise resolveActor()
+      // pushes a pedestrian out of a moving car before pedestrianImpact() can
+      // see the overlap, making fast cars appear unable to hit humans.
+      const imp = impactAt?.(ped.x, ped.z);
+      if (imp && imp.speed >= GIB_SPEED) {
+        this.gib(ped, imp);
+        continue;
+      }
+      if (imp && imp.speed >= SHOVE_SPEED) {
+        this.shove(ped, imp);
+        continue;
+      }
+
+      // Only separate from cars when there was no meaningful impact.
       if (this.curResolveCars) {
         const r = this.curResolveCars(ped.x, ped.z, RADIUS);
         ped.x = r.x;
         ped.z = r.z;
       }
-
-      const imp = impactAt?.(ped.x, ped.z);
-      if (imp && imp.speed >= GIB_SPEED) this.gib(ped, imp);
-      else if (imp && imp.speed >= SHOVE_SPEED) this.shove(ped, imp);
     }
   }
 
