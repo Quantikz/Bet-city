@@ -1,0 +1,44 @@
+{
+  "pipelineVersion": "1.0",
+  "runtime": "three.js",
+  "policy": "Prefer shipped CC0/public-domain assets; every external asset must record source and license before shipping.",
+  "characters": [
+    {
+      "id": "human-current",
+      "path": "/models/human.glb",
+      "status": "rigged-animated",
+      "license": "CC0",
+      "source": "Quaternius / UMRAM-Bilkent supine-human-model",
+      "targetHeightMeters": 1.75
+    },
+    {
+      "id": "human-next",
+      "path": "/models/human_male.glb",
+      "status": "planned",
+      "license": "CC0",
+      "source": "Quaternius Universal Base Characters + Universal Animation Library",
+      "targetHeightMeters": 1.75
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "procedural-fleet",
+      "status": "realtime-pbr-procedural",
+      "targetLengthMeters": "3.5-4.4"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "procedural-city",
+      "status": "realtime-pbr-lod",
+      "detailDistanceMeters": 72
+    }
+  ],
+  "runtimeRules": [
+    "Normalize imported characters to measured world height.",
+    "Use PBR materials with realistic roughness/metalness.",
+    "Use LOD for expensive near-field geometry.",
+    "Keep gameplay collision geometry independent from render geometry.",
+    "Do not ship an asset unless its license/source is recorded here."
+  ]
+}
