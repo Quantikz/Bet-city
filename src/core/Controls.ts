@@ -90,6 +90,10 @@ export class Controls {
     return this.touch?.consumeLook() ?? { x: 0, y: 0 };
   }
 
+  cameraZoomGesture(): number {
+    return this.touch?.consumePinchZoom() ?? 0;
+  }
+
   /** On-foot melee. Space (handbrake is driving-only, so it's free on foot). */
   punchPressed(): boolean {
     const key = this.kb.wasPressed('KeyQ');
