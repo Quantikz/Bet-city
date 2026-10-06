@@ -58,7 +58,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   rural: {
     id: 'rural',
     buildingDensity: 0.15,
-    heightRange: [5, 11],
+    heightRange: [18, 32],
     lotSize: 64,
     trafficDensity: 0.2,
     pedDensity: 0.1,
@@ -70,7 +70,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   suburb: {
     id: 'suburb',
     buildingDensity: 0.5,
-    heightRange: [8, 20],
+    heightRange: [28, 52],
     lotSize: 40,
     trafficDensity: 0.5,
     pedDensity: 0.4,
@@ -82,7 +82,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   urban: {
     id: 'urban',
     buildingDensity: 0.8,
-    heightRange: [18, 46],
+    heightRange: [45, 78],
     lotSize: 30,
     trafficDensity: 0.85,
     pedDensity: 0.8,
@@ -94,7 +94,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   urbanCore: {
     id: 'urbanCore',
     buildingDensity: 0.95,
-    heightRange: [40, 95],
+    heightRange: [65, 120],
     lotSize: 26,
     trafficDensity: 1,
     pedDensity: 1,
