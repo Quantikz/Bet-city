@@ -147,8 +147,6 @@ function TrafficCar({src,axis,lane,index}){
 }
 
 
-const worldObstacles=[];
-
 function StreetObstacles(){
  return <group>
    {worldObstacles.map(([x,z,type],i)=>{
