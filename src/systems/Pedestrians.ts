@@ -95,8 +95,9 @@ export class Pedestrians {
       const color = this.rng.pick(SHIRTS);
       const group = makePed(color);
       scene.add(group);
-      const x = this.rng.range(-city.half, city.half);
-      const z = this.rng.range(-city.half, city.half);
+      const spawnRadius = Math.min(90, city.half - 4);
+      const x = city.center.x + this.rng.range(-spawnRadius, spawnRadius);
+      const z = city.center.z + this.rng.range(-spawnRadius, spawnRadius);
       const heading = this.rng.range(0, Math.PI * 2);
       const ped: Ped = {
         state: 'walk', x, z, y: 0, heading, tumble: 0, color, scared: false,
