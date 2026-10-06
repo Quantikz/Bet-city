@@ -185,8 +185,6 @@ export class HUD {
     mode: Mode,
     player: { x: number; z: number; heading: number },
     cars: ReadonlyArray<{ x: number; z: number }>,
-  _health = 100,
-    _wasted = false,
   ): void {
     this.speedEl.textContent = String(Math.round(speedKmh));
     this.modeEl.textContent = mode === 'driving' ? '🚗 DRIVING' : '🚶 ON FOOT';
