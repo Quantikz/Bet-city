@@ -443,7 +443,6 @@ function render(alpha: number, frameDt: number): void {
   follow.update(active.x, active.z, active.heading, { ...baseCam, height: viewHeight, pitch: viewPitch, zoom: options.cameraZoom }, frameDt, camVx, camVz);
 
   const speedMph = mode === 'driving' ? toMph(vehicles.playerForwardSpeed()) : toMph(player.speed);
-  // The health bar reads car integrity while driving, avatar health on foot.
   hud.update(speedMph, mode, active, vehicles.positions());
   hud.setAmmo(gun.state().ammo, gun.state().reserve, gun.state().reloading);
   hud.setRunOverCount(peds.runOverCount);
