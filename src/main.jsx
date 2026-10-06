@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment, ContactShadows, Text, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import "./style.css";
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -108,6 +109,34 @@ function Rooftop({position}){
   </group>;
 }
 
+
+const ASSET_MANIFEST = {
+  player: "/assets/characters/player.glb",
+  npc: "/assets/characters/npc.glb",
+  sedan: "/assets/vehicles/sedan.glb",
+  house: "/assets/buildings/house.glb",
+  shop: "/assets/buildings/shop.glb"
+};
+
+function AssetPreview({url,position=[0,0,0],scale=1,onLoaded}){
+  const ref=useRef();
+  useEffect(()=>{
+    let alive=true;
+    if(!url)return;
+    const loader=new GLTFLoader();
+    loader.load(url,gltf=>{
+      if(!alive||!ref.current)return;
+      const root=gltf.scene;
+      root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      root.scale.setScalar(scale);
+      ref.current.add(root);
+      onLoaded?.(true);
+    },undefined,()=>{if(alive)onLoaded?.(false);});
+    return()=>{alive=false;};
+  },[url,scale,onLoaded]);
+  return <group ref={ref} position={position}/>;
+}
+
 function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
   const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();
   useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
@@ -119,10 +148,11 @@ function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick
       const input=new THREE.Vector3(m.x,0,m.z);
       const moving=input.lengthSq()>.01;
       if(moving) input.normalize();
-      const speed=m.sprint?7.2:4.4;
-      velocity.current.lerp(input.multiplyScalar(speed),1-Math.pow(.001,dt));
+      const speed=m.sprint?8.4:4.8;
+      const responsiveness=moving?1-Math.pow(.00015,dt):1-Math.pow(.0008,dt);
+      velocity.current.lerp(input.multiplyScalar(speed),responsiveness);
       const next=ref.current.position.clone().addScaledVector(velocity.current,dt);
-      next.x=clamp(next.x,-8.1,8.1);next.z=clamp(next.z,-8.1,8.1);next.y=0;
+      next.x=clamp(next.x,-8.7,8.7);next.z=clamp(next.z,-8.7,8.7);next.y=0;
       ref.current.position.copy(next);
       if(velocity.current.lengthSq()>.08) ref.current.rotation.y=THREE.MathUtils.lerp(ref.current.rotation.y,Math.atan2(velocity.current.x,velocity.current.z),1-Math.pow(.001,dt));
       const walk=state.clock.elapsedTime*(m.sprint?12:9);
@@ -213,7 +243,10 @@ function CameraRig({playerRef}){
   useFrame((state,dt)=>{
     const p=playerRef.current?.position||new THREE.Vector3(0,0,5);
     const yaw=playerRef.current?.rotation.y||0;
-    const desired=current.set(p.x-Math.sin(yaw)*8,6.1,p.z-Math.cos(yaw)*9);
+    const desired=current.set(p.x-Math.sin(yaw)*8.6,6.2,p.z-Math.cos(yaw)*10.2);
+    desired.y=Math.max(desired.y,2.8);
+    const groundY=0.8;
+    if(desired.y<groundY)desired.y=groundY;
     state.camera.position.lerp(desired,1-Math.pow(.0008,dt));
     look.set(p.x,p.y+1.45,p.z);
     state.camera.lookAt(look);
@@ -221,8 +254,31 @@ function CameraRig({playerRef}){
   return null;
 }
 
+
+function DartsBoard({score,throws,onThrow}){
+  const [aim,setAim]=useState({x:0,y:0});
+  const [power,setPower]=useState(.72);
+  const boardRef=useRef();
+  const throwDart=()=>{
+    const accuracy=Math.max(0,1-Math.hypot(aim.x,aim.y));
+    const base=accuracy>.88?60:accuracy>.62?20:accuracy>.34?10:5;
+    const scored=Math.max(1,Math.round(base*(.65+power*.55)));
+    onThrow(scored);
+    setAim({x:(Math.random()-.5)*.55,y:(Math.random()-.5)*.55});
+  };
+  return <div className="darts-game">
+    <div className="darts-board" ref={boardRef}>
+      <div className="dart-ring ring-a"/><div className="dart-ring ring-b"/><div className="dart-ring ring-c"/>
+      <div className="dart-bull"/><div className="aim-dot" style={{left:`calc(50% + ${aim.x*38}%)`,top:`calc(50% + ${aim.y*38}%)`}}/>
+    </div>
+    <div className="darts-hud"><span>THROW {throws+1}/3</span><b>{score}</b></div>
+    <input className="power" type="range" min=".2" max="1" step=".01" value={power} onChange={e=>setPower(Number(e.target.value))}/>
+    <button className="primary-btn full" onClick={throwDart}>THROW DART</button>
+  </div>;
+}
+
 function App(){
-  const [balance,setBalance]=useState(10000),[modal,setModal]=useState(null),[stake,setStake]=useState(1000),[message,setMessage]=useState("FREE ROAM"),[locked,setLocked]=useState(false),[sprinting,setSprinting]=useState(false);
+  const [balance,setBalance]=useState(10000),[modal,setModal]=useState(null),[stake,setStake]=useState(1000),[message,setMessage]=useState("FREE ROAM"),[locked,setLocked]=useState(false),[sprinting,setSprinting]=useState(false),[playerScore,setPlayerScore]=useState(0),[npcScore,setNpcScore]=useState(0),[throws,setThrows]=useState(0);
   const playerRef=useRef(null),movementRef=useRef({x:0,z:0,sprint:false}),keys=useRef({});
   useEffect(()=>{
     const down=e=>{keys.current[e.key.toLowerCase()]=true;if(e.key.toLowerCase()==="shift")setSprinting(true)};
@@ -233,8 +289,9 @@ function App(){
   },[sprinting]);
   const joystick=(x,z)=>{movementRef.current={...movementRef.current,x,z}};
   const openDuel=()=>{setMessage("DARTS DUEL READY");setModal("duel")};
-  const confirmDuel=()=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(a>balance){setMessage("INSUFFICIENT BET");return}setBalance(b=>b-a);setLocked(true);setModal("playing");setMessage("LIVE DARTS DUEL")};
-  const settle=win=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(win)setBalance(b=>b+Math.floor(a*1.9));setLocked(false);setModal(null);setMessage(win?"YOU WON":"YOU LOST")};
+  const confirmDuel=()=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(a>balance){setMessage("INSUFFICIENT BET");return}setBalance(b=>b-a);setPlayerScore(0);setNpcScore(0);setThrows(0);setLocked(true);setModal("playing");setMessage("LIVE DARTS DUEL")};
+  const finishDuel=win=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(win)setBalance(b=>b+Math.floor(a*1.9));setLocked(false);setModal(null);setMessage(win?"YOU WON":"YOU LOST")};
+  const playerThrow=score=>{const nextThrows=throws+1;const nextPlayer=playerScore+score;setPlayerScore(nextPlayer);setThrows(nextThrows);if(nextThrows>=3){const npc=Math.round(15+Math.random()*55);const nextNpc=npcScore+npc;setNpcScore(nextNpc);setTimeout(()=>finishDuel(nextPlayer>=nextNpc),180);return;}const npc=Math.round(10+Math.random()*50);const nextNpc=npcScore+npc;setNpcScore(nextNpc);if(nextThrows>=2&&nextNpc>nextPlayer){setTimeout(()=>finishDuel(false),180);}};
   return <div className="app">
     <div className="scene"><Canvas shadows dpr={[1,1.5]} camera={{position:[14,7,17],fov:54}} gl={{antialias:true,powerPreference:"high-performance"}} onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.18;gl.outputColorSpace=THREE.SRGBColorSpace}}>
       <color attach="background" args={["#93b8d5"]}/><fog attach="fog" args={["#93b8d5",42,110]}/>
@@ -249,7 +306,7 @@ function App(){
     <div className="action-pad"><button onPointerDown={()=>setSprinting(true)} onPointerUp={()=>setSprinting(false)}>RUN</button><button onClick={openDuel}>FIGHT</button><button>ACT</button><button onClick={()=>setModal("map")}>MAP</button></div>
     <div className="bottom-ui"><button className="glass-btn" onClick={()=>setModal("map")}>TOWN MAP</button><button className="primary-btn" onClick={openDuel}>CHALLENGE KAY</button></div>
     {modal==="duel"&&<div className="modal-backdrop"><div className="modal"><div className="modal-kicker">DARTS DUEL</div><h2>Challenge KAY</h2><p>Stake virtual BET and compete for the pot.</p><label>YOUR STAKE</label><div className="stake-row"><input value={stake} type="number" min="100" step="100" onChange={e=>setStake(e.target.value)}/><span>BET</span></div><div className="modal-actions"><button className="glass-btn" onClick={()=>setModal(null)}>CANCEL</button><button className="primary-btn" onClick={confirmDuel}>START DUEL</button></div></div></div>}
-    {modal==="playing"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LIVE DUEL</div><h2>Darts Arena</h2><p>Prototype settlement controls.</p><div className="duel-score"><div><small>YOU</small><strong>—</strong></div><span>VS</span><div><small>KAY</small><strong>—</strong></div></div><div className="modal-actions"><button className="glass-btn" onClick={()=>settle(false)}>KAY WINS</button><button className="primary-btn" onClick={()=>settle(true)}>YOU WIN</button></div></div></div>}
+    {modal==="playing"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LIVE DUEL</div><h2>Darts Arena</h2><p>Best of three throws. Aim, control power, and beat KAY.</p><div className="duel-score"><div><small>YOU</small><strong>{playerScore}</strong></div><span>VS</span><div><small>KAY</small><strong>{npcScore}</strong></div></div><DartsBoard score={playerScore} throws={throws} onThrow={playerThrow}/></div></div>}
     {modal==="info"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LUCKY SHOP</div><h2>Town Hub</h2><p>Enter the shop to find opponents and wager with virtual BET.</p><button className="primary-btn full" onClick={()=>setModal(null)}>ENTER TOWN</button></div></div>}
     {modal==="map"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">CITY MAP</div><h2>Bet City</h2><div className="map-list"><span>01 <b>Lucky Shop</b></span><span>02 <b>Pool House</b></span><span>03 <b>Arcade</b></span><span>04 <b>Darts Bar</b></span><span>05 <b>Downtown Towers</b></span></div><button className="glass-btn full" onClick={()=>setModal(null)}>CLOSE</button></div></div>}
   </div>;
