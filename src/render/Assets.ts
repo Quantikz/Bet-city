@@ -58,16 +58,16 @@ function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 
 
 function beginRealisticHumanLoad(): void {
   if (realisticHumanLoading || realisticHumanTemplate) return;
-  realisticHumanLoading = new Promise<void>((resolve, reject) => {
-    new GLTFLoader().load(REAL_HUMAN_URL, (gltf) => {
-      realisticHumanTemplate = gltf.scene;
-      realisticHumanAnimations = gltf.animations;
-      for (const pending of realisticHumanTargets) {
-        setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
-      }
-      realisticHumanTargets.length = 0;
-      resolve();
-    }, undefined, reject);
+  realisticHumanLoading = Promise.all([
+    new GLTFLoader().loadAsync(REAL_HUMAN_URL),
+    new GLTFLoader().loadAsync(REAL_HUMAN_ANIMATION_URL),
+  ]).then(([character, animationSource]) => {
+    realisticHumanTemplate = character.scene;
+    realisticHumanAnimations = animationSource.animations;
+    for (const pending of realisticHumanTargets) {
+      setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
+    }
+    realisticHumanTargets.length = 0;
   }).catch((err) => {
     console.warn('Rigged human model failed to load; keeping fallback character.', err);
   });
