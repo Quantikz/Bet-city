@@ -20,16 +20,16 @@ const STREAM_SHADOW_HALF = 90;
 
 // Night (t=0, the original look) ↔ day palette, lerped by the daylight factor.
 const NIGHT = {
-  sky: 0x26384d,
-  ambient: { color: 0x6d819b, intensity: 1.05 },
-  hemiSky: 0x6f8eac,
-  sun: { color: 0xe1ecff, intensity: 2.2 },
+  sky: 0x52677d,
+  ambient: { color: 0x93a9bd, intensity: 1.45 },
+  hemiSky: 0x9ab4cc,
+  sun: { color: 0xe8f2ff, intensity: 3.0 },
 };
 const DAY = {
-  sky: 0xb9daf0,
-  ambient: { color: 0xb9cce0, intensity: 1.15 },
-  hemiSky: 0xa5c9e8,
-  sun: { color: 0xfff7e8, intensity: 3.1 },
+  sky: 0xd9ecf7,
+  ambient: { color: 0xd4e2ee, intensity: 1.55 },
+  hemiSky: 0xc4e0f4,
+  sun: { color: 0xfff9ed, intensity: 4.0 },
 };
 
 export class SceneEnv {
@@ -61,13 +61,13 @@ export class SceneEnv {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.38;
+    this.renderer.toneMappingExposure = 1.65;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x26384d);
-    this.scene.fog = new THREE.Fog(0x26384d, city.extent * 0.18, city.extent * 0.7);
+    this.scene.background = new THREE.Color(0x52677d);
+    this.scene.fog = new THREE.Fog(0x52677d, city.extent * 0.18, city.extent * 0.7);
 
     this.camera = new THREE.PerspectiveCamera(
       62,
@@ -124,7 +124,7 @@ export class SceneEnv {
     disc.scale.setScalar(city.extent * 0.22);
     this.scene.add(disc);
     this.sunDisc = disc;
-    this.setTimeOfDay(0); // place everything for the initial (midnight) look
+    this.setTimeOfDay(0.5); // start in bright midday for a clear beta presentation
   }
 
   /**
@@ -172,7 +172,7 @@ export class SceneEnv {
     // road grid, which isn't drawn as planes) and follows the player.
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(size, size),
-      new THREE.MeshStandardMaterial({ color: this.streaming ? 0x1a1e28 : 0x0c0e14, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: this.streaming ? 0x303743 : 0x262b35, roughness: 1 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -193,7 +193,7 @@ export class SceneEnv {
   }
 
   private addRoads(city: City): void {
-    const asphalt = new THREE.MeshStandardMaterial({ color: 0x202430, roughness: 0.9 });
+    const asphalt = new THREE.MeshStandardMaterial({ color: 0x3a404b, roughness: 0.9 });
     const roadGeoH = new THREE.PlaneGeometry(city.extent, city.config.roadWidth);
     const roadGeoV = new THREE.PlaneGeometry(city.config.roadWidth, city.extent);
 
