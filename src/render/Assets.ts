@@ -4,7 +4,7 @@ import type { Building, Streetlight, Prop } from '../world/City';
 import type { FacadeStyle, PropType } from '../world/biome';
 import { makeFacadeTexture, makeGlowTexture } from './textures';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { SkeletonUtils } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const LAMP_HEIGHT = 5.2;
 
@@ -403,7 +403,7 @@ export function makePed(color: number): THREE.Group {
   // an immediate fallback so the city never waits for a network asset.
   const group = new THREE.Group();
   if (realisticHumanTemplate) {
-    group.add(realisticHumanTemplate.clone(true));
+    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate));
     return group;
   }
   realisticHumanTargets.push(group);
