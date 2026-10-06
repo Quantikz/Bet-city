@@ -107,8 +107,10 @@ function Rooftop({position}){
     <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
   </group>;
 }
-\nfunction DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
-  const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();\n  useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
+
+function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
+  const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();
+  useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
   const velocity=useRef(new THREE.Vector3());
   useFrame((state,dt)=>{
     if(!ref.current)return;
@@ -210,7 +212,8 @@ function CameraRig({playerRef}){
   const current=new THREE.Vector3(),look=new THREE.Vector3();
   useFrame((state,dt)=>{
     const p=playerRef.current?.position||new THREE.Vector3(0,0,5);
-    const yaw=playerRef.current?.rotation.y||0;\n    const desired=current.set(p.x-Math.sin(yaw)*8,6.1,p.z-Math.cos(yaw)*9);
+    const yaw=playerRef.current?.rotation.y||0;
+    const desired=current.set(p.x-Math.sin(yaw)*8,6.1,p.z-Math.cos(yaw)*9);
     state.camera.position.lerp(desired,1-Math.pow(.0008,dt));
     look.set(p.x,p.y+1.45,p.z);
     state.camera.lookAt(look);
