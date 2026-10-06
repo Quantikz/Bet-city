@@ -1,20 +1,31 @@
 {
-  "name": "afec-city",
+  "name": "gta7",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "description": "A browser-based, GTA-style 3D open-world driving slice. Built in TypeScript + Three.js. (Yes, the name is a joke.)",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "smoke:stream": "npm run build && node scripts/stream-smoke.mjs",
+    "test:e2e": "npm run build && node scripts/smoke.mjs && node scripts/interaction.mjs && node scripts/touch.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.6",
-    "@react-three/fiber": "^9.4.0",
-    "three": "^0.180.0",
-    "vite": "^7.1.9",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "playcanvas": "^2.23.0"
+    "lucide": "^1.17.0",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0",
+    "vitest": "^1.6.0"
   }
 }
