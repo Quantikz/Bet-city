@@ -25,7 +25,6 @@ export class HUD {
   private readonly mapCtx: CanvasRenderingContext2D;
   private readonly staticMap: HTMLCanvasElement;
   private readonly toWorld: number;
-  private readonly healthFill: HTMLElement;
   private readonly wastedEl: HTMLElement;
   private readonly bustedEl: HTMLElement;
   private readonly scoreEl: HTMLElement;
@@ -82,22 +81,6 @@ export class HUD {
     wantedStyle.textContent = '@keyframes wantedFlash{0%{opacity:1}100%{opacity:.25}}';
     root.append(wantedStyle, this.wantedEl);
     this.wantedEl.style.display = 'none';
-
-    const healthTrack = document.createElement('div');
-    healthTrack.style.cssText =
-      'position:absolute;left:20px;top:96px;width:182px;height:13px;' +
-      'background:rgba(12,16,26,.6);border:1px solid rgba(255,255,255,.07);border-radius:7px;' +
-      'overflow:hidden;backdrop-filter:blur(6px);';
-    this.healthFill = document.createElement('div');
-    this.healthFill.style.cssText =
-      'height:100%;width:100%;background:linear-gradient(90deg,#3ad17a,#7dffa6);transition:width .1s linear;';
-    healthTrack.appendChild(this.healthFill);
-    // Health bar removed from the beta HUD; health still drives gameplay/WASTED.
-    healthTrack.style.display = 'none';
-    healthTrack.style.display = 'none';
-    healthTrack.style.display = 'none';
-    healthTrack.style.display = 'none';
-    root.appendChild(healthTrack);
 
     this.scoreEl = document.createElement('div');
     this.scoreEl.style.cssText =
