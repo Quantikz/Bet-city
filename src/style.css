@@ -9,7 +9,7 @@ button{border:0;cursor:pointer}
 .app{width:100%;height:100%;position:relative;overflow:hidden;background:#080b10}
 .scene{position:absolute;inset:0}
 .scene canvas{display:block}
-.topbar{position:absolute;top:2.5%;left:2.5%;right:2.5%;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.topbar{position:absolute;top:2.2%;left:2.2%;right:2.2%;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 .brand,.wallet{pointer-events:auto;background:rgba(9,12,18,.78);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(18px);border-radius:999px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
 .brand{display:flex;align-items:center;gap:11px;padding:8px 17px 8px 9px}
 .brand-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:#d7b456;color:#111;font-weight:800}
@@ -35,3 +35,12 @@ button{border:0;cursor:pointer}
 .duel-score div{padding:16px 8px;border-radius:16px;background:#171b23}.duel-score small{display:block;color:#818a99;font-size:9px;letter-spacing:.1em}.duel-score strong{display:block;margin-top:6px;font-size:28px}.duel-score>span{color:#d7b456;font-size:10px;font-weight:800}
 .map-list{display:grid;gap:8px;margin-bottom:18px}.map-list span{display:flex;justify-content:space-between;padding:13px 14px;border-radius:13px;background:#171b23;color:#697281;font-size:10px}.map-list b{color:#e6e9ee}
 @media(max-width:600px){.topbar{top:2%;left:3%;right:3%}.brand{padding-right:12px}.brand small{display:none}.wallet{padding:10px 13px}.status-pill{top:10%}.bottom-ui{bottom:2.5%}.glass-btn,.primary-btn{min-height:52px;padding:0 13px}.modal{padding:22px;border-radius:22px}}
+
+/* cinematic game HUD */
+.brand{box-shadow:0 12px 42px rgba(0,0,0,.42);border-color:rgba(215,180,86,.18)}
+.wallet{min-width:132px;justify-content:center}
+.scene:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 45%,transparent 42%,rgba(0,0,0,.34) 100%)}
+@media(min-width:900px){
+  .bottom-ui{width:min(90%,520px);bottom:2.8%}
+  .status-pill{top:4.5%;left:50%;font-size:11px}
+}
