@@ -167,19 +167,19 @@ function ActivityModal({place,onClose,wallet,setWallet}){const[stake,setStake]=u
 
 function App(){
  const input=useRef({x:0,z:0,run:false}),keys=useRef(new Set()),player=useRef(),state=useRef({yaw:0,pitch:.28,speed:0}),drag=useRef({active:false,x:0,y:0});
- const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5),[wallet,setWallet]=useState(10000),[activity,setActivity]=useState(null);
+ const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5),[wallet,setWallet]=useState(()=>Number(localStorage.getItem("betcity_wallet")||10000)),[activity,setActivity]=useState(null),[stamina,setStamina]=useState(100);
  useEffect(()=>{
-   const sync=()=>{const k=keys.current;input.current.x=(k.has("a")||k.has("arrowleft")?-1:0)+(k.has("d")||k.has("arrowright")?1:0);input.current.z=(k.has("w")||k.has("arrowup")?-1:0)+(k.has("s")||k.has("arrowdown")?1:0);input.current.run=k.has("shift");setSpeed(input.current.run?"RUN":"WALK")};
+   const sync=()=>{const k=keys.current;input.current.x=(k.has("a")||k.has("arrowleft")?-1:0)+(k.has("d")||k.has("arrowright")?1:0);input.current.z=(k.has("w")||k.has("arrowup")?-1:0)+(k.has("s")||k.has("arrowdown")?1:0);input.current.run=k.has("shift")&&stamina>3;setSpeed(input.current.run?"RUN":"WALK")};
    const down=e=>{keys.current.add(e.key.toLowerCase());sync()};const up=e=>{keys.current.delete(e.key.toLowerCase());sync()};
    addEventListener("keydown",down);addEventListener("keyup",up);return()=>{removeEventListener("keydown",down);removeEventListener("keyup",up)}
  },[]);
- useEffect(()=>{const id=setInterval(()=>setTime(t=>(t+.0015)%1),1000);return()=>clearInterval(id)},[]);
+ useEffect(()=>{const id=setInterval(()=>setTime(t=>(t+.0015)%1),1000);return()=>clearInterval(id)},[]);\n useEffect(()=>{localStorage.setItem("betcity_wallet",String(wallet))},[wallet]);\n useEffect(()=>{const id=setInterval(()=>setStamina(s=>input.current.run&&input.current.z?Math.max(0,s-2):Math.min(100,s+1)),100);return()=>clearInterval(id)},[]);
  const down=e=>{if(e.target.closest(".joystick,.mobileAction"))return;if(e.clientX<window.innerWidth*.34)return;drag.current={active:true,x:e.clientX,y:e.clientY}};
  const moveLook=e=>{if(!drag.current.active)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current.x=e.clientX;drag.current.y=e.clientY;state.current.yaw-=dx*.006;state.current.pitch=THREE.MathUtils.clamp(state.current.pitch-dy*.005,-.12,1.05)};
  const up=()=>drag.current.active=false;
  const move=e=>{const r=e.currentTarget.getBoundingClientRect(),p=e.touches?.[0]||e;const x=THREE.MathUtils.clamp((p.clientX-r.left-r.width/2)/(r.width/2),-1,1),z=THREE.MathUtils.clamp((p.clientY-r.top-r.height/2)/(r.height/2),-1,1);input.current.x=x;input.current.z=z;setJoy({x,z})};
  const stop=()=>{input.current.x=0;input.current.z=0;setJoy({x:0,z:0})};
- const pressRun=()=>{input.current.run=true;setSpeed("RUN")};
+ const pressRun=()=>{if(stamina>3){input.current.run=true;setSpeed("RUN")}};
  const releaseRun=()=>{input.current.run=false;setSpeed("WALK")};
  const jump=()=>{if(player.current&&!player.current.userData.jumping){player.current.userData.jumping=true;player.current.userData.jumpT=0}};
  const wheel=e=>setZoom(z=>THREE.MathUtils.clamp(z+e.deltaY*.008,4,14));
@@ -194,9 +194,9 @@ function App(){
    <ambientLight intensity={.28+sun*.3}/><directionalLight castShadow position={[-30,50,20]}intensity={.9+sun*1.8}shadow-mapSize-width={2048}shadow-mapSize-height={2048}shadow-bias={-.00012}/>
    <Town/><Player input={input}out={player}onNear={setNear}cameraState={state}/><Camera player={player}state={state}zoom={zoom}/>
   </Canvas>
-  <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">BET {wallet.toLocaleString()} · LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
+  <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">BET {wallet.toLocaleString()} · STAMINA {Math.round(stamina)}% · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
   {near&&<button className="interaction" onClick={()=>setActivity(near)}>ENTER {near}<small>Open activity</small></button>}
-  <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div>
+  <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div><div className="miniMap"><div className="mapDot"/></div>
   <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setActivity(near)}>ENTER</button>}</div>
   {activity&&<ActivityModal place={activity} onClose={()=>setActivity(null)} wallet={wallet} setWallet={setWallet}/>}\n  <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
