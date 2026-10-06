@@ -466,6 +466,7 @@ function render(alpha: number, frameDt: number): void {
 
   const fireOrigin = new THREE.Vector3(ax, ay + 1.35, az);
   const fireDir = new THREE.Vector3(Math.cos(follow.yaw), 0, -Math.sin(follow.yaw)).normalize();
+  gun.setVisible(mode === 'foot');
   gun.update(
     frameDt,
     mode === 'foot' && controls.fireHeld(),
