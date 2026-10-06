@@ -65,8 +65,8 @@ export class TouchControls {
     this.base = div(
       root,
       'tc-stick',
-      'position:absolute;left:calc(26px + env(safe-area-inset-left));' +
-        'bottom:calc(26px + env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;' +
+      'position:absolute;left:calc(4vw + env(safe-area-inset-left));' +
+        'bottom:calc(4vw + env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;' +
         'background:rgba(20,26,40,.4);border:2px solid rgba(255,255,255,.18);pointer-events:auto;touch-action:none;',
     );
     this.knob = div(
@@ -186,7 +186,7 @@ export class TouchControls {
     const b = div(
       parent,
       id,
-      'width:66px;height:66px;border-radius:50%;pointer-events:auto;touch-action:none;' +
+      'width:60px;height:60px;border-radius:50%;pointer-events:auto;touch-action:none;' +
         'display:flex;align-items:center;justify-content:center;' +
         'background:rgba(20,26,40,.55);border:2px solid rgba(255,255,255,.22);color:#e8ecf5;',
     );
