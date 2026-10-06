@@ -478,6 +478,7 @@ function render(alpha: number, frameDt: number): void {
   env.follow(active.x, active.z); // streamed ground/shadow/sun ride the player (no-op when finite)
   lamp.position.set(active.x, 3.5, active.z);
   updateStreetlightPool(active.x, active.z);
+  env.updateHouseLights(active.x, active.z, city.buildings);
   updateHeadlights(mode === 'driving' && carPose ? carPose : null);
 
   // Camera leads by the actual velocity vector so the car stays centred mid-powerslide
