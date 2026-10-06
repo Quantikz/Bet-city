@@ -159,6 +159,11 @@ export class TouchControls {
     window.addEventListener('pointerup', releaseLook);
     window.addEventListener('pointercancel', releaseLook);
 
+    const settings = div(root, 'tc-settings', 'position:absolute;top:calc(78px + env(safe-area-inset-top));right:calc(14px + env(safe-area-inset-right));width:54px;height:54px;border-radius:50%;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;background:rgba(20,26,40,.55);border:2px solid rgba(255,255,255,.22);color:#e8ecf5;font-size:24px;z-index:4;');
+    settings.textContent = '⚙';
+    settings.setAttribute('aria-label', 'settings');
+    settings.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new Event('afec-settings')); });
+
     this.addFullscreenButton(root);
   }
 
