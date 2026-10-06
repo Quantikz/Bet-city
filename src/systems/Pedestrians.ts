@@ -273,16 +273,26 @@ export class Pedestrians {
   }
 
   /** Hitscan firearm target selection. Returns true when a walking pedestrian is hit. */
-  shoot(x: number, z: number, dirX: number, dirZ: number, range = 48, cone = 0.18): boolean {
+  shoot(
+    x: number,
+    z: number,
+    dirX: number,
+    dirZ: number,
+    range = 48,
+    cone = 0.18,
+    colliders: readonly { minX: number; maxX: number; minZ: number; maxZ: number }[] = [],
+  ): boolean {
     let best = -1;
     let bestD = range;
+    const wallDistance = raycastAabbDistance(x, z, dirX, dirZ, range, colliders);
+    const maxTargetDistance = Math.min(range, wallDistance);
     for (let i = 0; i < this.peds.length; i++) {
       const ped = this.peds[i];
       if (ped.state !== 'walk') continue;
       const dx = ped.x - x;
       const dz = ped.z - z;
       const d = Math.hypot(dx, dz);
-      if (d > bestD || d < 0.2) continue;
+      if (d > bestD || d > maxTargetDistance || d < 0.2) continue;
       const dot = (dx / d) * dirX + (dz / d) * dirZ;
       if (dot < 1 - cone) continue;
       best = i;
@@ -341,4 +351,43 @@ export class Pedestrians {
       ped.group.rotation.set(lerp(ped.ptumble, ped.tumble, alpha), angleLerp(ped.ph, ped.heading, alpha), roll);
     }
   }
+}
+
+
+function raycastAabbDistance(
+  x: number,
+  z: number,
+  dx: number,
+  dz: number,
+  maxDistance: number,
+  colliders: readonly { minX: number; maxX: number; minZ: number; maxZ: number }[],
+): number {
+  let nearest = maxDistance;
+  for (const box of colliders) {
+    let tMin = 0;
+    let tMax = maxDistance;
+
+    if (Math.abs(dx) < 1e-8) {
+      if (x < box.minX || x > box.maxX) continue;
+    } else {
+      const tx1 = (box.minX - x) / dx;
+      const tx2 = (box.maxX - x) / dx;
+      tMin = Math.max(tMin, Math.min(tx1, tx2));
+      tMax = Math.min(tMax, Math.max(tx1, tx2));
+      if (tMin > tMax) continue;
+    }
+
+    if (Math.abs(dz) < 1e-8) {
+      if (z < box.minZ || z > box.maxZ) continue;
+    } else {
+      const tz1 = (box.minZ - z) / dz;
+      const tz2 = (box.maxZ - z) / dz;
+      tMin = Math.max(tMin, Math.min(tz1, tz2));
+      tMax = Math.min(tMax, Math.max(tz1, tz2));
+      if (tMin > tMax) continue;
+    }
+
+    if (tMin >= 0.1 && tMin < nearest) nearest = tMin;
+  }
+  return nearest;
 }
