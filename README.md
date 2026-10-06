@@ -49,3 +49,18 @@ This build uses virtual BET only. No real-money payment, cash-out, or unofficial
 ## Next AAA asset phase
 
 The procedural geometry is intentionally a fallback. Reaching genuinely near-AAA visual quality requires original optimized GLB/GLTF assets for the hero character, NPCs, vehicles, houses, shops, street furniture and vegetation, plus PBR texture sets, animation clips, LODs, compressed textures and baked/real-time lighting. Those assets must be original or properly licensed; the target is GTA-like visual quality, not copied GTA content.
+
+
+## Parallel AAA foundation pass
+
+The current build now has:
+- improved third-person acceleration, sprinting and camera follow
+- playable three-throw Darts Duel prototype
+- asset-ready GLTF loading foundation
+- original-asset pipeline under `public/assets`
+- virtual BET ledger primitives
+- Socket.IO realtime server foundation for player movement and duel events
+- server-owned match state foundation
+- mobile-responsive darts HUD
+
+The procedural city remains the fallback while original/licensed GLB assets are added. The project does not use GTA V assets, maps, characters or textures.
