@@ -68,7 +68,8 @@ const PED_LANE_HALF = 2.6; // how wide a car watches for a pedestrian in its pat
 const PED_STOP_GAP = 5; // distance ahead of a pedestrian a car aims to stop
 const PED_BRAKE_DECEL = 7; // braking authority used to compute a safe speed
 const PED_BRAKE_RATE = 5; // how hard the car decelerates toward that safe speed
-const PED_REACH = CAR_RADIUS + 0.5; // contact distance for running a pedestrian over
+const PED_REACH = CAR_RADIUS + 0.75; // generous contact distance for human/car collision
+const HIT_ACTOR_SPEED = 3; // above this, moving cars can actually hit on-foot actors
 
 const POLICE_COLOR = 0x12131c;
 const POLICE_POOL = 5; // one per wanted star
@@ -637,6 +638,9 @@ export class Vehicles {
     let rz = z;
     for (const c of this.cars) {
       if (!c.active) continue;
+      // Fast cars must be allowed to overlap the actor briefly so the impact
+      // query can register a real hit. Static/slow cars remain solid obstacles.
+      if (Math.hypot(c.vx, c.vz) >= HIT_ACTOR_SPEED) continue;
       const o = circleOverlap(rx, rz, c.x, c.z, radius + CAR_RADIUS);
       if (o) {
         rx += o.nx * o.depth;
