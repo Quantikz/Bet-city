@@ -22,8 +22,7 @@ const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
 // CC0 skinned humanoid with a real skeleton and embedded walk/idle clips.
 // Skin weights make elbows, knees, shoulders and hips deform with the bones.
-const REAL_HUMAN_URL = 'https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb';
-const REAL_HUMAN_ANIMATION_URL = '/models/human.glb';
+const REAL_HUMAN_URL = '/models/human.glb';
 let realisticHumanTemplate: THREE.Group | null = null;
 let realisticHumanAnimations: THREE.AnimationClip[] = [];
 let realisticHumanLoading: Promise<void> | null = null;
@@ -62,9 +61,11 @@ function beginRealisticHumanLoad(): void {
   realisticHumanLoading = Promise.all([
     new GLTFLoader().loadAsync(REAL_HUMAN_URL),
     new GLTFLoader().loadAsync(REAL_HUMAN_ANIMATION_URL),
-  ]).then(([character, animationSource]) => {
+  ]).then(([character]) => {
+    // Keep render mesh and animation clips from the exact same GLB/skeleton.
+    // This avoids remote-CORS failures and mismatched bone names/skeletons.
     realisticHumanTemplate = character.scene;
-    realisticHumanAnimations = animationSource.animations;
+    realisticHumanAnimations = character.animations;
     for (const pending of realisticHumanTargets) {
       setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
     }
