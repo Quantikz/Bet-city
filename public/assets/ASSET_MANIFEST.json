@@ -5,18 +5,18 @@
   "characters": [
     {
       "id": "human-current",
-      "path": "/models/human.glb",
-      "status": "rigged-animated",
+      "path": "https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb",
+      "status": "rigged-render-character",
       "license": "CC0",
-      "source": "Quaternius / UMRAM-Bilkent supine-human-model",
+      "source": "Quaternius Universal Base Characters Standard (bundled/audited by Seyamalam/blood-league-kickoff)",
       "targetHeightMeters": 1.75
     },
     {
-      "id": "human-next",
-      "path": "/models/human_male.glb",
-      "status": "planned",
+      "id": "human-animation",
+      "path": "/models/human.glb",
+      "status": "animation-source",
       "license": "CC0",
-      "source": "Quaternius Universal Base Characters + Universal Animation Library",
+      "source": "Quaternius / UMRAM-Bilkent supine-human-model",
       "targetHeightMeters": 1.75
     }
   ],
