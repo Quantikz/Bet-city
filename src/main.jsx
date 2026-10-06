@@ -256,8 +256,12 @@ realHumanPromise.then(({entity,asset})=>{
   playerRoot.setPosition(0,0,51);
   playerRoot.setLocalScale(1.0,1.0,1.0);
   // Visual character is loaded as a real skinned GLB; movement remains script-controlled.
-  const anim=entity.findComponent("anim");
-  if(anim) anim.play("Idle");
+  const tracks=asset.resource.animations||[];
+  if(tracks.length){
+    playerRoot.addComponent("anim",{activate:false});
+    playerRoot.anim.assignAnimation("Move",tracks[0],undefined,1,true);
+    playerRoot.anim.baseLayer.play("Move");
+  }
   for(let i=0;i<12;i++){
     const npc=new pc.Entity("NPC");
     const npcModel=asset.resource.instantiateRenderEntity();
@@ -265,6 +269,12 @@ realHumanPromise.then(({entity,asset})=>{
     npc.setLocalScale(.9,.9,.9);
     npc.setPosition(((i%4)-1.5)*10,0,((Math.floor(i/4))-1)*18);
     app.root.addChild(npc);
+    const npcTracks=asset.resource.animations||[];
+    if(npcTracks.length){
+      npc.addComponent("anim",{activate:false});
+      npc.anim.assignAnimation("Move",npcTracks[0],undefined,1,true);
+      npc.anim.baseLayer.play("Move");
+    }
     npcs.push({e:npc,dir:i%2?1:-1,speed:1.2+(i%3)*.25,model:npcModel});
   }
 }).catch(()=>{});
@@ -410,8 +420,7 @@ app.on("update",dt=>{
     if(canMove(p.x,nz)) p.z=nz;
     playerRoot.setPosition(p);
     playerRoot.setEulerAngles(0,Math.atan2(moveX,moveZ)*180/Math.PI,0);
-    const pAnim=playerRoot.findComponent("anim");
-    if(pAnim) pAnim.play((keys.shift||runHeld)?"Run":"Walk");
+    if(playerRoot.anim) playerRoot.anim.speed=(keys.shift||runHeld)?1.35:1;
   }
 
   if((jump||keys[" "])&&grounded){velocityY=7;grounded=false;jump=false}
