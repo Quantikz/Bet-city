@@ -78,8 +78,8 @@ function Shop({position,color,accent,name,onClick}){
   </group>;
 }
 
-function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef}){
-  const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();
+function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
+  const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();\n  useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
   const velocity=useRef(new THREE.Vector3());
   useFrame((state,dt)=>{
     if(!ref.current)return;
@@ -157,7 +157,7 @@ function City({onShop,onDarts,playerRef,movementRef}){
     <TrafficCar position={[5,0,-20]} color="#8e3e38" speed={2.7}/>
     <TrafficCar position={[0,0,-5]} rotation={Math.PI/2} color="#315a70" speed={1.8}/>
     <TrafficCar position={[0,0,32]} rotation={Math.PI/2} color="#b38a3d" speed={2.2}/>
-    <DetailedCharacter position={[0,0,5]} name="YOU" shirt="#171a20" skin="#8b5a3c" hair={1} player movementRef={movementRef}/>
+    <DetailedCharacter position={[0,0,5]} name="YOU" shirt="#171a20" skin="#8b5a3c" hair={1} player movementRef={movementRef} playerRef={playerRef}/>
     <DetailedCharacter position={[-4,0,4]} name="KAY" shirt="#3d76a8" skin="#a96f4f" hair={0} onClick={onDarts}/>
     <DetailedCharacter position={[4,0,3]} name="MUSA" shirt="#9b4c8f" skin="#6f422f" hair={2}/>
     <DetailedCharacter position={[0,0,-4]} name="ZEE" shirt="#3f8a73" skin="#c28762" hair={1} female/>
