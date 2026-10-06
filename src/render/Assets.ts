@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Building, Streetlight, Prop } from '../world/City';
 import type { FacadeStyle, PropType } from '../world/biome';
 import { makeFacadeTexture, makeGlowTexture } from './textures';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const LAMP_HEIGHT = 5.2;
 
@@ -15,6 +16,34 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
  * track each tower's real height.
  */
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
+
+// License-clean realistic human source. CC0 model, real-world scale, textured.
+const REAL_HUMAN_URL = 'https://www.innerscene.com/api/library/walking-adult-architectural-scale-35fe051d/download';
+let realisticHumanTemplate: THREE.Group | null = null;
+let realisticHumanLoading: Promise<void> | null = null;
+const realisticHumanTargets: THREE.Group[] = [];
+
+function beginRealisticHumanLoad(): void {
+  if (realisticHumanLoading || realisticHumanTemplate) return;
+  realisticHumanLoading = new Promise((resolve, reject) => {
+    new GLTFLoader().load(REAL_HUMAN_URL, (gltf) => {
+      realisticHumanTemplate = gltf.scene;
+      realisticHumanTemplate.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
+      });
+      for (const target of realisticHumanTargets) {
+        target.clear();
+        const model = realisticHumanTemplate.clone(true);
+        model.scale.setScalar(1);
+        target.add(model);
+      }
+      resolve();
+    }, undefined, reject);
+  }).catch((err) => {
+    console.warn('Realistic human model failed to load; keeping fallback character.', err);
+  });
+}
 
 export class CityAssets {
   private readonly facadesByStyle: Record<FacadeStyle, THREE.CanvasTexture[]>;
@@ -327,40 +356,37 @@ export function makeCar(color: number, shape: CarShape = CAR_SHAPES[0]): CarMesh
 }
 
 export function makePed(color: number): THREE.Group {
-  // More human-like low-poly character: separate torso, neck, head, hair,
-  // arms, hands, legs and shoes instead of the old capsule + sphere.
+  // Use a textured real-scale human when available. Keep the procedural model as
+  // an immediate fallback so the city never waits for a network asset.
   const group = new THREE.Group();
+  if (realisticHumanTemplate) {
+    group.add(realisticHumanTemplate.clone(true));
+    return group;
+  }
+  realisticHumanTargets.push(group);
+  beginRealisticHumanLoad();
+
   const skin = new THREE.MeshStandardMaterial({ color: 0xb97850, roughness: 0.72 });
   const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
   const pants = new THREE.MeshStandardMaterial({ color: 0x263142, roughness: 0.9 });
   const shoes = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.92 });
-  const hair = new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 });
-
-  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0, rx = 0): void => {
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0): void => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
-    m.rotation.x = rx;
     m.castShadow = true;
     group.add(m);
   };
-
   add(new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
   add(new THREE.SphereGeometry(0.105, 10, 8), skin, 0, 1.42);
   add(new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
-  add(new THREE.SphereGeometry(0.225, 16, 8), hair, 0, 1.77);
-
-  // Upper arms + hands, slightly angled away from the torso.
-  const armGeo = new THREE.CapsuleGeometry(0.075, 0.42, 4, 8);
-  add(armGeo, shirt, -0.30, 1.08, 0, 0.10);
-  add(armGeo, shirt, 0.30, 1.08, 0, -0.10);
+  add(new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e }), 0, 1.77);
+  add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, -0.30, 1.08);
+  add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, 0.30, 1.08);
   add(new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
   add(new THREE.SphereGeometry(0.08, 8, 6), skin, 0.32, 0.79);
-
-  // Legs are separate so walking/tumbling reads as a person rather than a block.
   add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, -0.12, 0.48);
   add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, 0.12, 0.48);
   add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, -0.12, 0.08, -0.06);
   add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
-
   return group;
 }
