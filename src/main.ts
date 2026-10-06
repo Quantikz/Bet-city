@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { generateCity, DEFAULT_CITY, type City } from './world/City';
 import { StreamedWorld } from './world/StreamedWorld';
 import { SceneEnv } from './render/Scene';
-import { CityAssets, makePed } from './render/Assets';
+import { CityAssets, makePed, updateHumanAnimation } from './render/Assets';
 import { Player } from './entities/Player';
 import { FollowCamera, CAR_CAM, FOOT_CAM } from './systems/FollowCamera';
 import { Vehicles } from './systems/Vehicles';
@@ -468,6 +468,7 @@ function render(alpha: number, frameDt: number): void {
   const ax = lerp(player.px, player.x, alpha);
   const az = lerp(player.pz, player.z, alpha);
   const ah = angleLerp(player.ph, player.heading, alpha);
+  updateHumanAnimation(avatar, player.speed, frameDt);
   avatar.position.set(ax, 0, az);
   avatar.rotation.y = ah;
   avatar.visible = mode === 'foot';

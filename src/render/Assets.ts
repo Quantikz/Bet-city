@@ -18,32 +18,74 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
  */
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
-// License-clean realistic human source. CC0 model, real-world scale, textured.
-const REAL_HUMAN_URL = 'https://www.innerscene.com/api/library/walking-adult-architectural-scale-35fe051d/download';
+// CC0 skinned humanoid with a real skeleton and embedded walk/idle clips.
+// Skin weights make elbows, knees, shoulders and hips deform with the bones.
+const REAL_HUMAN_URL = 'https://raw.githubusercontent.com/UMRAM-Bilkent/supine-human-model/main/assets/human.glb';
 let realisticHumanTemplate: THREE.Group | null = null;
+let realisticHumanAnimations: THREE.AnimationClip[] = [];
 let realisticHumanLoading: Promise<void> | null = null;
 const realisticHumanTargets: THREE.Group[] = [];
+
+interface HumanRig {
+  mixer: THREE.AnimationMixer;
+  idle?: THREE.AnimationAction;
+  walk?: THREE.AnimationAction;
+  current: THREE.AnimationAction | null;
+}
+
+const humanRigs = new WeakMap<THREE.Group, HumanRig>();
+
+function setupHumanRig(target: THREE.Group, model: THREE.Object3D): void {
+  target.clear();
+  target.add(model);
+  model.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.isMesh) {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+  });
+
+  const mixer = new THREE.AnimationMixer(model);
+  const idleClip = realisticHumanAnimations.find((clip) => /idle|stand|rest/i.test(clip.name)) ?? realisticHumanAnimations[0];
+  const walkClip = realisticHumanAnimations.find((clip) => /walk|locomot/i.test(clip.name)) ?? realisticHumanAnimations[1] ?? idleClip;
+  const idle = idleClip ? mixer.clipAction(idleClip) : undefined;
+  const walk = walkClip ? mixer.clipAction(walkClip) : undefined;
+  if (idle) idle.play();
+  humanRigs.set(target, { mixer, idle, walk, current: idle ?? null });
+}
 
 function beginRealisticHumanLoad(): void {
   if (realisticHumanLoading || realisticHumanTemplate) return;
   realisticHumanLoading = new Promise<void>((resolve, reject) => {
     new GLTFLoader().load(REAL_HUMAN_URL, (gltf) => {
       realisticHumanTemplate = gltf.scene;
-      realisticHumanTemplate.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
-      });
+      realisticHumanAnimations = gltf.animations;
       for (const target of realisticHumanTargets) {
-        target.clear();
-        const model = realisticHumanTemplate.clone(true);
-        model.scale.setScalar(1);
-        target.add(model);
+        setupHumanRig(target, SkeletonUtils.clone(realisticHumanTemplate));
       }
       resolve();
     }, undefined, reject);
   }).catch((err) => {
-    console.warn('Realistic human model failed to load; keeping fallback character.', err);
+    console.warn('Rigged human model failed to load; keeping fallback character.', err);
   });
+}
+
+/** Advance the articulated humanoid and blend between idle and walk. */
+export function updateHumanAnimation(group: THREE.Group, speed: number, dt: number): void {
+  const rig = humanRigs.get(group);
+  if (!rig) return;
+  const walking = speed > 0.15 && !!rig.walk;
+  const next = walking ? rig.walk! : rig.idle;
+  if (next && rig.current !== next) {
+    next.reset().fadeIn(0.18).play();
+    if (rig.current) rig.current.fadeOut(0.18);
+    rig.current = next;
+  }
+  if (rig.current) {
+    rig.current.setEffectiveTimeScale(walking ? Math.max(0.7, Math.min(1.8, speed / 1.6)) : 1);
+  }
+  rig.mixer.update(Math.min(dt, 0.05));
 }
 
 export class CityAssets {
