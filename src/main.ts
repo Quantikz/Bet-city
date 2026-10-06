@@ -15,7 +15,7 @@ import { Menu } from './ui/Menu';
 import { Controls } from './core/Controls';
 import { GameLoop } from './core/GameLoop';
 import { loadOptions, saveOptions, qualityPixelRatio, type GameOptions } from './core/options';
-import { lerp, angleLerp, starsFromHeat, daylightFactor } from './core/math';
+import { lerp, angleLerp, daylightFactor } from './core/math';
 import { Radio } from './audio/Radio';
 import { Sfx } from './audio/Sfx';
 import { toMph, type VehicleInput } from './vehicles/VehicleModel';
@@ -303,11 +303,8 @@ function enterWasted(): void {
 function respawn(): void {
   wasted = false;
   busted = false;
-  bustFill = 0;
   health = MAX_HEALTH;
   pedContact = false;
-  heat = 0; // getting WASTED/BUSTED clears your wanted level
-  sinceUnseen = 0;
   wantedCooling = false;
   mode = 'foot';
   player.x = city.center.x;
@@ -315,17 +312,11 @@ function respawn(): void {
   player.heading = 0;
 }
 
-function enterBusted(): void {
-  busted = true;
-  bustedTimer = BUSTED_TIME;
-  bustFill = 0;
-}
-
 /** A chasing cop pinning you slow fills the bust meter; sustained → BUSTED. */
 function updateBusted(_dt: number): void {
   // AFEC City beta intentionally has no BUSTED/arrest mechanic.
   busted = false;
-  bustFill = 0;
+
 }
 
 /** Active player pose + velocity the police intercept (the car, or the avatar on foot). */
@@ -350,7 +341,6 @@ function chaseTarget(): { x: number; z: number; vx: number; vz: number } {
  */
 function updateWanted(_dt: number): void {
   // AFEC City beta intentionally has no wanted/police system.
-  heat = 0;
   wantedCooling = false;
   vehicles.setWanted(0, { x: 0, z: 0 }, city);
 }
