@@ -58,12 +58,12 @@ const material=(hex,roughness=.82,metalness=0)=>{
 };
 
 const M={
-  grass:material("#6f9367"),
+  grass:material("#7fa66f"),
   grass2:material("#86a978"),
-  road:material("#30363a"),
-  roadLight:material("#3c4347"),
+  road:material("#3b4246"),
+  roadLight:material("#4a5155"),
   sidewalk:material("#b7b4a8"),
-  curb:material("#d7d2c4"),
+  curb:material("#c9c6bc"),
   wall:material("#d7c5a8"),
   wall2:material("#eee2c9"),
   wall3:material("#c9d6d8"),
@@ -132,8 +132,8 @@ for(let i=-3;i<=3;i++){
   box("CurbH",[0,.12,p-7],[210,.18,1],M.curb);
   box("CurbH",[0,.12,p+7],[210,.18,1],M.curb);
 
-  for(let z=-96;z<=96;z+=14) box("LaneMark",[p,.105,z],[.22,.035,5],M.gold);
-  for(let x=-96;x<=96;x+=14) box("LaneMark",[x,.11,p],[5,.035,.22],M.gold);
+  for(let z=-96;z<=96;z+=14) box("LaneMark",[p,.091,z],[.12,.012,4.2],M.gold);
+  for(let x=-96;x<=96;x+=14) box("LaneMark",[x,.096,p],[4.2,.012,.12],M.gold);
 }
 
 function windowRow(x,y,z,count,spacing,rot=0){
@@ -304,10 +304,12 @@ realHumanPromise.then(({entity,asset})=>{
 
 const camera=new pc.Entity("Camera");
 camera.addComponent("camera",{
-  clearColor:color("#9ec7dc"),
+  clearColor:color("#b9d8e8"),
   fov:62,
+  nearClip:.35,
   farClip:500,
-  toneMapping:pc.TONEMAP_ACES
+  gammaCorrection:2.2,
+  toneMapping:pc.TONEMAP_NEUTRAL
 });
 app.root.addChild(camera);
 
@@ -315,10 +317,13 @@ const sun=new pc.Entity("Sun");
 sun.addComponent("light",{
   type:"directional",
   color:color("#fff1d2"),
-  intensity:3.2,
+  intensity:4.0,
   castShadows:true,
-  shadowDistance:150,
-  shadowResolution:2048
+  shadowDistance:120,
+  shadowResolution:2048,
+  shadowIntensity:.55,
+  numCascades:3,
+  cascadeDistribution:.65
 });
 sun.setEulerAngles(48,-28,28);
 app.root.addChild(sun);
@@ -327,8 +332,8 @@ const fill=new pc.Entity("Fill");
 fill.addComponent("light",{
   type:"omni",
   color:color("#b8d4df"),
-  intensity:1.5,
-  range:130
+  intensity:3.2,
+  range:180
 });
 fill.setPosition(0,45,0);
 app.root.addChild(fill);
@@ -480,7 +485,7 @@ app.on("update",dt=>{
   const cp=Math.cos(pitch),sp=Math.sin(pitch);
   const desired=new pc.Vec3(
     target.x-Math.sin(yaw)*dist*cp,
-    target.y+4.2+sp*dist,
+    Math.max(2.0,target.y+4.2+sp*dist),
     target.z-Math.cos(yaw)*dist*cp
   );
   const current=camera.getPosition();
