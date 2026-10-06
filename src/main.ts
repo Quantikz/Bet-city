@@ -216,26 +216,11 @@ let wasted = false;
 let wastedTimer = 0;
 let pedContact = false; // were we in contact with a car last frame (edge-trigger)
 
-// Wanted system: "heat" rises with crimes and decays after a grace period;
-// it maps to 0–5 stars, and each star is one chasing police car.
-const CRIME_HEAT = 16; // heat added per pedestrian you personally run over
-const HEAT_GRACE = 4; // seconds OUT OF POLICE SIGHT before heat starts to cool
-const HEAT_DECAY = 11; // heat lost per second once cooling
-let heat = 0;
-let stars = 0;
-let sinceUnseen = 0; // seconds since a cop last had line of sight (the "get away" timer)
-let wantedCooling = false; // true while stars are cooling off (HUD flashes them)
-let prevRunOver = 0;
-
-// Busted: a chasing cop pins you slow for long enough → arrested, game resets.
-const BUST_RADIUS = 7; // a cop this close...
-const BUST_SPEED = 5; // ...while you're slower than this (m/s)...
-const BUST_FILL_TIME = 1.8; // ...for this long → BUSTED
-const BUSTED_TIME = 3; // seconds the BUSTED screen holds before respawn
+// Police/wanted/busted systems are intentionally disabled for AFEC CITY beta.
+const stars = 0;
+let wantedCooling = false;
 let busted = false;
 let bustedTimer = 0;
-let bustFill = 0;
-
 const clampToCity = (p: { x: number; z: number }): void => {
   const b = city.half - 2;
   p.x = Math.max(-b, Math.min(b, p.x));
