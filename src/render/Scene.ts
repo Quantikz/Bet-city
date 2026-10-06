@@ -20,16 +20,16 @@ const STREAM_SHADOW_HALF = 90;
 
 // Night (t=0, the original look) ↔ day palette, lerped by the daylight factor.
 const NIGHT = {
-  sky: 0x141a2e,
-  ambient: { color: 0x35406a, intensity: 0.6 },
-  hemiSky: 0x3a4a7a,
-  sun: { color: 0xbcd0ff, intensity: 1.5 },
+  sky: 0x26384d,
+  ambient: { color: 0x6d819b, intensity: 1.05 },
+  hemiSky: 0x6f8eac,
+  sun: { color: 0xe1ecff, intensity: 2.2 },
 };
 const DAY = {
-  sky: 0x9ec3e6,
-  ambient: { color: 0x9fb3d0, intensity: 0.95 },
-  hemiSky: 0x87b5e0,
-  sun: { color: 0xfff4e0, intensity: 2.6 },
+  sky: 0xb9daf0,
+  ambient: { color: 0xb9cce0, intensity: 1.15 },
+  hemiSky: 0xa5c9e8,
+  sun: { color: 0xfff7e8, intensity: 3.1 },
 };
 
 export class SceneEnv {
@@ -61,13 +61,13 @@ export class SceneEnv {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.38;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x141a2e);
-    this.scene.fog = new THREE.Fog(0x141a2e, city.extent * 0.18, city.extent * 0.7);
+    this.scene.background = new THREE.Color(0x26384d);
+    this.scene.fog = new THREE.Fog(0x26384d, city.extent * 0.18, city.extent * 0.7);
 
     this.camera = new THREE.PerspectiveCamera(
       62,
