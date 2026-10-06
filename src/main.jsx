@@ -149,11 +149,50 @@ function TrafficCar({src,axis,lane,index}){
  return <group ref={r}position={axis==="z"?[lane,.12,-42]:[-42,.12,lane]}><Model src={src}scale={1.25}/></group>;
 }
 
+
+function TownDetails(){
+ const sidewalks=[];
+ for(let i=-3;i<=3;i++){
+   sidewalks.push(<mesh key={"sv"+i} position={[7.1,.01,i*12]} rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[1.35,10.8]}/><meshStandardMaterial color="#8a8d86" roughness={.9}/></mesh>);
+   sidewalks.push(<mesh key={"sv2"+i} position={[-7.1,.01,i*12]} rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[1.35,10.8]}/><meshStandardMaterial color="#8a8d86" roughness={.9}/></mesh>);
+   sidewalks.push(<mesh key={"sh"+i} position={[i*12,.012,7.1]} rotation={[-Math.PI/2,0,Math.PI/2]} receiveShadow><planeGeometry args={[1.35,10.8]}/><meshStandardMaterial color="#8a8d86" roughness={.9}/></mesh>);
+   sidewalks.push(<mesh key={"sh2"+i} position={[i*12,.012,-7.1]} rotation={[-Math.PI/2,0,Math.PI/2]} receiveShadow><planeGeometry args={[1.35,10.8]}/><meshStandardMaterial color="#8a8d86" roughness={.9}/></mesh>);
+ }
+ const drains=[];
+ [-36,-24,-12,0,12,24,36].forEach((p,i)=>{
+   drains.push(<mesh key={"d"+i} position={[-8.05,.025,p]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.35,8]}/><meshStandardMaterial color="#303735" roughness={1}/></mesh>);
+   drains.push(<mesh key={"d2"+i} position={[8.05,.025,p]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.35,8]}/><meshStandardMaterial color="#303735" roughness={1}/></mesh>);
+ });
+ const markings=[];
+ for(let i=-3;i<=3;i++){
+   for(let j=-4;j<=4;j++) markings.push(<mesh key={"m"+i+"-"+j} position={[i*12,.025,j*3]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.12,1.4]}/><meshStandardMaterial color="#ded8bd" roughness={.8}/></mesh>);
+ }
+ const community=[
+   ["NORTHSIDE",0,-43],
+   ["RIVERSIDE",-43,0],
+   ["MARKET DISTRICT",43,0]
+ ];
+ return <group>
+   {sidewalks}{drains}{markings}
+   {community.map(([name,x,z],i)=><group key={name} position={[x,0,z]}>
+     <mesh position={[0,1.1,0]} castShadow><boxGeometry args={[9,.16,.28]}/><meshStandardMaterial color="#1b2425" metalness={.15}/></mesh>
+     <Text position={[0,1.25,.18]} fontSize={.48} color="#e5c65c" anchorX="center">{name}</Text>
+     <mesh position={[-4,.5,0]}><cylinderGeometry args={[.18,.18,1,10]}/><meshStandardMaterial color="#222"/></mesh>
+     <mesh position={[4,.5,0]}><cylinderGeometry args={[.18,.18,1,10]}/><meshStandardMaterial color="#222"/></mesh>
+   </group>)}
+   {[[-14,-20],[14,-20],[-14,20],[14,20]].map((p,i)=><group key={"stall"+i} position={[p[0],0,p[1]]}>
+     <mesh position={[0,1.45,0]} castShadow><boxGeometry args={[2.8,.16,2.1]}/><meshStandardMaterial color="#d1b36a"/></mesh>
+     <mesh position={[0,.75,0]}><boxGeometry args={[2.35,1.2,1.7]}/><meshStandardMaterial color="#75513b"/></mesh>
+     <mesh position={[0,1.6,0]}><boxGeometry args={[3.1,.12,2.35]}/><meshStandardMaterial color="#9b4b35"/></mesh>
+   </group>)}
+ </group>;
+}
+
 function Town(){
  const tallScale=[2.35,2.7,3.1,2.5,3.25,2.8];
  return <group>
   <mesh receiveShadow rotation={[-Math.PI/2,0,0]}position={[0,-.1,0]}><planeGeometry args={[150,150]}/><meshStandardMaterial color="#55605b"roughness={.95}/></mesh>
-  <Roads/><StreetFurniture/>
+  <Roads/><StreetFurniture/><TownDetails/>
   {buildings.map(([x,z],i)=><Model key={"b"+i}src={A.buildings[i%A.buildings.length]}position={[x,0,z]}rotation={[0,(i%4)*Math.PI/2,0]}scale={tallScale[i%tallScale.length]}/>)}
   {[[-38,-36],[-38,36],[38,-36],[38,36]].map(([x,z],i)=><Model key={"t"+i}src={A.trees[i%2]}position={[x,0,z]}scale={2.7}/>)}
   {[-24,0,24].map((lane,i)=><TrafficCar key={"vz"+i}src={A.cars[i%A.cars.length]}axis="z"lane={lane}index={i}/>)}
