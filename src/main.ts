@@ -19,6 +19,7 @@ import { lerp, angleLerp, daylightFactor } from './core/math';
 import { Radio } from './audio/Radio';
 import { Sfx } from './audio/Sfx';
 import { toMph, type VehicleInput } from './vehicles/VehicleModel';
+import { Gun } from './systems/Gun';
 
 /** Touch UI + lower quality on coarse-pointer devices; `?touch=1|0` forces it. */
 function isTouchDevice(): boolean {
@@ -145,6 +146,7 @@ if (touch) {
 const controls = new Controls(touchRoot);
 const follow = new FollowCamera(env.camera);
 const player = new Player();
+const gun = new Gun(env.scene);
 
 // The radio streams one track at a time from a CDN-hosted manifest, so the
 // (large) music library is never bundled. It loads asynchronously and stays
@@ -205,22 +207,9 @@ let mode: Mode = 'driving';
 player.x = city.center.x;
 player.z = city.center.z;
 
-const MAX_HEALTH = 100;
-const HIT_SPEED = 3; // m/s a car must exceed to injure a pedestrian
-const DAMAGE_PER_SPEED = 5; // health lost per m/s of impact
-const KNOCKBACK = 1.6;
-const WASTED_TIME = 3; // seconds the WASTED screen holds before respawn
-
-let health = MAX_HEALTH;
-let wasted = false;
-let wastedTimer = 0;
-let pedContact = false; // were we in contact with a car last frame (edge-trigger)
-
-// Police/wanted/busted systems are intentionally disabled for AFEC CITY beta.
+// Health/death/arrest systems are intentionally absent from AFEC CITY beta.
 const stars = 0;
 let wantedCooling = false;
-let busted = false;
-let bustedTimer = 0;
 const clampToCity = (p: { x: number; z: number }): void => {
   const b = city.half - 2;
   p.x = Math.max(-b, Math.min(b, p.x));
@@ -277,30 +266,6 @@ function updateFoot(dt: number): void {
   clampToCity(player);
 }
 
-function enterWasted(): void {
-  wasted = true;
-  wastedTimer = WASTED_TIME;
-  health = 0;
-}
-
-function respawn(): void {
-  wasted = false;
-  busted = false;
-  health = MAX_HEALTH;
-  pedContact = false;
-  wantedCooling = false;
-  mode = 'foot';
-  player.x = city.center.x;
-  player.z = city.center.z + 6;
-  player.heading = 0;
-}
-
-/** A chasing cop pinning you slow fills the bust meter; sustained → BUSTED. */
-function updateBusted(_dt: number): void {
-  // AFEC City beta intentionally has no BUSTED/arrest mechanic.
-  busted = false;
-
-}
 
 /** Active player pose + velocity the police intercept (the car, or the avatar on foot). */
 function chaseTarget(): { x: number; z: number; vx: number; vz: number } {
@@ -328,21 +293,6 @@ function updateWanted(_dt: number): void {
   vehicles.setWanted(0, { x: 0, z: 0 }, city);
 }
 
-/** While on foot, take damage from cars that hit us; trigger WASTED at zero. */
-function checkPedestrianDamage(): void {
-  // Exclude police: a cop catching you on foot triggers BUSTED (arrest), it
-  // doesn't run you over. Ordinary traffic can still flatten you.
-  const hit = vehicles.pedestrianImpact(player.x, player.z, false, false);
-  const contact = !!hit && hit.speed > HIT_SPEED;
-  if (contact && !pedContact) {
-    health -= hit!.speed * DAMAGE_PER_SPEED;
-    player.x += hit!.nx * KNOCKBACK;
-    player.z += hit!.nz * KNOCKBACK;
-    if (health <= 0) enterWasted();
-  }
-  pedContact = contact;
-}
-
 // Any car (including the one you're driving) moving fast enough flattens peds.
 const runOverQuery = (x: number, z: number) => vehicles.pedestrianImpact(x, z, true);
 // Pedestrians (like the player on foot) get pushed out of cars they'd clip.
@@ -352,7 +302,7 @@ const resolveCars = (x: number, z: number, r: number) => vehicles.resolveActor(x
 function flushCarWrecks(): void {
   const n = vehicles.consumeExplosions();
   for (let k = 0; k < Math.min(n, 3); k++) sfx.explosion();
-  if (vehicles.consumePlayerWreck() && !wasted) enterWasted();
+  vehicles.consumePlayerWreck();
 }
 
 function update(dt: number): void {
@@ -365,18 +315,6 @@ function update(dt: number): void {
     const sx = mode === 'driving' && p ? p.x : player.x;
     const sz = mode === 'driving' && p ? p.z : player.z;
     streamedWorld.update(sx, sz);
-  }
-
-  if (wasted || busted) {
-    if (wasted) wastedTimer -= dt;
-    else bustedTimer -= dt;
-    vehicles.update(city, dt, null, null);
-    flushCarWrecks();
-    peds.update(city, dt, runOverQuery, null, resolveCars);
-    debris.update(dt); // shared pool, advanced once per frame
-    if ((wasted && wastedTimer <= 0) || (busted && bustedTimer <= 0)) respawn();
-    controls.endFrame();
-    return;
   }
 
   if (controls.enterExitPressed()) toggleVehicle();
@@ -392,7 +330,8 @@ function update(dt: number): void {
     vehicles.update(city, dt, null, { x: player.x, z: player.z }, chase);
     flushCarWrecks();
     updateFoot(dt);
-    checkPedestrianDamage();
+    player.setCrouched(controls.crouchHeld());
+    if (controls.jumpPressed()) player.jump();
     // After damage is sampled, push the on-foot actor out of slow/parked cars.
     // Fast cars remain an intentional gameplay collision for the impact system.
     const offCar = vehicles.resolveActor(player.x, player.z, FOOT_RADIUS);
@@ -400,8 +339,7 @@ function update(dt: number): void {
     player.z = offCar.z;
     clampToCity(player);
 
-    // Punch: gib the pedestrian in front of you (scores + raises heat, like a
-    // run-over). Forward is the player's heading: (cos h, -sin h).
+    // Punch: short-range melee action.
     if (controls.punchPressed()) {
       peds.punch(player.x, player.z, Math.cos(player.heading), -Math.sin(player.heading));
     }
@@ -423,7 +361,6 @@ function update(dt: number): void {
     if (step !== 0) radio.step(step);
   }
 
-  updateBusted(dt);
   // Pedestrians fear the CAR only (not the player on foot): proximity, or a fast
   // car on a vector to hit them. Threat carries velocity for the vector trigger.
   peds.update(city, dt, runOverQuery, mode === 'driving' ? chaseTarget() : null, resolveCars);
@@ -473,7 +410,7 @@ function render(alpha: number, frameDt: number): void {
   const az = lerp(player.pz, player.z, alpha);
   const ah = angleLerp(player.ph, player.heading, alpha);
   updateHumanAnimation(avatar, player.speed, frameDt);
-  avatar.position.set(ax, 0, az);
+  avatar.position.set(ax, player.y, az);
   avatar.rotation.y = ah;
   avatar.visible = mode === 'foot';
 
@@ -502,8 +439,8 @@ function render(alpha: number, frameDt: number): void {
 
   const speedMph = mode === 'driving' ? toMph(vehicles.playerForwardSpeed()) : toMph(player.speed);
   // The health bar reads car integrity while driving, avatar health on foot.
-  const shownHealth = mode === 'driving' ? vehicles.playerCarHealth() : health;
-  hud.update(speedMph, mode, active, vehicles.positions(), shownHealth, wasted);
+  hud.update(speedMph, mode, active, vehicles.positions());
+  hud.setAmmo(gun.state().ammo, gun.state().reserve, gun.state().reloading);
   hud.setRunOverCount(peds.runOverCount);
   hud.setCarName(mode === 'driving' ? vehicles.playerCarName() : null);
   // Radio readout is a dashboard thing — only show it while driving (the audio
@@ -512,6 +449,13 @@ function render(alpha: number, frameDt: number): void {
   // Wanted UI removed for AFEC City beta.
   hud.setClock(timeOfDay);
   // BUSTED UI removed for AFEC City beta.
+
+  const look = controls.cameraLook();
+  if (look.x !== 0 || look.y !== 0) follow.lookInput(look.x, look.y);
+
+  const fireOrigin = new THREE.Vector3(ax, player.y + 1.35, az);
+  const fireDir = new THREE.Vector3(Math.cos(follow.yaw), 0, -Math.sin(follow.yaw)).normalize();
+  gun.update(frameDt, mode === 'foot' && controls.fireHeld(), mode === 'foot' && controls.reloadPressed(), fireOrigin, fireDir, (dx, dz) => peds.shoot(ax, az, dx, dz));
 
   const driving = mode === 'driving';
   if (driving) {
@@ -556,10 +500,7 @@ declare global {
   interface Window {
     __game?: {
       readonly mode: Mode;
-      readonly health: number;
       readonly carHealth: number;
-      readonly wasted: boolean;
-      readonly busted: boolean;
       readonly runOverCount: number;
       readonly radioLabel: string;
       readonly wanted: number;
