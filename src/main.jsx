@@ -103,8 +103,8 @@ function Crosswalk({position,rotation=0}){
 function Rooftop({position}){
   return <group position={position}>
     <mesh position={[0,1.3,0]}><boxGeometry args={[3.2,2.6,2.1]}/><meshStandardMaterial color="#77746f" roughness={.9}/></mesh>
-    <mesh position={[0,3.15,0]}><cylinderGeometry args={[.05,.05,3.2,8]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
-    <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
+    <mesh position={[0,3.15,0]}><cylinderGeometry args={[.05,.05,3.2,8]}/><meshStandardMaterial color="#24272b" metalness={.7}/></mesh>
+    <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness={.7}/></mesh>
   </group>;
 }
 
