@@ -212,7 +212,9 @@ function App(){
    const down=e=>{keys.current.add(e.key.toLowerCase());sync()};const up=e=>{keys.current.delete(e.key.toLowerCase());sync()};
    addEventListener("keydown",down);addEventListener("keyup",up);return()=>{removeEventListener("keydown",down);removeEventListener("keyup",up)}
  },[]);
- useEffect(()=>{const id=setInterval(()=>setTime(t=>(t+.0015)%1),1000);return()=>clearInterval(id)},[]);\n useEffect(()=>{localStorage.setItem("betcity_wallet",String(wallet))},[wallet]);\n useEffect(()=>{const id=setInterval(()=>setStamina(s=>input.current.run&&input.current.z?Math.max(0,s-2):Math.min(100,s+1)),100);return()=>clearInterval(id)},[]);
+ useEffect(()=>{const id=setInterval(()=>setTime(t=>(t+.0015)%1),1000);return()=>clearInterval(id)},[]);
+ useEffect(()=>{localStorage.setItem("betcity_wallet",String(wallet))},[wallet]);
+ useEffect(()=>{const id=setInterval(()=>setStamina(s=>input.current.run&&input.current.z?Math.max(0,s-2):Math.min(100,s+1)),100);return()=>clearInterval(id)},[]);
  const down=e=>{if(e.target.closest(".joystick,.mobileAction"))return;if(e.clientX<window.innerWidth*.34)return;drag.current={active:true,x:e.clientX,y:e.clientY}};
  const moveLook=e=>{if(!drag.current.active)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current.x=e.clientX;drag.current.y=e.clientY;state.current.yaw-=dx*.006;state.current.pitch=THREE.MathUtils.clamp(state.current.pitch-dy*.005,-.12,1.05)};
  const up=()=>drag.current.active=false;
@@ -237,7 +239,8 @@ function App(){
   {near&&<button className="interaction" onClick={()=>setActivity(near)}>ENTER {near}<small>Open activity</small></button>}
   <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div><div className="miniMap"><div className="mapDot"/></div>
   <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setActivity(near)}>ENTER</button>}</div>
-  {activity&&<ActivityModal place={activity} onClose={()=>setActivity(null)} wallet={wallet} setWallet={setWallet}/>}\n  <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
+  {activity&&<ActivityModal place={activity} onClose={()=>setActivity(null)} wallet={wallet} setWallet={setWallet}/>}
+  <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
 }
 createRoot(document.getElementById("root")).render(<App/>);
