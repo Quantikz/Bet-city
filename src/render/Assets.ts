@@ -22,7 +22,8 @@ const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
 // CC0 skinned humanoid with a real skeleton and embedded walk/idle clips.
 // Skin weights make elbows, knees, shoulders and hips deform with the bones.
-const REAL_HUMAN_URL = '/models/human.glb';
+const REAL_HUMAN_URL = 'https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/main/public/assets/vendor/quaternius/night-striker.glb';
+const REAL_HUMAN_ANIMATION_URL = '/models/human.glb';
 let realisticHumanTemplate: THREE.Group | null = null;
 let realisticHumanAnimations: THREE.AnimationClip[] = [];
 let realisticHumanLoading: Promise<void> | null = null;
