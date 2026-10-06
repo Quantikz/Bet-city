@@ -19,7 +19,7 @@ const cache=new Map();
 
 function loadModel(src){
  if(cache.has(src))return cache.get(src);
- const p=loader.loadAsync(src).then(g=>g.scene).catch(e=>{console.warn("Asset failed:",src,e);return null});
+ const p=loader.loadAsync(src).catch(e=>{console.warn("Asset failed:",src,e);return null});
  cache.set(src,p);return p;
 }
 
