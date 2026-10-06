@@ -435,7 +435,10 @@ function render(alpha: number, frameDt: number): void {
     camVx = Math.cos(ah) * player.speed;
     camVz = -Math.sin(ah) * player.speed;
   }
-  follow.update(active.x, active.z, active.heading, mode === 'driving' ? CAR_CAM : FOOT_CAM, frameDt, camVx, camVz);
+  const baseCam = mode === 'driving' ? CAR_CAM : FOOT_CAM;
+  const viewPitch = options.cameraView === 'low' ? -0.08 : options.cameraView === 'high' ? 0.38 : options.cameraView === 'top' ? 0.95 : 0.05;
+  const viewHeight = options.cameraView === 'top' ? baseCam.height + 1.5 : baseCam.height;
+  follow.update(active.x, active.z, active.heading, { ...baseCam, height: viewHeight, pitch: viewPitch, zoom: options.cameraZoom }, frameDt, camVx, camVz);
 
   const speedMph = mode === 'driving' ? toMph(vehicles.playerForwardSpeed()) : toMph(player.speed);
   // The health bar reads car integrity while driving, avatar health on foot.
