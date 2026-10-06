@@ -77,6 +77,7 @@ function beginRealisticHumanLoad(): void {
 export function updateHumanAnimation(group: THREE.Group, speed: number, dt: number): void {
   const rig = humanRigs.get(group);
   if (!rig) return;
+  rig.mixer.timeScale = 1;
   const walking = speed > 0.15 && !!rig.walk;
   const next = walking ? rig.walk! : rig.idle;
   if (next && rig.current !== next) {
@@ -88,6 +89,12 @@ export function updateHumanAnimation(group: THREE.Group, speed: number, dt: numb
     rig.current.setEffectiveTimeScale(walking ? Math.max(0.7, Math.min(1.8, speed / 1.6)) : 1);
   }
   rig.mixer.update(Math.min(dt, 0.05));
+}
+
+/** Freeze the skeletal animation while the gameplay body is airborne/down. */
+export function freezeHumanAnimation(group: THREE.Group): void {
+  const rig = humanRigs.get(group);
+  if (rig) rig.mixer.timeScale = 0;
 }
 
 export class CityAssets {
