@@ -195,10 +195,10 @@ function App(){
    <Town/><Player input={input}out={player}onNear={setNear}cameraState={state}/><Camera player={player}state={state}zoom={zoom}/>
   </Canvas>
   <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">BET {wallet.toLocaleString()} · LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
-  {near&&<div className="interaction">ENTER {near}<small>Move closer to interact</small></div>}
+  {near&&<button className="interaction" onClick={()=>setActivity(near)}>ENTER {near}<small>Open activity</small></button>}
   <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div>
   <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setActivity(near)}>ENTER</button>}</div>
-  <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
+  {activity&&<ActivityModal place={activity} onClose={()=>setActivity(null)} wallet={wallet} setWallet={setWallet}/>}\n  <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
 }
 createRoot(document.getElementById("root")).render(<App/>);
