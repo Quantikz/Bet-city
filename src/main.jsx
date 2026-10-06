@@ -245,6 +245,14 @@ const legL=box("PlayerLegL",[-.23,-.1,0],[.28,1.2,.4],M.pants);
 legL.reparent(playerRoot);
 const legR=box("PlayerLegR",[.23,-.1,0],[.28,1.2,.4],M.pants);
 legR.reparent(playerRoot);
+const armL=box("PlayerArmL",[-.62,.45,0],[.25,1.35,.3],M.skin,[0,0,-10]);
+armL.reparent(playerRoot);
+const armR=box("PlayerArmR",[.62,.45,0],[.25,1.35,.3],M.skin,[0,0,10]);
+armR.reparent(playerRoot);
+const shoeL=box("PlayerShoeL",[-.23,-.72,-.12],[.34,.22,.62],M.dark);
+shoeL.reparent(playerRoot);
+const shoeR=box("PlayerShoeR",[.23,-.72,-.12],[.34,.22,.62],M.dark);
+shoeR.reparent(playerRoot);
 playerRoot.setPosition(0,1,18);
 
 const camera=new pc.Entity("Camera");
@@ -364,9 +372,9 @@ const forward=new pc.Vec3(),right=new pc.Vec3();
 app.on("update",dt=>{
   time+=dt;
   const keyboardX=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
-  const keyboardY=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+  const keyboardY=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
   let mx=Math.abs(joyX)>.04?joyX:keyboardX;
-  let my=Math.abs(joyY)>.04?joyY:keyboardY;
+  let my=Math.abs(joyY)>.04?-joyY:keyboardY;
   const mag=Math.hypot(mx,my);
   if(mag>1){mx/=mag;my/=mag}
 
