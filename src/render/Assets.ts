@@ -35,14 +35,48 @@ interface HumanRig {
 
 const humanRigs = new WeakMap<THREE.Group, HumanRig>();
 
-function setupHumanRig(target: THREE.Group, model: THREE.Object3D): void {
+function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 0x3b82f6): void {
   target.clear();
+
+  // Normalize every imported human to real-world game scale. Cars are roughly
+  // 4m long, so an adult must be about 1.75m tall rather than inheriting the
+  // arbitrary GLB authoring units.
+  const rawBox = new THREE.Box3().setFromObject(model);
+  const rawSize = rawBox.getSize(new THREE.Vector3());
+  if (rawSize.y > 0.001) {
+    model.scale.multiplyScalar(1.75 / rawSize.y);
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+    model.position.x -= scaledCenter.x;
+    model.position.z -= scaledCenter.z;
+    model.position.y -= scaledBox.min.y;
+  }
+
   target.add(model);
   model.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (mesh.isMesh) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mesh.material = materials.map((source) => {
+        const material = source.clone() as THREE.MeshStandardMaterial;
+        const label = `${mesh.name} ${material.name}`.toLowerCase();
+        // Preserve embedded textures, but ensure untextured/material-only body
+        // parts still have natural human/clothing colors.
+        if (label.includes('skin') || label.includes('face') || label.includes('body')) {
+          material.color.setHex(0x8b5a3c);
+        } else if (label.includes('hair')) {
+          material.color.setHex(0x17120f);
+        } else if (!material.map) {
+          material.color.setHex(shirtColor);
+        } else if (label.includes('shirt') || label.includes('cloth') || label.includes('top') || label.includes('pants')) {
+          material.color.setHex(shirtColor);
+        }
+        material.roughness = Math.max(material.roughness, 0.55);
+        return material;
+      });
     }
   });
 
@@ -62,7 +96,7 @@ function beginRealisticHumanLoad(): void {
       realisticHumanTemplate = gltf.scene;
       realisticHumanAnimations = gltf.animations;
       for (const target of realisticHumanTargets) {
-        setupHumanRig(target, SkeletonUtils.clone(realisticHumanTemplate));
+        setupHumanRig(target, SkeletonUtils.clone(realisticHumanTemplate), 0x3b82f6);
       }
       resolve();
     }, undefined, reject);
@@ -403,7 +437,7 @@ export function makePed(color: number): THREE.Group {
   // an immediate fallback so the city never waits for a network asset.
   const group = new THREE.Group();
   if (realisticHumanTemplate) {
-    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate));
+    setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color);
     return group;
   }
   realisticHumanTargets.push(group);
