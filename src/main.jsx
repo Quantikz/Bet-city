@@ -102,7 +102,7 @@ function Crosswalk({position,rotation=0}){
 }
 function Rooftop({position}){
   return <group position={position}>
-    <mesh position={[0,1.3,0]}><boxGeometry args={[3.2,2.6,2.1]}/><meshStandardMaterial color="#77746f" roughness=".9"/></mesh>
+    <mesh position={[0,1.3,0]}><boxGeometry args={[3.2,2.6,2.1]}/><meshStandardMaterial color="#77746f" roughness={.9}/></mesh>
     <mesh position={[0,3.15,0]}><cylinderGeometry args={[.05,.05,3.2,8]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
     <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
   </group>;
@@ -174,7 +174,7 @@ function City({onShop,onDarts,playerRef,movementRef}){
     <Tower position={[-34,0,28]} width={14} height={34} color="#59636d"/>
     <Tower position={[34,0,28]} width={12} height={42} color="#46515e"/>
     <House position={[-17,0,-5]} rotation={.08} color="#c8aa83"/>
-    <House position={[17,0,-3]} rotation=-.06 color="#b7a18e"/>
+    <House position={[17,0,-3]} rotation={-.06} color="#b7a18e"/>
     <House position={[-18,0,17]} rotation={.12} color="#b99a78"/>
     <House position={[18,0,17]} rotation={-.12} color="#c1b0a0"/>
     <Rooftop position={[-27,35,-34]}/><Rooftop position={[-12,45,-40]}/><Rooftop position={[5,52,-42]}/>
