@@ -8,17 +8,36 @@ document.body.appendChild(canvas);
 
 const hud=document.createElement("div");
 hud.className="pc-hud";
-hud.innerHTML='<div><b>BET CITY</b><span>OPEN CITY</span></div><div>WALK · WASD / ARROWS · DRAG LOOK</div>';
+hud.innerHTML=`
+  <div class="brand"><b>BET CITY</b><span>OPEN CITY · LAGOS DISTRICT</span></div>
+  <div class="hudRight"><span class="pc-chip">FREE ROAM</span><span class="pc-help">WASD · SHIFT · DRAG</span></div>
+`;
 document.body.appendChild(hud);
 
-const device=await pc.createGraphicsDevice(canvas,{deviceTypes:[pc.DEVICETYPE_WEBGPU,pc.DEVICETYPE_WEBGL2]});
+const mobileUI=document.createElement("div");
+mobileUI.innerHTML=`
+  <div id="joystick" class="joystick"><div class="stick"></div></div>
+  <div id="lookZone" class="look-zone"></div>
+  <div class="mobile-actions">
+    <button id="runBtn" class="action-btn">RUN</button>
+    <button id="jumpBtn" class="action-btn jump">JUMP</button>
+  </div>
+`;
+document.body.appendChild(mobileUI);
+
+const device=await pc.createGraphicsDevice(canvas,{
+  deviceTypes:[pc.DEVICETYPE_WEBGPU,pc.DEVICETYPE_WEBGL2]
+});
 const options=new pc.AppOptions();
 options.graphicsDevice=device;
+options.mouse=new pc.Mouse(canvas);
+options.touch=new pc.TouchDevice(canvas);
+options.keyboard=new pc.Keyboard(window);
 options.componentSystems=[
- pc.RenderComponentSystem,
- pc.CameraComponentSystem,
- pc.LightComponentSystem,
- pc.ScriptComponentSystem
+  pc.RenderComponentSystem,
+  pc.CameraComponentSystem,
+  pc.LightComponentSystem,
+  pc.ScriptComponentSystem
 ];
 options.resourceHandlers=[];
 const app=new pc.AppBase(canvas);
@@ -27,120 +46,346 @@ app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
 app.start();
 
-const mat=(r,g,b)=>{
- const m=new pc.StandardMaterial();
- m.diffuse=new pc.Color(r,g,b);
- m.roughness=0.9;
- m.update();
- return m;
+const color=(hex)=>{
+  const c=new pc.Color();
+  c.fromString(hex);
+  return c;
 };
-const materials={
- ground:mat(.20,.25,.22),road:mat(.08,.09,.085),sidewalk:mat(.48,.49,.45),
- building:[mat(.55,.48,.38),mat(.38,.46,.52),mat(.60,.52,.43),mat(.42,.42,.40)],
- roof:mat(.12,.14,.15),tree:mat(.16,.34,.18),trunk:mat(.28,.19,.11),
- car:[mat(.75,.08,.06),mat(.08,.28,.62),mat(.85,.62,.08),mat(.12,.12,.13)],
- person:mat(.08,.18,.34),window:mat(.12,.22,.28)
+const material=(hex,roughness=.82,metalness=0)=>{
+  const m=new pc.StandardMaterial();
+  m.diffuse=color(hex);
+  m.roughness=roughness;
+  m.metalness=metalness;
+  m.update();
+  return m;
 };
 
-function box(name,pos,scale,material,rot=[0,0,0]){
- const e=new pc.Entity(name); e.addComponent("render",{type:"box"});
- e.setPosition(pos[0],pos[1],pos[2]); e.setLocalScale(scale[0],scale[1],scale[2]); e.setEulerAngles(rot[0],rot[1],rot[2]);
- e.render.meshInstances[0].material=material; app.root.addChild(e); return e;
+const M={
+  grass:material("#6f9367"),
+  grass2:material("#86a978"),
+  road:material("#30363a"),
+  roadLight:material("#3c4347"),
+  sidewalk:material("#b7b4a8"),
+  curb:material("#d7d2c4"),
+  wall:material("#d7c5a8"),
+  wall2:material("#eee2c9"),
+  wall3:material("#c9d6d8"),
+  roof:material("#8d4b39"),
+  roofDark:material("#6f3b31"),
+  roofBlue:material("#536d82"),
+  trim:material("#f4eee0"),
+  glass:material("#7da8b5",.25,.15),
+  frame:material("#4b4741"),
+  door:material("#5a392b"),
+  wood:material("#7b5138"),
+  tree:material("#3e7045"),
+  tree2:material("#5c8c4d"),
+  trunk:material("#6b4a32"),
+  lamp:material("#24292b",.35,.2),
+  gold:material("#d7ad45",.35,.2),
+  car1:material("#c74a3e",.4),
+  car2:material("#4d78a8",.4),
+  car3:material("#e2b24b",.4),
+  car4:material("#e7e5dc",.5),
+  skin:material("#a86f4d"),
+  shirt:material("#315d7d"),
+  pants:material("#2c3542"),
+  white:material("#f2eee5"),
+  dark:material("#222629")
+};
+
+function box(name,pos,size,mat,rot=[0,0,0]){
+  const e=new pc.Entity(name);
+  e.addComponent("render",{type:"box"});
+  e.setPosition(...pos);
+  e.setLocalScale(...size);
+  e.setEulerAngles(...rot);
+  e.render.meshInstances[0].material=mat;
+  app.root.addChild(e);
+  return e;
 }
-function cylinder(name,pos,scale,material){
- const e=new pc.Entity(name); e.addComponent("render",{type:"cylinder"});
- e.setPosition(pos[0],pos[1],pos[2]); e.setLocalScale(scale[0],scale[1],scale[2]);
- e.render.meshInstances[0].material=material; app.root.addChild(e); return e;
+function cyl(name,pos,size,mat){
+  const e=new pc.Entity(name);
+  e.addComponent("render",{type:"cylinder"});
+  e.setPosition(...pos);
+  e.setLocalScale(...size);
+  e.render.meshInstances[0].material=mat;
+  app.root.addChild(e);
+  return e;
+}
+function sphere(name,pos,size,mat){
+  const e=new pc.Entity(name);
+  e.addComponent("render",{type:"sphere"});
+  e.setPosition(...pos);
+  e.setLocalScale(...size);
+  e.render.meshInstances[0].material=mat;
+  app.root.addChild(e);
+  return e;
 }
 
-box("Ground",[0,-.35,0],[180,.5,180],materials.ground);
+box("Terrain",[0,-.4,0],[210,.6,210],M.grass);
 
-for(let i=-4;i<=4;i++){
- box("RoadV",[i*20,.01,0],[9,.12,180],materials.road);
- box("RoadH",[0,.02,i*20],[180,.13,9],materials.road);
- box("SideV",[i*20-5,.07,0],[1.2,.12,180],materials.sidewalk);
- box("SideV",[i*20+5,.07,0],[1.2,.12,180],materials.sidewalk);
- box("SideH",[0,.07,i*20-5],[180,.12,1.2],materials.sidewalk);
- box("SideH",[0,.07,i*20+5],[180,.12,1.2],materials.sidewalk);
+const ROAD=12, STEP=34;
+for(let i=-3;i<=3;i++){
+  const p=i*STEP;
+  box("RoadV",[p,0,0],[ROAD,.16,210],M.road);
+  box("RoadH",[0,.01,p],[210,.16,ROAD],M.road);
+  box("CurbV",[p-7,.11,0],[1,.18,210],M.curb);
+  box("CurbV",[p+7,.11,0],[1,.18,210],M.curb);
+  box("CurbH",[0,.12,p-7],[210,.18,1],M.curb);
+  box("CurbH",[0,.12,p+7],[210,.18,1],M.curb);
+
+  for(let z=-96;z<=96;z+=14) box("LaneMark",[p,.105,z],[.22,.035,5],M.gold);
+  for(let x=-96;x<=96;x+=14) box("LaneMark",[x,.11,p],[5,.035,.22],M.gold);
 }
 
-for(let x=-3;x<=3;x++) for(let z=-3;z<=3;z++){
- if(Math.abs(x)<=1&&Math.abs(z)<=1) continue;
- const bx=x*20+(z%2)*3,bz=z*20+(x%2)*3;
- const h=5+(Math.abs(x+z)%4)*2;
- box("Building",[bx,h/2,bz],[10,h,10],materials.building[(x+z+8)%materials.building.length]);
- box("Roof",[bx,h+.15,bz],[10.3,.3,10.3],materials.roof);
- for(let row=0;row<2;row++) for(let col=0;col<2;col++)
-   box("Window",[bx-3.1+col*6,h*.62,bz-5.06],[1.5,1.3,.08],materials.window);
+function windowRow(x,y,z,count,spacing,rot=0){
+  for(let i=0;i<count;i++){
+    const wx=x+(i-(count-1)/2)*spacing;
+    box("Window",[wx,y,z],[2.2,1.45,.12],M.glass,[0,rot,0]);
+    box("FrameTop",[wx,y+.82,z-.08],[2.5,.12,.18],M.frame,[0,rot,0]);
+    box("FrameSide",[wx-1.08,y,z-.08],[.12,1.65,.18],M.frame,[0,rot,0]);
+    box("FrameSide",[wx+1.08,y,z-.08],[.12,1.65,.18],M.frame,[0,rot,0]);
+  }
 }
 
-for(let i=0;i<45;i++){
- const x=((i*37)%160)-80,z=((i*61)%160)-80;
- if(Math.abs(x%20)<7||Math.abs(z%20)<7) continue;
- cylinder("TreeTrunk",[x,1.2,z],[.45,2.4,.45],materials.trunk);
- const crown=new pc.Entity("Tree"); crown.addComponent("render",{type:"sphere"});
- crown.setPosition(x,3,z); crown.setLocalScale(2.3,2.3,2.3); crown.render.meshInstances[0].material=materials.tree; app.root.addChild(crown);
+function house(x,z,variant=0){
+  const w=16,h=variant===1?7:8,d=14;
+  const body=[M.wall2,M.wall,M.wall3][variant%3];
+  box("House",[x,h/2,z],[w,h,d],body);
+  const roofMat=variant===2?M.roofBlue:M.roof;
+  box("Roof",[x,h+.55,z],[w+1,.65,d+1],roofMat,[0,0,0]);
+  box("RoofCap",[x,h+1.0,z],[w*.72,.22,d*.9],M.trim);
+
+  const front=z-d/2-.08;
+  windowRow(x-3.7,4.5,front,2,4,0);
+  box("Door",[x,2.0,front-.06],[2.5,4,.16],M.door);
+  box("DoorTrim",[x,2.1,front-.15],[2.9,4.25,.12],M.trim);
+  box("Porch",[x,0.32,z-d/2-1.05],[6,.3,2.2],M.sidewalk);
+
+  if(variant!==1){
+    box("Balcony",[x,5.5,front-1.05],[6,.28,1.8],M.trim);
+    for(let i=-2;i<=2;i++) cyl("Rail",[x+i*1.2,6.05,front-2.0],[.07,.7,.07],M.frame);
+  }
+  for(let i=-1;i<=1;i++) box("Fence",[x+i*4.5,.75,z+d/2+1.5],[.14,1.5,7],M.wood);
+  box("Gate",[x,.75,z+d/2+1.5],[2.2,1.5,.16],M.wood);
+  return {x,z,w,d};
+}
+
+const plots=[];
+for(let gx=-2;gx<=2;gx++){
+  for(let gz=-2;gz<=2;gz++){
+    if(Math.abs(gx)<=0&&Math.abs(gz)<=0) continue;
+    const x=gx*STEP+(gz%2)*3;
+    const z=gz*STEP+(gx%2)*3;
+    plots.push(house(x,z,(gx+gz+6)%3));
+  }
+}
+
+function shop(x,z){
+  box("Shop",[x,3.5,z],[19,7,13],M.wall3);
+  box("ShopTrim",[x,7.15,z],[19.4,.35,13.4],M.gold);
+  box("ShopFront",[x,3.2,z-6.58],[15,5.4,.18],M.glass);
+  box("ShopDoor",[x+6,3.1,z-6.72],[2.2,5.6,.16],M.door);
+  box("Awning",[x,6.3,z-7.6],[18,1,2],M.roofBlue);
+  box("Sign",[x,7.9,z-6.7],[10,1.4,.18],M.gold);
+}
+shop(-34,0);
+shop(34,34);
+
+function tree(x,z,scale=1){
+  cyl("Trunk",[x,1.5,z],[.5*scale,3*scale,.5*scale],M.trunk);
+  sphere("Crown",[x,4.2*scale,z],[2.8*scale,3.2*scale,2.8*scale],M.tree);
+  sphere("Crown",[x-1.1*scale,4*scale,z+.8*scale],[1.8*scale,2.1*scale,1.8*scale],M.tree2);
+}
+for(let i=0;i<55;i++){
+  const x=((i*47)%190)-95,z=((i*73)%190)-95;
+  if(Math.abs(x%STEP)<10||Math.abs(z%STEP)<10) continue;
+  tree(x,z,.8+(i%4)*.08);
+}
+
+function streetLight(x,z){
+  cyl("Pole",[x,3.3,z],[.13,6.6,.13],M.lamp);
+  box("Arm",[x+.7,6.25,z],[1.5,.12,.12],M.lamp,[0,0,0]);
+  sphere("Lamp",[x+1.35,6.15,z],[.28,.28,.28],M.gold);
+}
+for(let i=-3;i<=3;i++) for(let j=-3;j<=3;j++){
+  if((i+j)%2===0) streetLight(i*STEP+8,j*STEP+8);
 }
 
 const cars=[];
-for(let i=0;i<14;i++){
- const axis=i%2, lane=(Math.floor(i/2)%8-3.5)*20;
- const e=box("Car",axis?[ -78,.65,lane ]:[ lane,.65,-78],[axis?2.2:1.4,1.1,axis?1.4:2.2],materials.car[i%materials.car.length]);
- cars.push({e,axis,dir:i%4<2?1:-1,speed:5+(i%3)*1.5,lane});
+for(let i=0;i<12;i++){
+  const horizontal=i%2===0;
+  const lane=(Math.floor(i/2)%6-2.5)*5;
+  const e=box("Car",
+    horizontal?[-96,.72,lane]:[lane,.72,-96],
+    horizontal?[3.9,1.25,1.9]:[1.9,1.25,3.9],
+    [M.car1,M.car2,M.car3,M.car4][i%4]
+  );
+  box("CarRoof",horizontal?[0,.0,0]:[0,0,0],[1,1,1],M.dark); // replaced below by a childless decorative shell
+  cars.push({e,horizontal,dir:i%4<2?1:-1,speed:7+(i%3)*1.5});
 }
 
-const people=[];
-for(let i=0;i<18;i++){
- const e=box("Person",[((i*17)%100)-50,.9,((i*29)%100)-50],[.65,1.8,.45],materials.person);
- people.push({e,phase:i*.8});
+function person(x,z){
+  const root=box("NPC",[x,1.15,z],[.8,2.3,.55],M.shirt);
+  sphere("Head",[x,2.75,z],[.65,.65,.65],M.skin);
+  return root;
 }
+for(let i=0;i<14;i++) person(((i*31)%120)-60,((i*43)%120)-60);
 
-const player=box("Player",[0,1,10],[.8,2,.55],materials.car[2]);
+const playerRoot=new pc.Entity("Player");
+app.root.addChild(playerRoot);
+const body=box("PlayerBody",[0,1.25,0],[.8,2.5,.55],M.shirt);
+body.reparent(playerRoot);
+const head=sphere("PlayerHead",[0,2.8,0],[.7,.7,.7],M.skin);
+head.reparent(playerRoot);
+const legL=box("PlayerLegL",[-.23,-.1,0],[.28,1.2,.4],M.pants);
+legL.reparent(playerRoot);
+const legR=box("PlayerLegR",[.23,-.1,0],[.28,1.2,.4],M.pants);
+legR.reparent(playerRoot);
+playerRoot.setPosition(0,1,18);
+
 const camera=new pc.Entity("Camera");
-camera.addComponent("camera",{clearColor:new pc.Color(.48,.68,.82),fov:65});
-camera.setPosition(0,7,18); app.root.addChild(camera);
+camera.addComponent("camera",{
+  clearColor:color("#9ec7dc"),
+  fov:62,
+  farClip:260,
+  toneMapping:pc.TONEMAP_ACES
+});
+app.root.addChild(camera);
 
 const sun=new pc.Entity("Sun");
-sun.addComponent("light",{type:"directional",color:new pc.Color(1,.94,.82),intensity:2,castShadows:true,shadowDistance:120});
-sun.setEulerAngles(45,30,20); app.root.addChild(sun);
-const ambient=new pc.Entity("Ambient");
-ambient.addComponent("light",{type:"omni",color:new pc.Color(.55,.65,.75),intensity:1,radius:100});
-ambient.setPosition(0,30,0); app.root.addChild(ambient);
+sun.addComponent("light",{
+  type:"directional",
+  color:color("#fff1d2"),
+  intensity:3.2,
+  castShadows:true,
+  shadowDistance:150,
+  shadowResolution:2048
+});
+sun.setEulerAngles(48,-28,28);
+app.root.addChild(sun);
 
-camera.lookAt(player.getPosition());
+const fill=new pc.Entity("Fill");
+fill.addComponent("light",{
+  type:"omni",
+  color:color("#b8d4df"),
+  intensity:1.5,
+  range:130
+});
+fill.setPosition(0,45,0);
+app.root.addChild(fill);
+
 const keys={};
-window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+window.addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()]=true;
+  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase())) e.preventDefault();
+});
 window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-let yaw=0,pitch=-.22,drag=false,lastX=0,lastY=0;
-canvas.addEventListener("pointerdown",e=>{drag=true;lastX=e.clientX;lastY=e.clientY});
-window.addEventListener("pointerup",()=>drag=false);
-window.addEventListener("pointermove",e=>{
- if(!drag)return;
- yaw-=(e.clientX-lastX)*.004; pitch=pc.math.clamp(pitch-(e.clientY-lastY)*.003,-.75,.35);
- lastX=e.clientX;lastY=e.clientY;
+let joyX=0,joyY=0,runHeld=false,jump=false;
+const joystick=document.getElementById("joystick");
+const stick=joystick.querySelector(".stick");
+let joyPointer=null;
+const setJoy=(x,y)=>{
+  const r=joystick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  let dx=x-cx,dy=y-cy,max=r.width*.34;
+  const l=Math.hypot(dx,dy);
+  if(l>max){dx=dx/l*max;dy=dy/l*max}
+  joyX=dx/max;joyY=dy/max;
+  stick.style.transform=`translate(${dx}px,${dy}px)`;
+};
+joystick.addEventListener("pointerdown",e=>{joyPointer=e.pointerId;joystick.setPointerCapture(e.pointerId);setJoy(e.clientX,e.clientY)});
+joystick.addEventListener("pointermove",e=>{if(e.pointerId===joyPointer)setJoy(e.clientX,e.clientY)});
+const resetJoy=()=>{joyPointer=null;joyX=0;joyY=0;stick.style.transform="translate(0,0)"};
+joystick.addEventListener("pointerup",resetJoy); joystick.addEventListener("pointercancel",resetJoy);
+
+document.getElementById("runBtn").addEventListener("pointerdown",()=>runHeld=true);
+document.getElementById("runBtn").addEventListener("pointerup",()=>runHeld=false);
+document.getElementById("runBtn").addEventListener("pointercancel",()=>runHeld=false);
+document.getElementById("jumpBtn").addEventListener("pointerdown",()=>jump=true);
+
+let yaw=0,pitch=-0.16;
+let lookId=null,lastLookX=0,lastLookY=0;
+const lookZone=document.getElementById("lookZone");
+lookZone.addEventListener("pointerdown",e=>{
+  lookId=e.pointerId; lastLookX=e.clientX; lastLookY=e.clientY; lookZone.setPointerCapture(e.pointerId);
 });
+lookZone.addEventListener("pointermove",e=>{
+  if(e.pointerId!==lookId)return;
+  yaw-=(e.clientX-lastLookX)*.004;
+  pitch=Math.max(-.48,Math.min(.25,pitch-(e.clientY-lastLookY)*.0025));
+  lastLookX=e.clientX;lastLookY=e.clientY;
+});
+const endLook=()=>lookId=null;
+lookZone.addEventListener("pointerup",endLook);lookZone.addEventListener("pointercancel",endLook);
+
+canvas.addEventListener("pointerdown",e=>{
+  if(e.pointerType==="mouse"&&e.clientX>window.innerWidth*.42){
+    lookId=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;canvas.setPointerCapture(e.pointerId);
+  }
+});
+canvas.addEventListener("pointermove",e=>{
+  if(e.pointerType!=="mouse"||e.pointerId!==lookId)return;
+  yaw-=(e.clientX-lastLookX)*.003;
+  pitch=Math.max(-.48,Math.min(.25,pitch-(e.clientY-lastLookY)*.002));
+  lastLookX=e.clientX;lastLookY=e.clientY;
+});
+window.addEventListener("pointerup",()=>lookId=null);
+
+let velocityY=0,grounded=true,time=0;
+const forward=new pc.Vec3(),right=new pc.Vec3();
 
 app.on("update",dt=>{
- const speed=keys.shift?10:5;
- let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
- let dz=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
- const len=Math.hypot(dx,dz)||1; dx/=len;dz/=len;
- const cy=Math.cos(yaw),sy=Math.sin(yaw);
- player.translateLocal((dx*cy-dz*sy)*speed*dt,0,(dx*sy+dz*cy)*speed*dt);
- const p=player.getPosition(); p.x=pc.math.clamp(p.x,-86,86);p.z=pc.math.clamp(p.z,-86,86);player.setPosition(p);
- player.setEulerAngles(0,yaw*180/Math.PI,0);
- for(const c of cars){
-   const p=c.e.getPosition();
-   if(c.axis===0){p.x+=c.speed*c.dir*dt;if(p.x>88)p.x=-88;if(p.x<-88)p.x=88}
-   else{p.z+=c.speed*c.dir*dt;if(p.z>88)p.z=-88;if(p.z<-88)p.z=88}
-   c.e.setPosition(p);
- }
- for(const n of people){
-   const p=n.e.getPosition();p.x+=Math.sin(app.time*.5+n.phase)*dt*1.5;p.z+=Math.cos(app.time*.4+n.phase)*dt*1.5;n.e.setPosition(p);
- }
- const pp=player.getPosition();
- const cp=Math.cos(pitch),sp=Math.sin(pitch),dist=16;
- camera.setPosition(pp.x-Math.sin(yaw)*dist*cp,pp.y+5+sp*dist,pp.z-Math.cos(yaw)*dist*cp);
- camera.lookAt(new pc.Vec3(pp.x,pp.y+1.2,pp.z));
+  time+=dt;
+  const keyboardX=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+  const keyboardY=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+  let mx=Math.abs(joyX)>.04?joyX:keyboardX;
+  let my=Math.abs(joyY)>.04?joyY:keyboardY;
+  const mag=Math.hypot(mx,my);
+  if(mag>1){mx/=mag;my/=mag}
+
+  const speed=(keys.shift||runHeld)?11:6;
+  const cy=Math.cos(yaw),sy=Math.sin(yaw);
+  forward.set(sy,0,cy);
+  right.set(cy,0,-sy);
+  const moveX=right.x*mx+forward.x*my;
+  const moveZ=right.z*mx+forward.z*my;
+  if(mag>.08){
+    const p=playerRoot.getPosition();
+    p.x+=moveX*speed*dt;
+    p.z+=moveZ*speed*dt;
+    p.x=Math.max(-99,Math.min(99,p.x));
+    p.z=Math.max(-99,Math.min(99,p.z));
+    playerRoot.setPosition(p);
+    playerRoot.setEulerAngles(0,Math.atan2(moveX,moveZ)*180/Math.PI,0);
+    body.setLocalScale(.8,2.5+Math.sin(time*12)*.04,.55);
+  }
+
+  if((jump||keys[" "])&&grounded){velocityY=7;grounded=false;jump=false}
+  velocityY-=18*dt;
+  const pp=playerRoot.getPosition();
+  pp.y+=velocityY*dt;
+  if(pp.y<=1){pp.y=1;velocityY=0;grounded=true}
+  playerRoot.setPosition(pp);
+
+  for(const c of cars){
+    const p=c.e.getPosition();
+    if(c.horizontal){p.x+=c.speed*c.dir*dt;if(p.x>104)p.x=-104;if(p.x<-104)p.x=104}
+    else{p.z+=c.speed*c.dir*dt;if(p.z>104)p.z=-104;if(p.z<-104)p.z=104}
+    c.e.setPosition(p);
+  }
+
+  const target=playerRoot.getPosition();
+  const dist=11.5;
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const desired=new pc.Vec3(
+    target.x-Math.sin(yaw)*dist*cp,
+    target.y+4.2+sp*dist,
+    target.z-Math.cos(yaw)*dist*cp
+  );
+  const current=camera.getPosition();
+  current.lerp(current,desired,.14);
+  camera.setPosition(current);
+  camera.lookAt(new pc.Vec3(target.x,target.y+1.35,target.z));
 });
