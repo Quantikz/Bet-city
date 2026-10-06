@@ -222,7 +222,6 @@ for(let i=0;i<12;i++){
     horizontal?[3.9,1.25,1.9]:[1.9,1.25,3.9],
     [M.car1,M.car2,M.car3,M.car4][i%4]
   );
-  box("CarRoof",horizontal?[0,.0,0]:[0,0,0],[1,1,1],M.dark); // replaced below by a childless decorative shell
   cars.push({e,horizontal,dir:i%4<2?1:-1,speed:7+(i%3)*1.5});
 }
 
