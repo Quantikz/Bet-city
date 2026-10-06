@@ -28,11 +28,25 @@ export function prepareRealtimeAsset(root: THREE.Object3D, options: RealtimeAsse
     mesh.material = sources.map((source) => {
       const material = source.clone() as THREE.MeshStandardMaterial;
       const label = (mesh.name + ' ' + material.name).toLowerCase();
-      if (label.includes('skin') || label.includes('face') || label.includes('body')) material.color.setHex(skinTone);
-      else if (label.includes('hair')) material.color.setHex(0x17120f);
-      else if (label.includes('shirt') || label.includes('cloth') || label.includes('top') || label.includes('pants')) material.color.setHex(accentColor);
-      if ('roughness' in material) material.roughness = Math.max(material.roughness, roughness);
-      if ('envMapIntensity' in material) material.envMapIntensity = 1.2;
+      const hasTexture = !!material.map;
+      const isSkin = label.includes('skin') || label.includes('face') || label.includes('hand') || label.includes('arm') || label.includes('leg');
+      const isHair = label.includes('hair') || label.includes('beard');
+      const isClothing = label.includes('shirt') || label.includes('cloth') || label.includes('top') || label.includes('pants') || label.includes('shoe') || label.includes('jean');
+
+      // Imported textures are authoritative: don't flatten a textured character
+      // into one solid color. Color variation is only applied to untextured
+      // materials, while skin/hair/clothing labels still work for simple GLBs.
+      if (!hasTexture) {
+        if (isSkin) material.color.setHex(skinTone);
+        else if (isHair) material.color.setHex(0x17120f);
+        else if (isClothing) material.color.setHex(accentColor);
+      }
+
+      if ('roughness' in material) {
+        material.roughness = isSkin ? Math.max(0.48, Math.min(0.72, roughness)) : Math.max(material.roughness, roughness);
+      }
+      if ('metalness' in material && (isSkin || isHair)) material.metalness = 0;
+      if ('envMapIntensity' in material) material.envMapIntensity = hasTexture ? 1.0 : 1.2;
       return material;
     });
   });
