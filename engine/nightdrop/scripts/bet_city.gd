@@ -11,6 +11,8 @@ var player: Player
 var camera: CameraRig
 var hud: BetHUD
 var touch: BetTouchControls
+var darts: DartsDuel
+var stake_locked := 0
 var roads: RoadGraph
 var active_vehicle: Vehicle
 var traffic: Array[Vehicle] = []
@@ -38,6 +40,10 @@ func _ready() -> void:
 	touch.visible = false
 	add_child(touch)
 
+	darts = DartsDuel.new()
+	add_child(darts)
+	darts.finished.connect(_on_darts_finished)
+
 	player = Player.new()
 	add_child(player)
 	player.global_position = city.player_spawn
@@ -52,6 +58,7 @@ func _ready() -> void:
 	hud.set_time_of_day(false)
 	hud.set_wallet(bet_balance)
 	hud.set_location("CENTRAL DISTRICT")
+	hud.set_prompt("Walk to LUCKY SHOP · press E to play DARTS")
 
 func begin() -> void:
 	if phase != Phase.TITLE:
@@ -70,6 +77,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if phase == Phase.TITLE:
 		if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 			begin()
+		return
+
+	if darts.active:
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			darts.hide_game()
+			if stake_locked > 0:
+				bet_balance += stake_locked
+				stake_locked = 0
+			player.locked = false
+			touch.visible = DisplayServer.is_touchscreen_available()
 		return
 
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
