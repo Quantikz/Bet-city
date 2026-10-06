@@ -76,11 +76,11 @@ export class Controls {
   }
 
   fireHeld(): boolean {
-    return this.kb.isDown('Mouse0') || (this.touch?.fire ?? false);
+    return this.kb.isDown('KeyG') || (this.touch?.fire ?? false);
   }
 
   aimHeld(): boolean {
-    return this.kb.isDown('Mouse2') || (this.touch?.aim ?? false);
+    return this.kb.isDown('KeyZ') || (this.touch?.aim ?? false);
   }
 
   crouchHeld(): boolean {
