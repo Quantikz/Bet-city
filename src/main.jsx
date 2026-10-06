@@ -373,7 +373,7 @@ app.on("update",dt=>{
   time+=dt;
   const keyboardX=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
   const keyboardY=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
-  let mx=Math.abs(joyX)>.04?joyX:keyboardX;
+  let mx=Math.abs(joyX)>.04?-joyX:keyboardX;
   let my=Math.abs(joyY)>.04?-joyY:keyboardY;
   const mag=Math.hypot(mx,my);
   if(mag>1){mx/=mag;my/=mag}
