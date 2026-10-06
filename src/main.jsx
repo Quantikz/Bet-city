@@ -10,6 +10,7 @@ import"./style.css";
 const buildings=[];
 const shops=[];
 const worldObstacles=[];
+const worldObstacles=[];
 
 const loader=new GLTFLoader();
 const cache=new Map();
