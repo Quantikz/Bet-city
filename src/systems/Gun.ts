@@ -54,11 +54,16 @@ export class Gun {
     return { ...this.stateData };
   }
 
+  setVisible(visible: boolean): void {
+    this.model.visible = visible;
+    if (!visible) this.barrelFlash.visible = false;
+  }
+
   update(dt: number, fire: boolean, reload: boolean, origin: THREE.Vector3, direction: THREE.Vector3, hit: (dirX: number, dirZ: number) => boolean): void {
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.barrelFlash.visible = false;
 
-    this.model.visible = true;
+    // Visibility is controlled by the active game mode.
     this.model.position.copy(origin);
     // Player heading uses +X at yaw 0 while the gun points -Z.
     this.model.rotation.y = Math.atan2(-direction.x, -direction.z);
