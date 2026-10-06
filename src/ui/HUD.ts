@@ -61,7 +61,6 @@ export class HUD {
     speedBox.append(this.speedEl, unit);
     speedBox.style.cssText += CHIP;
     speedBox.style.display = 'none';
-    speedBox.style.display = 'none';
     root.appendChild(speedBox);
 
     this.modeEl = document.createElement('div');
@@ -70,31 +69,11 @@ export class HUD {
     // Mode chip removed for a cleaner in-world HUD.
     this.modeEl.style.display = 'none';
 
-    const bigText =
-      'position:absolute;inset:0;display:none;align-items:center;justify-content:center;' +
-      'font-size:13vw;font-weight:800;letter-spacing:6px;' +
-      'text-shadow:0 4px 24px #000;font-family:Georgia,"Times New Roman",serif;';
-    this.wastedEl = document.createElement('div');
-    this.wastedEl.textContent = 'WASTED';
-    this.wastedEl.style.cssText =
-      bigText + 'color:#c0202a;background:radial-gradient(circle,rgba(40,0,0,.35),rgba(0,0,0,.85));';
-    root.appendChild(this.wastedEl);
-
-    this.bustedEl = document.createElement('div');
-    this.bustedEl.textContent = 'BUSTED';
-    this.bustedEl.style.cssText =
-      bigText + 'color:#3aa0ff;background:radial-gradient(circle,rgba(0,16,40,.4),rgba(0,0,0,.85));';
-    root.appendChild(this.bustedEl);
-    this.bustedEl.style.display = 'none';
-
     this.scoreEl = document.createElement('div');
     this.scoreEl.style.cssText =
       'position:absolute;left:50%;top:12px;transform:translateX(-50%);font-size:13px;font-weight:700;' + CHIP;
     this.scoreEl.textContent = '🚶 0';
     // Run-over counter removed from the beta HUD; the counter remains available internally.
-    this.scoreEl.style.display = 'none';
-    this.scoreEl.style.display = 'none';
-    this.scoreEl.style.display = 'none';
     this.scoreEl.style.display = 'none';
     root.appendChild(this.scoreEl);
 
@@ -104,9 +83,6 @@ export class HUD {
       'max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + CHIP;
     this.radioEl.textContent = '📻 OFF';
     // Radio chip removed from the beta HUD; radio audio continues to work in cars.
-    this.radioEl.style.display = 'none';
-    this.radioEl.style.display = 'none';
-    this.radioEl.style.display = 'none';
     this.radioEl.style.display = 'none';
     root.appendChild(this.radioEl);
 
@@ -126,7 +102,6 @@ export class HUD {
     this.carEl.style.cssText = speedBox.style.cssText.includes('top:78px')
       ? 'position:absolute;right:18px;top:142px;font-size:12px;opacity:.7;text-align:right;'
       : 'position:absolute;right:20px;bottom:92px;font-size:13px;opacity:.7;text-align:right;';
-    this.carEl.style.display = 'none';
     this.carEl.style.display = 'none';
     root.appendChild(this.carEl);
 
