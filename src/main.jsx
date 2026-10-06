@@ -136,11 +136,11 @@ function Car({ route = ROUTES[0], color = "#1d242c", pace = 7, offset = 0, traff
   const cursor = useRef(offset % route.length);
   useFrame((_, dt) => {
     if (!ref.current) return;
-    const i = Math.floor(cursor.current) % route.length;
-    const next = route[(i + 1) % route.length];
-    const here = route[i];
-    const tx = next[0] - here[0];
-    const tz = next[1] - here[1];
+    let i = Math.floor(cursor.current) % route.length;
+    let next = route[(i + 1) % route.length];
+    let here = route[i];
+    let tx = next[0] - here[0];
+    let tz = next[1] - here[1];
     const len = Math.hypot(tx, tz) || 1;
     let speed = pace;
     const player = playerRef?.current?.position;
@@ -151,11 +151,11 @@ function Car({ route = ROUTES[0], color = "#1d242c", pace = 7, offset = 0, traff
     }
     if (Math.abs(here[0]) < 6 && Math.abs(here[1]) < 6) speed *= 0.55;
     cursor.current = (cursor.current + (speed * dt) / len) % route.length;
-    const i = Math.floor(cursor.current) % route.length;
-    const next = route[(i + 1) % route.length];
-    const here = route[i];
-    const tx = next[0] - here[0];
-    const tz = next[1] - here[1];
+    i = Math.floor(cursor.current) % route.length;
+    next = route[(i + 1) % route.length];
+    here = route[i];
+    tx = next[0] - here[0];
+    tz = next[1] - here[1];
     const t = cursor.current - i;
     const x = here[0] + tx * t;
     const z = here[1] + tz * t;
