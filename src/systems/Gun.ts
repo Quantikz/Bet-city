@@ -50,7 +50,10 @@ export class Gun {
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const t = this.tracers[i];
       t.ttl -= dt;
-      t.line.material.opacity = Math.max(0, t.ttl / 0.055);
+      const material = t.line.material;
+      if (!Array.isArray(material) && 'opacity' in material) {
+        material.opacity = Math.max(0, t.ttl / 0.055);
+      }
       if (t.ttl <= 0) {
         this.scene.remove(t.line);
         t.line.geometry.dispose();
