@@ -292,12 +292,16 @@ export class Pedestrians {
       if (ped.state !== 'walk') continue;
       const dx = ped.x - x;
       const dz = ped.z - z;
-      const d = Math.hypot(dx, dz);
-      if (d > bestD || d > maxTargetDistance || d < 0.2) continue;
-      const dot = (dx / d) * dirX + (dz / d) * dirZ;
-      if (dot < 1 - cone) continue;
+      // Treat the bullet as a narrow ray, not a large aim cone. A target is
+      // hit only when the ray actually passes through the pedestrian's body.
+      // This removes the previous "nearby but visibly missed" kills.
+      const along = dx * dirX + dz * dirZ;
+      if (along < 0.2 || along > maxTargetDistance || along > bestD) continue;
+      const lateral = Math.abs(dx * dirZ - dz * dirX);
+      const hitRadius = 0.42;
+      if (lateral > hitRadius) continue;
       best = i;
-      bestD = d;
+      bestD = along;
     }
     if (best < 0) return false;
     this.gib(this.peds[best], { vx: dirX * GIB_SPEED, vz: dirZ * GIB_SPEED, isPlayer: true });
