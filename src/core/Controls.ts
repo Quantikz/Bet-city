@@ -27,6 +27,7 @@ export class Controls {
   }
 
   move(onFoot = false): { x: number; y: number } {
+    this.touch?.setMode(onFoot);
     let x = this.kb.axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']);
     let y = this.kb.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']);
     if (this.touch) {
@@ -66,9 +67,33 @@ export class Controls {
     return key || tap || this.pad.wasPressed(GP.Y);
   }
 
+  jumpPressed(): boolean {
+    return this.kb.wasPressed('Space') || (this.touch?.consumeJump() ?? false) || this.pad.wasPressed(GP.A);
+  }
+
+  reloadPressed(): boolean {
+    return this.kb.wasPressed('KeyR') || (this.touch?.consumeReload() ?? false) || this.pad.wasPressed(GP.Y);
+  }
+
+  fireHeld(): boolean {
+    return this.kb.isDown('Mouse0') || (this.touch?.fire ?? false);
+  }
+
+  aimHeld(): boolean {
+    return this.kb.isDown('Mouse2') || (this.touch?.aim ?? false);
+  }
+
+  crouchHeld(): boolean {
+    return this.kb.isDown('KeyC') || (this.touch?.crouch ?? false);
+  }
+
+  cameraLook(): { x: number; y: number } {
+    return this.touch?.consumeLook() ?? { x: 0, y: 0 };
+  }
+
   /** On-foot melee. Space (handbrake is driving-only, so it's free on foot). */
   punchPressed(): boolean {
-    const key = this.kb.wasPressed('Space');
+    const key = this.kb.wasPressed('KeyQ');
     const tap = this.touch?.consumePunch() ?? false;
     return key || tap || this.pad.wasPressed(GP.X);
   }
