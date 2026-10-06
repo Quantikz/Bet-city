@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Text } from "@react-three/drei";
-import { EffectComposer, Bloom, Vignette, SMAA, Noise } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { io } from "socket.io-client";
 import "./style.css";
@@ -295,7 +294,7 @@ function App() {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const socket = io("http://localhost:3001", { autoConnect: true, timeout: 2000 });
+    const socket = io("http://127.0.0.1:3001", { autoConnect: true, timeout: 1500, reconnectionAttempts: 2, transports: ["websocket", "polling"] });
     socketRef.current = socket;
     socket.on("tv:state", (state) => {
       if (state?.scope === "city") {
@@ -359,12 +358,6 @@ function App() {
           <fog attach="fog" args={["#e7c3a2", 28, 120]} />
           <City onShop={() => setModal("info")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} />
           <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={cameraMode} />
-          <EffectComposer>
-            <SMAA />
-            <Bloom intensity={0.35} luminanceThreshold={0.75} mipmapBlur />
-            <Noise opacity={0.025} />
-            <Vignette eskil={false} offset={0.15} darkness={0.55} />
-          </EffectComposer>
         </Canvas>
       </div>
       <header className="topbar">
