@@ -272,6 +272,27 @@ export class Pedestrians {
     return true;
   }
 
+  /** Hitscan firearm target selection. Returns true when a walking pedestrian is hit. */
+  shoot(x: number, z: number, dirX: number, dirZ: number, range = 48, cone = 0.18): boolean {
+    let best = -1;
+    let bestD = range;
+    for (let i = 0; i < this.peds.length; i++) {
+      const ped = this.peds[i];
+      if (ped.state !== 'walk') continue;
+      const dx = ped.x - x;
+      const dz = ped.z - z;
+      const d = Math.hypot(dx, dz);
+      if (d > bestD || d < 0.2) continue;
+      const dot = (dx / d) * dirX + (dz / d) * dirZ;
+      if (dot < 1 - cone) continue;
+      best = i;
+      bestD = d;
+    }
+    if (best < 0) return false;
+    this.gib(this.peds[best], { vx: dirX * GIB_SPEED, vz: dirZ * GIB_SPEED, isPlayer: true });
+    return true;
+  }
+
   private gib(ped: Ped, imp: { vx: number; vz: number; isPlayer: boolean }): void {
     ped.state = 'gibbed';
     ped.timer = GIB_TIME;
