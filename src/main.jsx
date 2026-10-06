@@ -163,9 +163,11 @@ function Town(){
  </group>;
 }
 
+function ActivityModal({place,onClose,wallet,setWallet}){const[stake,setStake]=useState(100);const[result,setResult]=useState("");const play=()=>{const s=Math.min(Math.max(Number(stake)||0,10),wallet);if(s<10){setResult("Minimum stake is 10 BET.");return}setWallet(w=>w-s);const win=Math.random()<(place==="DARTS BAR"?.58:.5);if(win){const payout=Math.round(s*1.9);setWallet(w=>w+payout);setResult("WIN +"+payout+" BET");}else setResult("LOSS -"+s+" BET");};return <div className="activityModal"><div className="activityCard"><button className="closeActivity"onClick={onClose}>×</button><span>BET CITY ACTIVITY</span><h2>{place}</h2><p>Virtual wager prototype. Choose your stake and play.</p><div className="stakeRow"><input type="number"min="10"value={stake}onChange={e=>setStake(e.target.value)}/><b>BET</b></div><button className="playButton"onClick={play}>PLAY</button><div className="activityResult">{result||"Ready"}</div><small>Virtual BET only · no cashout</small></div></div>}
+
 function App(){
  const input=useRef({x:0,z:0,run:false}),keys=useRef(new Set()),player=useRef(),state=useRef({yaw:0,pitch:.28,speed:0}),drag=useRef({active:false,x:0,y:0});
- const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5);
+ const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5),[wallet,setWallet]=useState(10000),[activity,setActivity]=useState(null);
  useEffect(()=>{
    const sync=()=>{const k=keys.current;input.current.x=(k.has("a")||k.has("arrowleft")?-1:0)+(k.has("d")||k.has("arrowright")?1:0);input.current.z=(k.has("w")||k.has("arrowup")?-1:0)+(k.has("s")||k.has("arrowdown")?1:0);input.current.run=k.has("shift");setSpeed(input.current.run?"RUN":"WALK")};
    const down=e=>{keys.current.add(e.key.toLowerCase());sync()};const up=e=>{keys.current.delete(e.key.toLowerCase());sync()};
@@ -192,10 +194,10 @@ function App(){
    <ambientLight intensity={.28+sun*.3}/><directionalLight castShadow position={[-30,50,20]}intensity={.9+sun*1.8}shadow-mapSize-width={2048}shadow-mapSize-height={2048}shadow-bias={-.00012}/>
    <Town/><Player input={input}out={player}onNear={setNear}cameraState={state}/><Camera player={player}state={state}zoom={zoom}/>
   </Canvas>
-  <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
+  <div className="hud"><div className="brand"><b>BET CITY</b><span>FREE ROAM · SMALL TOWN</span></div><div className="controls"><strong>{speed}</strong><span>WASD / ARROWS · SHIFT RUN · DRAG LOOK</span></div><div className="status">BET {wallet.toLocaleString()} · LIVE WORLD · {String(Math.floor(time*24)).padStart(2,"0")}:00</div></div>
   {near&&<div className="interaction">ENTER {near}<small>Move closer to interact</small></div>}
   <div className="lookHint">LEFT JOYSTICK · RIGHT SIDE CAMERA · PINCH TO ZOOM</div>
-  <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setNear(null)}>ENTER</button>}</div>
+  <div className="mobileActions"><button className="mobileAction runBtn" onPointerDown={pressRun} onPointerUp={releaseRun} onPointerCancel={releaseRun}>RUN</button><button className="mobileAction jumpBtn" onPointerDown={jump}>JUMP</button>{near&&<button className="mobileAction enterBtn" onPointerDown={()=>setActivity(near)}>ENTER</button>}</div>
   <div className="joystick"onPointerDown={e=>e.stopPropagation()}onTouchStart={move}onTouchMove={move}onTouchEnd={stop}onPointerMove={e=>e.buttons&&move(e)}onPointerUp={stop}><div className="stick"style={{transform:"translate("+joy.x*28+"px,"+joy.z*28+"px)"}}/></div>
  </div>;
 }
