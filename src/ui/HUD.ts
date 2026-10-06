@@ -95,6 +95,7 @@ export class HUD {
     healthTrack.style.display = 'none';
     healthTrack.style.display = 'none';
     healthTrack.style.display = 'none';
+    healthTrack.style.display = 'none';
     root.appendChild(healthTrack);
 
     this.scoreEl = document.createElement('div');
@@ -102,6 +103,7 @@ export class HUD {
       'position:absolute;left:50%;top:12px;transform:translateX(-50%);font-size:13px;font-weight:700;' + CHIP;
     this.scoreEl.textContent = '🚶 0';
     // Run-over counter removed from the beta HUD; the counter remains available internally.
+    this.scoreEl.style.display = 'none';
     this.scoreEl.style.display = 'none';
     this.scoreEl.style.display = 'none';
     this.scoreEl.style.display = 'none';
@@ -113,6 +115,7 @@ export class HUD {
       'max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + CHIP;
     this.radioEl.textContent = '📻 OFF';
     // Radio chip removed from the beta HUD; radio audio continues to work in cars.
+    this.radioEl.style.display = 'none';
     this.radioEl.style.display = 'none';
     this.radioEl.style.display = 'none';
     this.radioEl.style.display = 'none';
@@ -159,6 +162,7 @@ export class HUD {
     const afec = document.createElement('div');
     afec.textContent = 'AFEC CITY';
     afec.style.cssText = 'position:absolute;left:20px;top:14px;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(12,18,24,.28);backdrop-filter:blur(10px);font:800 11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:#f4f8ff;';
+    afec.style.display = 'none';
     root.appendChild(afec);
     // Control legend now lives in the title/pause menu — keep the HUD clean.
 
