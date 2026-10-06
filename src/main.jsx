@@ -224,7 +224,7 @@ function Citizen({ position, name, shirt, player, movementRef, playerRef, traffi
   );
 }
 
-function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef }) {
+function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef, peers = [] }) {
   return (
     <>
       <hemisphereLight args={["#9eb7d8", "#2a211c", 0.65]} />
@@ -474,7 +474,7 @@ function App() {
         <Canvas shadows dpr={[1, 1.25]} camera={{ position: [16, 8, 18], fov: 50 }} gl={{ antialias: true, powerPreference: "high-performance" }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
           <color attach="background" args={["#e7b48a"]} />
           <fog attach="fog" args={["#e7c3a2", 26, 110]} />
-          {interior === "shop" ? <ShopInterior peers={[{ id: "kay", name: "KAY" }, ...peers]} onExit={() => setInterior(null)} onChallenge={() => { setInterior(null); openDuel(); }} playerRef={playerRef} movementRef={movementRef} /> : <City onShop={() => setInterior("shop")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} />}
+          {interior === "shop" ? <ShopInterior peers={[{ id: "kay", name: "KAY" }, ...peers]} onExit={() => setInterior(null)} onChallenge={() => { setInterior(null); openDuel(); }} playerRef={playerRef} movementRef={movementRef} /> : <City onShop={() => setInterior("shop")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} peers={peers} />}
           <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={interior ? "hood" : cameraMode} movementRef={movementRef} />
         </Canvas>
       </div>
