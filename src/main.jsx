@@ -78,7 +78,36 @@ function Shop({position,color,accent,name,onClick}){
   </group>;
 }
 
-function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
+
+function TrafficLight({position,rotation=0}){
+  return <group position={position} rotation={[0,rotation,0]}>
+    <mesh castShadow position={[0,2.9,0]}><cylinderGeometry args={[.08,.11,5.8,8]}/><meshStandardMaterial color="#171a1d" metalness={.6} roughness={.35}/></mesh>
+    <mesh castShadow position={[0,5.1,0]}><boxGeometry args={[.55,1.45,.4]}/><meshStandardMaterial color="#111417" roughness={.5}/></mesh>
+    {[.38,0,-.38].map((y,i)=><mesh key={i} position={[0,5.1+y,.22]}><sphereGeometry args={[.13,12,8]}/><meshStandardMaterial color={i===1?"#e6bd3e":"#351b1b"} emissive={i===1?"#e6bd3e":"#000"} emissiveIntensity={i===1?1.4:0}/></mesh>)}
+  </group>;
+}
+function Billboard({position,rotation=0,title="BET CITY",accent="#d7b456"}){
+  return <group position={position} rotation={[0,rotation,0]}>
+    <mesh castShadow position={[0,2.4,0]}><boxGeometry args={[4.8,2.8,.18]}/><meshStandardMaterial color="#11151b" metalness={.25} roughness={.32}/></mesh>
+    <Text position={[0,2.65,.12]} fontSize={.46} color={accent} anchorX="center" outlineWidth={.018} outlineColor="#050608">{title}</Text>
+    <Text position={[0,2.05,.12]} fontSize={.18} color="#e7ebef" anchorX="center">PLAY • CHALLENGE • WIN</Text>
+    <mesh position={[-1.9,.65,0]}><boxGeometry args={[.1,1.5,.1]}/><meshStandardMaterial color="#20242a" metalness={.6}/></mesh>
+    <mesh position={[1.9,.65,0]}><boxGeometry args={[.1,1.5,.1]}/><meshStandardMaterial color="#20242a" metalness={.6}/></mesh>
+  </group>;
+}
+function Crosswalk({position,rotation=0}){
+  return <group position={position} rotation={[0,rotation,0]}>
+    {Array.from({length:9}).map((_,i)=><mesh key={i} position={[-6.4+i*1.6,.055,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.9,5.2]}/><meshStandardMaterial color="#d9dde0" roughness={.9}/></mesh>)}
+  </group>;
+}
+function Rooftop({position}){
+  return <group position={position}>
+    <mesh position={[0,1.3,0]}><boxGeometry args={[3.2,2.6,2.1]}/><meshStandardMaterial color="#77746f" roughness=".9"/></mesh>
+    <mesh position={[0,3.15,0]}><cylinderGeometry args={[.05,.05,3.2,8]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
+    <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness=".7"/></mesh>
+  </group>;
+}
+\nfunction DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
   const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();\n  useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
   const velocity=useRef(new THREE.Vector3());
   useFrame((state,dt)=>{
@@ -145,7 +174,14 @@ function City({onShop,onDarts,playerRef,movementRef}){
     <House position={[-17,0,-5]} rotation={.08} color="#c8aa83"/>
     <House position={[17,0,-3]} rotation=-.06 color="#b7a18e"/>
     <House position={[-18,0,17]} rotation={.12} color="#b99a78"/>
-    <House position={[18,0,17]} rotation=-.12 color="#c1b0a0"/>
+    <House position={[18,0,17]} rotation={-.12} color="#c1b0a0"/>
+    <Rooftop position={[-27,35,-34]}/><Rooftop position={[-12,45,-40]}/><Rooftop position={[5,52,-42]}/>
+    <Billboard position={[-21,0,-8]} rotation={Math.PI/2} title="LUCKY SHOP"/>
+    <Billboard position={[21,0,8]} rotation={-Math.PI/2} title="DARTS DUEL" accent="#d09358"/>
+    <Crosswalk position={[0,.0,-9]} />
+    <Crosswalk position={[9,.0,0]} rotation={Math.PI/2}/>
+    <TrafficLight position={[-9.8,0,-9.8]} rotation={Math.PI/2}/>
+    <TrafficLight position={[9.8,0,9.8]} rotation={-Math.PI/2}/>
     <Shop position={[-13,0,-11]} color="#673a35" accent="#d05a4e" name="LUCKY SHOP" onClick={onShop}/>
     <Shop position={[13,0,-11]} color="#23556b" accent="#4ba4c5" name="POOL HOUSE"/>
     <Shop position={[-13,0,12]} color="#493b69" accent="#8c67c6" name="ARCADE"/>
@@ -174,7 +210,7 @@ function CameraRig({playerRef}){
   const current=new THREE.Vector3(),look=new THREE.Vector3();
   useFrame((state,dt)=>{
     const p=playerRef.current?.position||new THREE.Vector3(0,0,5);
-    const desired=current.set(p.x+8,6.3,p.z+10);
+    const yaw=playerRef.current?.rotation.y||0;\n    const desired=current.set(p.x-Math.sin(yaw)*8,6.1,p.z-Math.cos(yaw)*9);
     state.camera.position.lerp(desired,1-Math.pow(.0008,dt));
     look.set(p.x,p.y+1.45,p.z);
     state.camera.lookAt(look);
