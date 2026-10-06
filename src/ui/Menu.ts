@@ -203,7 +203,7 @@ export class Menu {
     wrap.append(
       h,
       line('Drive — WASD / arrows · <b>Space</b> handbrake · <b>F</b> enter/exit'),
-      line('On foot — WASD · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch · <b>G</b> fire · <b>Z</b> aim · <b>R</b> reload · <b>Q</b> punch · <b>F</b> enter car'),
+      line('On foot — WASD · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch · <b>G</b> fire · <b>Z</b> aim · <b>R</b> reload · <b>Q</b> punch · <b>F</b> enter car · drag right side to look'),
       line('Gamepad — RT/LT throttle · stick steer · <b>A</b> enter / hold sprint · <b>B</b> handbrake · <b>X</b> punch'),
       line('<b>Esc</b> / Start — pause · <b>R</b> reset'),
     );
