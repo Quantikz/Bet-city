@@ -1,10 +1,10 @@
 {
-  "name": "GTA 7 — Definitely Not a Real Game",
-  "short_name": "GTA 7",
+  "name": "AFEC CITY — Definitely Not a Real Game",
+  "short_name": "AFEC CITY",
   "description": "A browser-based, GTA-style 3D open-world driving slice.",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#05060a",
-  "theme_color": "#05060a",
+  "background_color": "#d9edf7",
+  "theme_color": "#d9edf7",
   "start_url": "."
 }
