@@ -172,6 +172,18 @@ export class Menu {
         this.cb.onOptionsChange(this.opts);
       }),
     );
+    wrap.appendChild(
+      this.segmentedRow('Camera', ['low','normal','high','top'], this.opts.cameraView, 'menu-camera', (v) => {
+        this.opts = { ...this.opts, cameraView: v as GameOptions['cameraView'] };
+        this.cb.onOptionsChange(this.opts);
+      }),
+    );
+    wrap.appendChild(
+      this.sliderRow('Zoom', 0.65, 1.6, 0.05, this.opts.cameraZoom, 'menu-camera-zoom', (v) => {
+        this.opts = { ...this.opts, cameraZoom: v };
+        this.cb.onOptionsChange(this.opts);
+      }),
+    );
     return wrap;
   }
 
@@ -190,8 +202,8 @@ export class Menu {
     h.style.opacity = '.9';
     wrap.append(
       h,
-      line('Drive — WASD / arrows · <b>Space</b> handbrake · <b>F</b> enter/exit · <b>[ ]</b> radio'),
-      line('On foot — WASD · <b>Shift</b> sprint · <b>Space</b> punch · <b>F</b> enter car'),
+      line('Drive — WASD / arrows · <b>Space</b> handbrake · <b>F</b> enter/exit'),
+      line('On foot — WASD · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch · <b>G</b> fire · <b>Z</b> aim · <b>R</b> reload · <b>Q</b> punch · <b>F</b> enter car'),
       line('Gamepad — RT/LT throttle · stick steer · <b>A</b> enter / hold sprint · <b>B</b> handbrake · <b>X</b> punch'),
       line('<b>Esc</b> / Start — pause · <b>R</b> reset'),
     );
@@ -281,7 +293,7 @@ export class Menu {
 
   private applyVariant(): void {
     const title = this.variant === 'title';
-    this.header.textContent = title ? 'GTA 7 — Guns, Traffic & Anarchy' : 'PAUSED';
+    this.header.textContent = title ? 'AFEC CITY' : 'AFEC CITY · PAUSED';
     this.header.style.fontSize = title ? '18px' : '22px';
     this.header.style.letterSpacing = title ? '1px' : '4px';
     this.titleActions.style.display = title ? 'flex' : 'none';
