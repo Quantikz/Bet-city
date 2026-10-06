@@ -227,6 +227,7 @@ function Town({ onShop, onDarts }) {
       <directionalLight castShadow position={[12, 18, 10]} intensity={2.7} shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
       <pointLight position={[0, 7, 4]} intensity={10} distance={20} color="#f0c76c" />
       <Environment preset="city" />
+      <fog attach="fog" args={["#11151b", 28, 82]} />
       <Ground />
 
       <Building position={[-13, 0, -11]} color="#7d4034" accent="#c95f55" name="LUCKY SHOP" onClick={onShop} />
@@ -275,10 +276,10 @@ function App() {
   return (
     <div className="app">
       <div className="scene">
-        <Canvas shadows dpr={[1, 1.7]} camera={{ position: [24, 20, 29], fov: 43 }} gl={{ antialias: true }}>
+        <Canvas shadows dpr={[1, 1.75]} camera={{ position: [17, 9, 18], fov: 50 }} gl={{ antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; }}>
           <color attach="background" args={["#070a0e"]} />
           <Town onShop={() => { setMessage("Lucky Shop"); setModal("info"); }} onDarts={openDuel} />
-          <OrbitControls enablePan={false} minDistance={14} maxDistance={52} maxPolarAngle={Math.PI / 2.08} />
+          <OrbitControls enablePan={false} minDistance={10} maxDistance={42} maxPolarAngle={Math.PI / 2.12} minPolarAngle={0.72} target={[0, 1.2, 1]} />
         </Canvas>
       </div>
       <header className="topbar">
