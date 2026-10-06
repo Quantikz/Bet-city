@@ -25,9 +25,9 @@ function loadModel(src){
 
 function Model({src,position=[0,0,0],rotation=[0,0,0],scale=1}){
  const r=useRef();
- useEffect(()=>{let live=true;loadModel(src).then(scene=>{
-   if(!live||!scene||!r.current)return;
-   const clone=scene.clone(true);
+ useEffect(()=>{let live=true;loadModel(src).then(gltf=>{
+   if(!live||!gltf||!r.current)return;
+   const clone=gltf.scene.clone(true);
    clone.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material)o.material.envMapIntensity=.8}});
    r.current.clear();r.current.add(clone);
  });return()=>{live=false}},[src]);
@@ -41,9 +41,9 @@ function Human({src,position=[0,0,0],scale=1,moving=true,run=false,phase=0}){
    const clone=scene.clone(true);
    clone.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
    r.current.clear();r.current.add(clone);
-   if(scene.animations?.length){
+   if(gltf.animations?.length){
      mixer.current=new THREE.AnimationMixer(clone);
-     scene.animations.forEach(clip=>actions.current[clip.name]=mixer.current.clipAction(clip));
+     gltf.animations.forEach(clip=>actions.current[clip.name]=mixer.current.clipAction(clip));
      const names=Object.keys(actions.current);
      const find=n=>names.find(k=>k.toLowerCase().includes(n));
      const idle=find("idle"),walk=find("jog")||find("walk"),sprint=find("sprint")||find("run");
