@@ -7,12 +7,9 @@ import*as THREE from"three";
 import{A}from"./assets";
 import"./style.css";
 
-const buildings=[
- [-31,-31],[-31,-18],[-31,18],[-31,31],
- [31,-31],[31,-18],[31,18],[31,31],
- [-18,-31],[18,-31],[-18,31],[18,31]
-];
-const shops=[[-31,-5,"LUCKY SHOP"],[31,-5,"DARTS BAR"],[-5,31,"POOL HOUSE"],[5,-31,"ARCADE"]];
+const buildings=[];
+const shops=[];
+const worldObstacles=[];
 
 const loader=new GLTFLoader();
 const cache=new Map();
@@ -70,12 +67,7 @@ function Player({input,out,onNear,cameraState}){
      r.current.rotation.y=THREE.MathUtils.lerp(r.current.rotation.y,Math.atan2(v.current.x,v.current.z),Math.min(1,dt*12));
    }else v.current.lerp(new THREE.Vector3(),1-Math.pow(.000001,dt));
    const next=r.current.position.clone().addScaledVector(v.current,dt);
-   const buildingBlocked=buildings.some(([x,z])=>Math.abs(next.x-x)<5.8&&Math.abs(next.z-z)<5.8);
-   const obstacleBlocked=worldObstacles.some(([x,z,type])=>{
-     const radius=type==="pole"?.9:type==="bin"?1.1:1.5;
-     return Math.hypot(next.x-x,next.z-z)<radius;
-   });
-   const blocked=buildingBlocked||obstacleBlocked;
+   const blocked=false;
    if(!blocked){r.current.position.copy(next)}
    r.current.position.x=THREE.MathUtils.clamp(r.current.position.x,-40,40);
    r.current.position.z=THREE.MathUtils.clamp(r.current.position.z,-40,40);
@@ -216,16 +208,17 @@ function TownDetails(){
 }
 
 function Town(){
- 
  return <group>
-  <mesh receiveShadow rotation={[-Math.PI/2,0,0]}position={[0,-.1,0]}><planeGeometry args={[150,150]}/><meshStandardMaterial color="#55605b"roughness={.95}/></mesh>
-  <Roads/><StreetFurniture/><TownDetails/><StreetObstacles/>
-  {buildings.map(([x,z],i)=><Model key={"b"+i}src={A.buildings[i%A.buildings.length]}position={[x,0,z]}rotation={[0,(i%4)*Math.PI/2,0]}scale={tallScale[i%tallScale.length]}/>)}
-  {[[-38,-36],[-38,36],[38,-36],[38,36]].map(([x,z],i)=><Model key={"t"+i}src={A.trees[i%2]}position={[x,0,z]}scale={2.7}/>)}
-  {[-24,0,24].map((lane,i)=><TrafficCar key={"vz"+i}src={A.cars[i%A.cars.length]}axis="z"lane={lane}index={i}/>)}
-  {[-24,12,36].map((lane,i)=><TrafficCar key={"hx"+i}src={A.cars[(i+1)%A.cars.length]}axis="x"lane={lane}index={i+3}/>)}
-  {[[-16,-16],[16,-16],[-16,16],[16,16],[0,-18],[0,18],[-18,0],[18,0]].map((p,i)=><MovingNPC key={"n"+i}src={A.people[i%2]}start={p}index={i}/>)}
-
+  <mesh receiveShadow rotation={[-Math.PI/2,0,0]} position={[0,-.1,0]}>
+   <planeGeometry args={[150,150]}/>
+   <meshStandardMaterial color="#55605b" roughness={.95}/>
+  </mesh>
+  <Roads/>
+  {[-36,0,36].map((lane,i)=><TrafficCar key={"vz"+i} src={A.cars[i%A.cars.length]} axis="z" lane={lane} index={i}/>)}
+  {[-36,0,36].map((lane,i)=><TrafficCar key={"hx"+i} src={A.cars[(i+1)%A.cars.length]} axis="x" lane={lane} index={i+3}/>)}
+  {[[-25,-25],[25,-25],[-25,25],[25,25],[0,-30],[0,30],[-30,0],[30,0]].map((p,i)=>
+   <MovingNPC key={"n"+i} src={A.people[i%2]} start={p} index={i}/>
+  )}
  </group>;
 }
 
