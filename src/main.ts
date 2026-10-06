@@ -254,7 +254,7 @@ function drivingInput(): VehicleInput {
   const m = controls.move();
   return {
     throttle: m.y, // forward
-    steer: -m.x, // +1 = left, so right stick (+x) steers right
+    steer: m.x, // +1 = left, so left stick (-x) steers left
     handbrake: controls.handbrake(),
   };
 }
