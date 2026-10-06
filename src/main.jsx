@@ -1,314 +1,394 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows, Text, Sparkles } from "@react-three/drei";
+import { ContactShadows, Environment, Text } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette, SMAA, Noise } from "@react-three/postprocessing";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { io } from "socket.io-client";
 import "./style.css";
 
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const skinTones=["#6f422f","#8b5a3c","#a96f4f","#c28762"];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const CHANNELS = [
+  { id: "news", title: "BET CITY NEWS", line: "Dusk market opens on the south strip." },
+  { id: "sports", title: "SPORTS WIRE", line: "Darts night: Kay leads the local board." },
+  { id: "odds", title: "ODDS BOARD", line: "Virtual lines only. No cash market." },
+  { id: "nightlife", title: "NIGHTLIFE", line: "Darts Bar live. Pool House open late." },
+  { id: "street", title: "STREET CAM", line: "Co-op cam feed from downtown." }
+];
 
-function Road(){
-  return <group>
-    <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[150,150]}/><meshStandardMaterial color="#161a1f" roughness={0.92}/></mesh>
-    <mesh position={[0,.02,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[18,150]}/><meshStandardMaterial color="#2e3339" roughness={.8}/></mesh>
-    <mesh position={[0,.025,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[150,18]}/><meshStandardMaterial color="#2e3339" roughness={.8}/></mesh>
-    {[[-9.15,0],[9.15,0]].map(([x])=><mesh key={x} position={[x,.04,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.12,150]}/><meshBasicMaterial color="#e4c65f"/></mesh>)}
-    {Array.from({length:22}).map((_,i)=><mesh key={"v"+i} position={[0,.045,-52+i*5]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[1.3,.14]}/><meshBasicMaterial color="#e4c65f"/></mesh>)}
-    {Array.from({length:22}).map((_,i)=><mesh key={"h"+i} position={[-52+i*5,.045,0]} rotation={[-Math.PI/2,0,Math.PI/2]}><planeGeometry args={[1.3,.14]}/><meshBasicMaterial color="#e4c65f"/></mesh>)}
-    {[-10.8,10.8].map(x=><mesh key={x} position={[x,.08,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[3,150]}/><meshStandardMaterial color="#55595d" roughness={1}/></mesh>)}
-    {[-10.8,10.8].map(x=>Array.from({length:30}).map((_,i)=><mesh key={x+"c"+i} position={[x,.105,-72+i*5]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.95,.08]}/><meshBasicMaterial color="#a9adb0"/></mesh>))}
-  </group>;
+function makeAsphalt() {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 512;
+  const g = c.getContext("2d");
+  g.fillStyle = "#1b2026";
+  g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 4000; i++) {
+    g.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
+    g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(18, 18);
+  return tex;
 }
 
-function StreetLamp({position, warm=false}){
-  return <group position={position}>
-    <mesh castShadow position={[0,3,0]}><cylinderGeometry args={[.06,.09,6,10]}/><meshStandardMaterial color="#171b20" metalness={.7} roughness={.28}/></mesh>
-    <mesh position={[.45,5.65,0]} rotation={[0,0,-.18]}><boxGeometry args={[.9,.07,.07]}/><meshStandardMaterial color="#171b20" metalness={.7}/></mesh>
-    <mesh position={[.82,5.5,0]}><sphereGeometry args={[.14,12,8]}/><meshStandardMaterial color="#fff0bd" emissive={warm?"#ffb13b":"#fff1b0"} emissiveIntensity={warm?4:2}/></mesh>
-  </group>;
+function Road() {
+  const map = useMemo(makeAsphalt, []);
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[180, 180]} />
+        <meshStandardMaterial map={map} color="#8d97a1" roughness={0.42} metalness={0.18} />
+      </mesh>
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[16, 180]} />
+        <meshStandardMaterial color="#2a3036" roughness={0.55} metalness={0.08} />
+      </mesh>
+      <mesh position={[0, 0.021, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[180, 16]} />
+        <meshStandardMaterial color="#2a3036" roughness={0.55} metalness={0.08} />
+      </mesh>
+      {[-4.2, 4.2].map((x) => <mesh key={x} position={[x, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.12, 170]} /><meshBasicMaterial color="#e6d48a" /></mesh>)}
+      {Array.from({ length: 28 }).map((_, i) => <mesh key={"d" + i} position={[0, 0.045, -68 + i * 5]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[1.4, 0.16]} /><meshBasicMaterial color="#f2efe4" /></mesh>)}
+      {[-9.2, 9.2].map((x) => <mesh key={"s" + x} position={[x, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[3.2, 170]} /><meshStandardMaterial color="#3d4348" roughness={1} /></mesh>)}
+      {Array.from({ length: 10 }).map((_, i) => <mesh key={"cw" + i} position={[-7.2 + i * 1.6, 0.05, 8]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.7, 4.6]} /><meshStandardMaterial color="#dfe5ea" /></mesh>)}
+    </group>
+  );
 }
 
-function Palm({position,scale=1}){
-  return <group position={position} scale={scale}>
-    <mesh castShadow position={[0,2.2,0]} rotation={[.03,0,-.05]}><cylinderGeometry args={[.18,.29,4.4,12]}/><meshStandardMaterial color="#5a3b28" roughness={.9}/></mesh>
-    {Array.from({length:10}).map((_,i)=>{const a=i*Math.PI*2/10;return <mesh key={i} castShadow position={[Math.sin(a)*.75,4.35,Math.cos(a)*.75]} rotation={[.65*Math.cos(a),a,.65*Math.sin(a)]}><coneGeometry args={[.2,2.3,7]}/><meshStandardMaterial color={i%2?"#216b47":"#2d8051"} roughness={.85}/></mesh>})}
-  </group>;
+function Lamp({ position }) {
+  return (
+    <group position={position}>
+      <mesh castShadow position={[0, 3.1, 0]}><cylinderGeometry args={[0.08, 0.1, 6.2, 10]} /><meshStandardMaterial color="#1c2127" metalness={0.7} roughness={0.3} /></mesh>
+      <mesh position={[0.7, 6.05, 0]}><boxGeometry args={[1.5, 0.08, 0.08]} /><meshStandardMaterial color="#1c2127" metalness={0.7} /></mesh>
+      <mesh position={[1.3, 5.85, 0]}><boxGeometry args={[0.45, 0.12, 0.22]} /><meshStandardMaterial color="#f6e7b2" emissive="#ffb14a" emissiveIntensity={2.4} /></mesh>
+      <pointLight position={[1.3, 5.5, 0]} intensity={8} distance={14} color="#ffb14a" />
+    </group>
+  );
 }
 
-function TrafficCar({position,rotation=0,color="#20242a",speed=.8}){
-  const ref=useRef();
-  useFrame((_,d)=>{if(!ref.current)return;ref.current.position.z+=speed*d;if(ref.current.position.z>70)ref.current.position.z=-70;});
-  return <group ref={ref} position={position} rotation={[0,rotation,0]}>
-    <mesh castShadow position={[0,.55,0]}><boxGeometry args={[3.5,.72,1.55]}/><meshStandardMaterial color={color} metalness={.6} roughness={.24}/></mesh>
-    <mesh castShadow position={[.12,1.03,0]}><boxGeometry args={[1.8,.62,1.32]}/><meshPhysicalMaterial color="#172029" metalness={.35} roughness={.13} transmission={.05}/></mesh>
-    {[[-1.15,.82],[1.15,.82],[-1.15,-.82],[1.15,-.82]].map(([x,z],i)=><mesh key={i} position={[x,.22,z]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.31,.31,.2,18]}/><meshStandardMaterial color="#080a0d" roughness={.85}/></mesh>)}
-    <mesh position={[0,.7,-.79]}><boxGeometry args={[.9,.12,.03]}/><meshStandardMaterial color="#d9e4ed" emissive="#d9e4ed" emissiveIntensity={1}/></mesh>
-  </group>;
+function Palm({ position }) {
+  return (
+    <group position={position}>
+      <mesh castShadow position={[0, 2.4, 0]}><cylinderGeometry args={[0.16, 0.28, 4.8, 8]} /><meshStandardMaterial color="#6a4630" roughness={0.9} /></mesh>
+      {Array.from({ length: 7 }).map((_, i) => {
+        const a = (i / 7) * Math.PI * 2;
+        return <mesh key={i} position={[Math.sin(a) * 0.7, 4.7, Math.cos(a) * 0.7]} rotation={[0.7, a, 0]}><coneGeometry args={[0.18, 2.1, 5]} /><meshStandardMaterial color={i % 2 ? "#1f6a43" : "#2f8a58"} /></mesh>;
+      })}
+    </group>
+  );
 }
 
-function House({position,rotation=0,scale=1,color="#d0b08c",roof="#38343a"}){
-  return <group position={position} rotation={[0,rotation,0]} scale={scale}>
-    <mesh castShadow position={[0,2,0]}><boxGeometry args={[7,4,6]}/><meshStandardMaterial color={color} roughness={.76}/></mesh>
-    <mesh castShadow position={[0,4.55,0]} rotation={[0,Math.PI/4,0]}><coneGeometry args={[4.8,2.2,4]}/><meshStandardMaterial color={roof} roughness={.7}/></mesh>
-    <mesh position={[0,1.15,3.03]}><boxGeometry args={[1.15,2.3,.12]}/><meshStandardMaterial color="#241d1a" roughness={.5}/></mesh>
-    {[-2.15,2.15].map(x=><mesh key={x} position={[x,2.1,3.04]}><boxGeometry args={[1.35,1.15,.1]}/><meshStandardMaterial color="#27424a" metalness={.25} roughness={.18}/></mesh>)}
-    <mesh position={[0,.15,3.35]}><boxGeometry args={[7.5,.25,.7]}/><meshStandardMaterial color="#77726b" roughness={1}/></mesh>
-  </group>;
+function House({ position, rotation = 0, color = "#c7b29a" }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh castShadow receiveShadow position={[0, 2.3, 0]}><boxGeometry args={[8.4, 4.6, 7.2]} /><meshStandardMaterial color={color} roughness={0.72} /></mesh>
+      <mesh castShadow position={[0, 5.1, 0]}><boxGeometry args={[8.8, 0.35, 7.6]} /><meshStandardMaterial color="#3c4046" /></mesh>
+      <mesh castShadow position={[0, 6.15, 0]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[5.4, 2.2, 4]} /><meshStandardMaterial color="#6d3b34" roughness={0.7} /></mesh>
+      <mesh position={[0, 1.2, 3.66]}><boxGeometry args={[1.5, 2.3, 0.12]} /><meshStandardMaterial color="#2a211c" /></mesh>
+      <mesh position={[2.3, 1.15, 3.68]}><boxGeometry args={[2.2, 2.1, 0.08]} /><meshStandardMaterial color="#2c3338" metalness={0.3} /></mesh>
+      {[-2.4, -0.6, 2.4].map((x) => <mesh key={x} position={[x, 3.15, 3.64]}><boxGeometry args={[1.15, 1.25, 0.08]} /><meshStandardMaterial color="#9fd4e2" emissive="#f2c56b" emissiveIntensity={0.35} metalness={0.4} roughness={0.15} /></mesh>)}
+      <mesh position={[0, 3.4, 3.9]}><boxGeometry args={[2.4, 0.12, 0.8]} /><meshStandardMaterial color="#d7b456" /></mesh>
+      <mesh position={[-3.5, 1.1, 2]}><boxGeometry args={[0.08, 1.2, 2.4]} /><meshStandardMaterial color="#8a8f93" metalness={0.5} /></mesh>
+    </group>
+  );
 }
 
-function Tower({position,width=9,height=28,depth=9,color="#4c5661",accent="#71808e"}){
-  const cols=Math.max(3,Math.floor(width/1.6)), rows=Math.max(6,Math.floor(height/2.2));
-  return <group position={position}>
-    <mesh castShadow position={[0,height/2,0]}><boxGeometry args={[width,height,depth]}/><meshStandardMaterial color={color} roughness={.56} metalness={.08}/></mesh>
-    <mesh castShadow position={[0,height+.8,0]}><boxGeometry args={[width*.78,1.6,depth*.78]}/><meshStandardMaterial color={accent} roughness={.5}/></mesh>
-    {Array.from({length:rows}).flatMap((_,r)=>Array.from({length:cols}).map((__,c)=><mesh key={r+"-"+c} position={[-width/2+.9+c*(width-1.8)/(cols-1),1.7+r*2.05,depth/2+.025]}><boxGeometry args={[.82,1.05,.045]}/><meshStandardMaterial color={r%4===0?"#1b343d":"#243b44"} metalness={.55} roughness={.12} emissive={r%5===0?"#152f35":"#000000"} emissiveIntensity={r%5===0?.5:0}/></mesh>))}
-    <mesh position={[0,height*.62,depth/2+.04]}><boxGeometry args={[width*.72,.18,.05]}/><meshStandardMaterial color="#d7b456" emissive="#d7b456" emissiveIntensity={.35}/></mesh>
-  </group>;
+function Tower({ position, height = 34, width = 10, color = "#4d5966" }) {
+  const floors = Math.floor(height / 2.2);
+  return (
+    <group position={position}>
+      <mesh castShadow position={[0, height / 2, 0]}><boxGeometry args={[width, height, width * 0.8]} /><meshStandardMaterial color={color} roughness={0.45} metalness={0.22} /></mesh>
+      {Array.from({ length: floors }).map((_, i) => (
+        <mesh key={i} position={[0, 1.4 + i * 2.2, width * 0.4 + 0.05]}>
+          <boxGeometry args={[width * 0.72, 1.05, 0.06]} />
+          <meshStandardMaterial color="#16343c" emissive={i % 3 === 0 ? "#f0c27a" : "#12343c"} emissiveIntensity={i % 3 === 0 ? 0.7 : 0.15} metalness={0.5} roughness={0.12} />
+        </mesh>
+      ))}
+    </group>
+  );
 }
 
-function Shop({position,color,accent,name,onClick}){
-  return <group position={position} onClick={onClick}>
-    <mesh castShadow position={[0,2.6,0]}><boxGeometry args={[9,5.2,7]}/><meshStandardMaterial color={color} roughness={.62}/></mesh>
-    <mesh position={[0,3.2,3.54]}><boxGeometry args={[8.2,1.35,.1]}/><meshStandardMaterial color="#10151a" roughness={.25}/></mesh>
-    <mesh position={[0,1.15,3.57]}><boxGeometry args={[1.55,2.3,.12]}/><meshStandardMaterial color="#090c10" roughness={.2}/></mesh>
-    {[-2.7,0,2.7].map(x=><mesh key={x} position={[x,1.75,3.56]}><boxGeometry args={[1.85,1.8,.08]}/><meshStandardMaterial color="#29434a" metalness={.2} roughness={.15}/></mesh>)}
-    <mesh castShadow position={[0,4.35,3.75]}><boxGeometry args={[8.5,.32,.7]}/><meshStandardMaterial color={accent} roughness={.55}/></mesh>
-    <Text position={[0,4.8,3.92]} fontSize={.62} color="#fff2b5" anchorX="center" outlineWidth={.025} outlineColor="#111">{name}</Text>
-  </group>;
+function Shop({ position, color, name, accent, onClick }) {
+  return (
+    <group position={position} onClick={onClick}>
+      <mesh castShadow position={[0, 2.8, 0]}><boxGeometry args={[10, 5.6, 8]} /><meshStandardMaterial color={color} roughness={0.58} /></mesh>
+      <mesh position={[0, 1.7, 4.05]}><boxGeometry args={[8.4, 2.8, 0.08]} /><meshPhysicalMaterial color="#9fd7e6" metalness={0.1} roughness={0.05} transmission={0.45} opacity={0.8} transparent /></mesh>
+      <mesh position={[0, 1.1, 3.2]}><boxGeometry args={[6.5, 0.9, 1.2]} /><meshStandardMaterial color="#241c16" /></mesh>
+      <mesh position={[0, 4.55, 4.15]}><boxGeometry args={[8.8, 0.9, 0.18]} /><meshStandardMaterial color="#111" /></mesh>
+      <mesh position={[0, 4.55, 4.28]}><boxGeometry args={[8.2, 0.55, 0.05]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.6} /></mesh>
+      <Text position={[0, 4.55, 4.36]} fontSize={0.42} color="#fff8df" anchorX="center">{name}</Text>
+      <mesh position={[0, 3.15, 3.55]}><boxGeometry args={[2.2, 1.25, 0.06]} /><meshStandardMaterial color="#071018" emissive="#39d1c5" emissiveIntensity={0.45} /></mesh>
+      <Text position={[0, 3.15, 3.6]} fontSize={0.18} color="#d7fff8" anchorX="center">LIVE</Text>
+    </group>
+  );
 }
 
-
-function TrafficLight({position,rotation=0}){
-  return <group position={position} rotation={[0,rotation,0]}>
-    <mesh castShadow position={[0,2.9,0]}><cylinderGeometry args={[.08,.11,5.8,8]}/><meshStandardMaterial color="#171a1d" metalness={.6} roughness={.35}/></mesh>
-    <mesh castShadow position={[0,5.1,0]}><boxGeometry args={[.55,1.45,.4]}/><meshStandardMaterial color="#111417" roughness={.5}/></mesh>
-    {[.38,0,-.38].map((y,i)=><mesh key={i} position={[0,5.1+y,.22]}><sphereGeometry args={[.13,12,8]}/><meshStandardMaterial color={i===1?"#e6bd3e":"#351b1b"} emissive={i===1?"#e6bd3e":"#000"} emissiveIntensity={i===1?1.4:0}/></mesh>)}
-  </group>;
-}
-function Billboard({position,rotation=0,title="BET CITY",accent="#d7b456"}){
-  return <group position={position} rotation={[0,rotation,0]}>
-    <mesh castShadow position={[0,2.4,0]}><boxGeometry args={[4.8,2.8,.18]}/><meshStandardMaterial color="#11151b" metalness={.25} roughness={.32}/></mesh>
-    <Text position={[0,2.65,.12]} fontSize={.46} color={accent} anchorX="center" outlineWidth={.018} outlineColor="#050608">{title}</Text>
-    <Text position={[0,2.05,.12]} fontSize={.18} color="#e7ebef" anchorX="center">PLAY • CHALLENGE • WIN</Text>
-    <mesh position={[-1.9,.65,0]}><boxGeometry args={[.1,1.5,.1]}/><meshStandardMaterial color="#20242a" metalness={.6}/></mesh>
-    <mesh position={[1.9,.65,0]}><boxGeometry args={[.1,1.5,.1]}/><meshStandardMaterial color="#20242a" metalness={.6}/></mesh>
-  </group>;
-}
-function Crosswalk({position,rotation=0}){
-  return <group position={position} rotation={[0,rotation,0]}>
-    {Array.from({length:9}).map((_,i)=><mesh key={i} position={[-6.4+i*1.6,.055,0]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[.9,5.2]}/><meshStandardMaterial color="#d9dde0" roughness={.9}/></mesh>)}
-  </group>;
-}
-function Rooftop({position}){
-  return <group position={position}>
-    <mesh position={[0,1.3,0]}><boxGeometry args={[3.2,2.6,2.1]}/><meshStandardMaterial color="#77746f" roughness={.9}/></mesh>
-    <mesh position={[0,3.15,0]}><cylinderGeometry args={[.05,.05,3.2,8]}/><meshStandardMaterial color="#24272b" metalness={.7}/></mesh>
-    <mesh position={[0,4.75,0]} rotation={[0,Math.PI/2,0]}><boxGeometry args={[1.2,.08,.08]}/><meshStandardMaterial color="#24272b" metalness={.7}/></mesh>
-  </group>;
+function Car({ position, color = "#1d242c", speed = 2.4, axis = "z" }) {
+  const ref = useRef();
+  const wheels = useRef();
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    ref.current.position[axis] += speed * dt;
+    if (ref.current.position[axis] > 78) ref.current.position[axis] = -78;
+    if (wheels.current) wheels.current.rotation.x -= speed * dt * 1.6;
+  });
+  return (
+    <group ref={ref} position={position} rotation={[0, axis === "x" ? Math.PI / 2 : 0, 0]}>
+      <mesh castShadow position={[0, 0.62, 0]}><boxGeometry args={[4.4, 0.72, 1.85]} /><meshStandardMaterial color={color} metalness={0.82} roughness={0.22} /></mesh>
+      <mesh castShadow position={[-0.15, 1.18, 0]}><boxGeometry args={[2.1, 0.62, 1.62]} /><meshPhysicalMaterial color="#101820" metalness={0.2} roughness={0.08} transmission={0.2} transparent opacity={0.85} /></mesh>
+      <mesh position={[2.05, 0.62, 0]}><boxGeometry args={[0.12, 0.18, 1.5]} /><meshStandardMaterial color="#fff4d2" emissive="#fff1c4" emissiveIntensity={1.5} /></mesh>
+      <mesh position={[-2.12, 0.55, 0]}><boxGeometry args={[0.08, 0.16, 1.4]} /><meshStandardMaterial color="#ff3b3b" emissive="#ff2a2a" emissiveIntensity={0.8} /></mesh>
+      <group ref={wheels}>
+        {[[-1.35, 0.32, 0.95], [1.25, 0.32, 0.95], [-1.35, 0.32, -0.95], [1.25, 0.32, -0.95]].map((p, i) => (
+          <mesh key={i} position={p} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.34, 0.34, 0.22, 16]} /><meshStandardMaterial color="#111" roughness={0.7} /></mesh>
+        ))}
+      </group>
+      <Text position={[0, 0.62, 0.96]} fontSize={0.16} color="#111" anchorX="center">BET</Text>
+    </group>
+  );
 }
 
-
-const ASSET_MANIFEST = {
-  player: "/assets/characters/player.glb",
-  npc: "/assets/characters/npc.glb",
-  sedan: "/assets/vehicles/sedan.glb",
-  house: "/assets/buildings/house.glb",
-  shop: "/assets/buildings/shop.glb"
-};
-
-function AssetPreview({url,position=[0,0,0],scale=1,onLoaded}){
-  const ref=useRef();
-  useEffect(()=>{
-    let alive=true;
-    if(!url)return;
-    const loader=new GLTFLoader();
-    loader.load(url,gltf=>{
-      if(!alive||!ref.current)return;
-      const root=gltf.scene;
-      root.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-      root.scale.setScalar(scale);
-      ref.current.add(root);
-      onLoaded?.(true);
-    },undefined,()=>{if(alive)onLoaded?.(false);});
-    return()=>{alive=false;};
-  },[url,scale,onLoaded]);
-  return <group ref={ref} position={position}/>;
-}
-
-function DetailedCharacter({position,name,shirt,skin=skinTones[1],hair=0,onClick,female=false,player=false,movementRef,playerRef}){
-  const ref=useRef(), torso=useRef(), lArm=useRef(),rArm=useRef(),lLeg=useRef(),rLeg=useRef();
-  useEffect(()=>{if(player&&playerRef){playerRef.current=ref.current;return()=>{if(playerRef.current===ref.current)playerRef.current=null;};}},[player,playerRef]);
-  const velocity=useRef(new THREE.Vector3());
-  useFrame((state,dt)=>{
-    if(!ref.current)return;
-    if(player){
-      const m=movementRef.current;
-      const input=new THREE.Vector3(m.x,0,m.z);
-      const moving=input.lengthSq()>.01;
-      if(moving) input.normalize();
-      const speed=m.sprint?8.4:4.8;
-      const responsiveness=moving?1-Math.pow(.00015,dt):1-Math.pow(.0008,dt);
-      velocity.current.lerp(input.multiplyScalar(speed),responsiveness);
-      const next=ref.current.position.clone().addScaledVector(velocity.current,dt);
-      next.x=clamp(next.x,-8.7,8.7);next.z=clamp(next.z,-8.7,8.7);next.y=0;
+function Citizen({ position, name, shirt, player, movementRef, playerRef, onClick, female }) {
+  const ref = useRef();
+  const armL = useRef();
+  const armR = useRef();
+  const legL = useRef();
+  const legR = useRef();
+  useEffect(() => {
+    if (player && playerRef) playerRef.current = ref.current;
+  }, [player, playerRef]);
+  useFrame((state, dt) => {
+    if (!ref.current) return;
+    if (player) {
+      const m = movementRef.current;
+      const input = new THREE.Vector3(m.x, 0, m.z);
+      const moving = input.lengthSq() > 0.01;
+      if (moving) input.normalize();
+      const speed = m.sprint ? 7.6 : 4.4;
+      const next = ref.current.position.clone().addScaledVector(input, speed * dt);
+      next.x = clamp(next.x, -28, 28);
+      next.z = clamp(next.z, -28, 28);
       ref.current.position.copy(next);
-      if(velocity.current.lengthSq()>.08) ref.current.rotation.y=THREE.MathUtils.lerp(ref.current.rotation.y,Math.atan2(velocity.current.x,velocity.current.z),1-Math.pow(.001,dt));
-      const walk=state.clock.elapsedTime*(m.sprint?12:9);
-      const amount=moving?(m.sprint?.62:.38):0;
-      lLeg.current.rotation.x=Math.sin(walk)*amount;rLeg.current.rotation.x=-Math.sin(walk)*amount;
-      lArm.current.rotation.x=-Math.sin(walk)*amount*.72;rArm.current.rotation.x=Math.sin(walk)*amount*.72;
-      torso.current.rotation.z=moving?Math.sin(walk)*.018:0;
-    }else{
-      const t=state.clock.elapsedTime+(name.length*.73);
-      ref.current.position.y=position[1]+Math.sin(t*1.5)*.025;
-      lArm.current.rotation.x=Math.sin(t*1.2)*.06;rArm.current.rotation.x=-Math.sin(t*1.2)*.06;
+      if (moving) ref.current.rotation.y = Math.atan2(input.x, input.z);
+      const walk = state.clock.elapsedTime * (m.sprint ? 11 : 8);
+      const amt = moving ? 0.45 : 0;
+      legL.current.rotation.x = Math.sin(walk) * amt;
+      legR.current.rotation.x = -Math.sin(walk) * amt;
+      armL.current.rotation.x = -Math.sin(walk) * amt;
+      armR.current.rotation.x = Math.sin(walk) * amt;
+    } else {
+      const t = state.clock.elapsedTime + name.length;
+      ref.current.position.x = position[0] + Math.sin(t * 0.35) * 0.8;
+      ref.current.position.z = position[2] + Math.cos(t * 0.28) * 0.5;
+      ref.current.rotation.y = Math.sin(t * 0.35);
     }
   });
-  const limb=(x,y,z,rot,material)=> <mesh castShadow position={[x,y,z]} rotation={rot}><capsuleGeometry args={[.16,.72,7,12]}/><meshStandardMaterial {...material}/></mesh>;
-  return <group ref={ref} position={position} onClick={onClick}>
-    <group ref={torso}>
-      <mesh castShadow position={[0,1.28,0]}><capsuleGeometry args={[.5,.92,10,18]}/><meshStandardMaterial color={shirt} roughness={.66} metalness={.04}/></mesh>
-      <mesh castShadow position={[0,2.08,0]}><cylinderGeometry args={[.28,.31,.22,16]}/><meshStandardMaterial color={skin} roughness={.72}/></mesh>
-      <mesh castShadow position={[0,2.55,0]}><sphereGeometry args={[.5,24,18]}/><meshStandardMaterial color={skin} roughness={.76}/></mesh>
-      <mesh castShadow position={[0,2.68,-.02]}><sphereGeometry args={[.515,24,12,0,Math.PI*2,0,Math.PI*.43]}/><meshStandardMaterial color="#171417" roughness={.88}/></mesh>
-      {hair===1&&<mesh castShadow position={[0,2.72,.02]}><torusGeometry args={[.34,.09,8,20]}/><meshStandardMaterial color="#171417" roughness={.9}/></mesh>}
-      {hair===2&&<mesh castShadow position={[0,2.77,0]}><coneGeometry args={[.45,.5,16]}/><meshStandardMaterial color="#171417" roughness={.9}/></mesh>}
-      <mesh position={[-.18,2.54,.46]}><sphereGeometry args={[.045,10,10]}/><meshStandardMaterial color="#141010"/></mesh>
-      <mesh position={[.18,2.54,.46]}><sphereGeometry args={[.045,10,10]}/><meshStandardMaterial color="#141010"/></mesh>
-      <mesh position={[0,2.38,.47]}><sphereGeometry args={[.055,10,8]}/><meshStandardMaterial color="#75432f"/></mesh>
-      <group ref={lArm} position={[-.58,1.42,0]}>{limb(0,0,0,[0,0,.06],{color:skin,roughness:.8})}<mesh position={[0,-.48,.02]}><sphereGeometry args={[.19,12,10]}/><meshStandardMaterial color={skin}/></mesh></group>
-      <group ref={rArm} position={[.58,1.42,0]}>{limb(0,0,0,[0,0,-.06],{color:skin,roughness:.8})}<mesh position={[0,-.48,.02]}><sphereGeometry args={[.19,12,10]}/><meshStandardMaterial color={skin}/></mesh></group>
-      <group ref={lLeg} position={[-.27,.52,0]}>{limb(0,0,0,[0,0,0],{color:female?"#272d38":"#20252d",roughness:.75})}<mesh position={[0,-.55,.15]} scale={[1.05,.55,1.55]}><sphereGeometry args={[.2,14,10]}/><meshStandardMaterial color="#101318" roughness={.65}/></mesh></group>
-      <group ref={rLeg} position={[.27,.52,0]}>{limb(0,0,0,[0,0,0],{color:female?"#272d38":"#20252d",roughness:.75})}<mesh position={[0,-.55,.15]} scale={[1.05,.55,1.55]}><sphereGeometry args={[.2,14,10]}/><meshStandardMaterial color="#101318" roughness={.65}/></mesh></group>
-      {player&&<mesh position={[0,1.55,-.52]}><boxGeometry args={[.75,.2,.05]}/><meshStandardMaterial color="#d7b456" emissive="#d7b456" emissiveIntensity={.25}/></mesh>}
+  return (
+    <group ref={ref} position={position} onClick={onClick}>
+      <mesh castShadow position={[0, 1.25, 0]}><capsuleGeometry args={[0.42, 0.7, 8, 16]} /><meshStandardMaterial color={shirt} roughness={0.55} /></mesh>
+      <mesh position={[0, 1.72, 0.18]}><boxGeometry args={[0.7, 0.18, 0.12]} /><meshStandardMaterial color="#1b1e24" /></mesh>
+      <mesh castShadow position={[0, 2.15, 0]}><sphereGeometry args={[0.34, 20, 16]} /><meshStandardMaterial color="#c49a78" roughness={0.7} /></mesh>
+      <mesh position={[0, 2.32, 0]}><sphereGeometry args={[0.36, 16, 10, 0, Math.PI * 2, 0, 1.2]} /><meshStandardMaterial color={female ? "#2a211c" : "#1a1716"} /></mesh>
+      <group ref={armL} position={[-0.52, 1.35, 0]}><mesh castShadow><capsuleGeometry args={[0.1, 0.55, 4, 8]} /><meshStandardMaterial color="#c49a78" /></mesh></group>
+      <group ref={armR} position={[0.52, 1.35, 0]}><mesh castShadow><capsuleGeometry args={[0.1, 0.55, 4, 8]} /><meshStandardMaterial color="#c49a78" /></mesh></group>
+      <group ref={legL} position={[-0.16, 0.55, 0]}><mesh castShadow><capsuleGeometry args={[0.11, 0.5, 4, 8]} /><meshStandardMaterial color="#242a33" /></mesh><mesh position={[0, -0.42, 0.08]}><boxGeometry args={[0.22, 0.12, 0.34]} /><meshStandardMaterial color="#111" /></mesh></group>
+      <group ref={legR} position={[0.16, 0.55, 0]}><mesh castShadow><capsuleGeometry args={[0.11, 0.5, 4, 8]} /><meshStandardMaterial color="#242a33" /></mesh><mesh position={[0, -0.42, 0.08]}><boxGeometry args={[0.22, 0.12, 0.34]} /><meshStandardMaterial color="#111" /></mesh></group>
+      <Text position={[0, 2.85, 0]} fontSize={0.24} color="#fff" anchorX="center" outlineWidth={0.012} outlineColor="#111">{name}</Text>
     </group>
-    <Text position={[0,3.22,0]} fontSize={.27} color="#fff" anchorX="center" outlineWidth={.01} outlineColor="#0b0d10">{name}</Text>
-  </group>;
+  );
 }
 
-function City({onShop,onDarts,playerRef,movementRef}){
-  return <>
-    <ambientLight intensity={.58}/>
-    <hemisphereLight args={["#a9c9e5","#1c1511",1.05]}/>
-    <directionalLight castShadow position={[-18,28,14]} intensity={3.1} shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45}/>
-    <pointLight position={[0,5,0]} intensity={18} distance={24} color="#d7b456"/>
-    <Environment preset="city"/>
-    <Road/>
-    <Tower position={[-27,0,-34]} width={10} height={35} color="#46515d"/>
-    <Tower position={[-12,0,-40]} width={13} height={45} color="#53616c"/>
-    <Tower position={[5,0,-42]} width={11} height={52} color="#3e4854"/>
-    <Tower position={[22,0,-36]} width={15} height={39} color="#59636d"/>
-    <Tower position={[34,0,-30]} width={10} height={57} color="#434e59"/>
-    <Tower position={[-34,0,28]} width={14} height={34} color="#59636d"/>
-    <Tower position={[34,0,28]} width={12} height={42} color="#46515e"/>
-    <House position={[-17,0,-5]} rotation={.08} color="#c8aa83"/>
-    <House position={[17,0,-3]} rotation={-.06} color="#b7a18e"/>
-    <House position={[-18,0,17]} rotation={.12} color="#b99a78"/>
-    <House position={[18,0,17]} rotation={-.12} color="#c1b0a0"/>
-    <Rooftop position={[-27,35,-34]}/><Rooftop position={[-12,45,-40]}/><Rooftop position={[5,52,-42]}/>
-    <Billboard position={[-21,0,-8]} rotation={Math.PI/2} title="LUCKY SHOP"/>
-    <Billboard position={[21,0,8]} rotation={-Math.PI/2} title="DARTS DUEL" accent="#d09358"/>
-    <Crosswalk position={[0,.0,-9]} />
-    <Crosswalk position={[9,.0,0]} rotation={Math.PI/2}/>
-    <TrafficLight position={[-9.8,0,-9.8]} rotation={Math.PI/2}/>
-    <TrafficLight position={[9.8,0,9.8]} rotation={-Math.PI/2}/>
-    <Shop position={[-13,0,-11]} color="#673a35" accent="#d05a4e" name="LUCKY SHOP" onClick={onShop}/>
-    <Shop position={[13,0,-11]} color="#23556b" accent="#4ba4c5" name="POOL HOUSE"/>
-    <Shop position={[-13,0,12]} color="#493b69" accent="#8c67c6" name="ARCADE"/>
-    <Shop position={[13,0,12]} color="#70492e" accent="#d09358" name="DARTS BAR" onClick={onDarts}/>
-    {[-7.8,7.8].map(x=><><StreetLamp key={x+"a"} position={[x,0,-6]} warm/><StreetLamp key={x+"b"} position={[x,0,6]}/></>)}
-    <Palm position={[-8.8,0,-6]} scale={1.05}/><Palm position={[8.8,0,-6]} scale={.95}/>
-    <Palm position={[-8.8,0,7]} scale={.9}/><Palm position={[8.8,0,7]} scale={1}/>
-    <TrafficCar position={[-5,0,-65]} color="#20262e" speed={3.4}/>
-    <TrafficCar position={[5,0,-20]} color="#8e3e38" speed={2.7}/>
-    <TrafficCar position={[0,0,-5]} rotation={Math.PI/2} color="#315a70" speed={1.8}/>
-    <TrafficCar position={[0,0,32]} rotation={Math.PI/2} color="#b38a3d" speed={2.2}/>
-    <DetailedCharacter position={[0,0,5]} name="YOU" shirt="#171a20" skin="#8b5a3c" hair={1} player movementRef={movementRef} playerRef={playerRef}/>
-    <DetailedCharacter position={[-4,0,4]} name="KAY" shirt="#3d76a8" skin="#a96f4f" hair={0} onClick={onDarts}/>
-    <DetailedCharacter position={[4,0,3]} name="MUSA" shirt="#9b4c8f" skin="#6f422f" hair={2}/>
-    <DetailedCharacter position={[0,0,-4]} name="ZEE" shirt="#3f8a73" skin="#c28762" hair={1} female/>
-    <DetailedCharacter position={[-6.2,0,.2]} name="AMAKA" shirt="#d05c55" skin="#8b5a3c" hair={2} female/>
-    <DetailedCharacter position={[6.1,0,-.8]} name="TUNDE" shirt="#d7b456" skin="#a96f4f" hair={0}/>
-    <DetailedCharacter position={[-2.5,0,-7]} name="JAY" shirt="#b58a45" skin="#6f422f" hair={0}/>
-    <DetailedCharacter position={[3.5,0,-6.4]} name="RAY" shirt="#4e687c" skin="#a96f4f" hair={2}/>
-    <ContactShadows position={[0,.03,0]} opacity={.5} scale={80} blur={2.6} far={22}/>
-    <Sparkles count={90} scale={[70,18,70]} size={.35} speed={.12} opacity={.18} color="#d9e7ee"/>
-  </>;
+function Prop({ position, kind }) {
+  if (kind === "bench") return <group position={position}><mesh position={[0, 0.45, 0]}><boxGeometry args={[1.6, 0.08, 0.45]} /><meshStandardMaterial color="#6a5344" /></mesh><mesh position={[0, 0.7, -0.18]}><boxGeometry args={[1.6, 0.4, 0.08]} /><meshStandardMaterial color="#6a5344" /></mesh></group>;
+  if (kind === "bin") return <mesh position={position} castShadow><cylinderGeometry args={[0.28, 0.32, 0.9, 12]} /><meshStandardMaterial color="#2c3338" metalness={0.4} /></mesh>;
+  return <group position={position}><mesh position={[0, 1.4, 0]}><boxGeometry args={[2.4, 0.1, 1.2]} /><meshStandardMaterial color="#243038" /></mesh><mesh position={[0, 0.7, 0]}><boxGeometry args={[0.08, 1.4, 0.08]} /><meshStandardMaterial color="#888" /></mesh></group>;
 }
 
-function CameraRig({playerRef}){
-  const current=new THREE.Vector3(),look=new THREE.Vector3();
-  useFrame((state,dt)=>{
-    const p=playerRef.current?.position||new THREE.Vector3(0,0,5);
-    const yaw=playerRef.current?.rotation.y||0;
-    const desired=current.set(p.x-Math.sin(yaw)*8.6,6.2,p.z-Math.cos(yaw)*10.2);
-    desired.y=Math.max(desired.y,2.8);
-    const groundY=0.8;
-    if(desired.y<groundY)desired.y=groundY;
-    state.camera.position.lerp(desired,1-Math.pow(.0008,dt));
-    look.set(p.x,p.y+1.45,p.z);
+function City({ onShop, onDarts, playerRef, movementRef }) {
+  return (
+    <>
+      <hemisphereLight args={["#9eb7d8", "#2a211c", 0.7]} />
+      <directionalLight castShadow position={[-24, 28, 12]} intensity={2.4} color="#ffd2a8" shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={120} shadow-camera-left={-40} shadow-camera-right={40} shadow-camera-top={40} shadow-camera-bottom={-40} />
+      <Environment preset="sunset" />
+      <Road />
+      <Tower position={[-34, 0, -42]} height={38} width={11} />
+      <Tower position={[-16, 0, -48]} height={52} width={13} color="#5b6874" />
+      <Tower position={[8, 0, -50]} height={46} width={12} color="#46525d" />
+      <Tower position={[30, 0, -40]} height={58} width={14} />
+      <House position={[-18, 0, -6]} color="#d2b89a" />
+      <House position={[18, 0, -4]} rotation={0.08} color="#c3ad98" />
+      <House position={[-18, 0, 18]} color="#b7a48f" />
+      <House position={[18, 0, 18]} color="#cbb8a4" />
+      <Shop position={[-14, 0, -12]} color="#6b4038" name="LUCKY SHOP" accent="#e15b4c" onClick={onShop} />
+      <Shop position={[14, 0, -12]} color="#24566c" name="POOL HOUSE" accent="#49b4d4" />
+      <Shop position={[-14, 0, 14]} color="#4a3d6e" name="ARCADE" accent="#9a74e0" />
+      <Shop position={[14, 0, 14]} color="#6e4a2e" name="DARTS BAR" accent="#e0a15a" onClick={onDarts} />
+      <Lamp position={[-11, 0, -8]} /><Lamp position={[11, 0, -8]} /><Lamp position={[-11, 0, 10]} /><Lamp position={[11, 0, 10]} />
+      <Palm position={[-10.5, 0, -2]} /><Palm position={[10.5, 0, -2]} /><Palm position={[-10.5, 0, 6]} /><Palm position={[10.5, 0, 6]} />
+      <Car position={[-4.5, 0, -60]} color="#8d2e2a" speed={3.1} />
+      <Car position={[4.6, 0, -20]} color="#1e2833" speed={2.4} />
+      <Car position={[-40, 0, 4]} color="#b08a3e" speed={2.2} axis="x" />
+      <Prop position={[-8, 0, 3]} kind="bench" /><Prop position={[8, 0.4, 5]} kind="bin" /><Prop position={[0, 0, 12]} kind="stop" />
+      <Citizen position={[0, 0, 6]} name="YOU" shirt="#1c222b" player movementRef={movementRef} playerRef={playerRef} />
+      <Citizen position={[-4, 0, 4]} name="KAY" shirt="#3c78ad" onClick={onDarts} />
+      <Citizen position={[4, 0, 3]} name="MUSA" shirt="#9b4c8f" />
+      <Citizen position={[0, 0, -3]} name="ZEE" shirt="#3f8a73" female />
+      <Citizen position={[-6, 0, 1]} name="AMAKA" shirt="#d05c55" female />
+      <Citizen position={[6, 0, -1]} name="TUNDE" shirt="#d7b456" />
+      <ContactShadows opacity={0.45} scale={90} blur={2.4} far={18} />
+    </>
+  );
+}
+
+function CameraRig({ playerRef, mode, partnerRef }) {
+  const look = useMemo(() => new THREE.Vector3(), []);
+  useFrame((state, dt) => {
+    const p = playerRef.current?.position || new THREE.Vector3(0, 0, 6);
+    const yaw = playerRef.current?.rotation.y || 0;
+    const partner = partnerRef.current?.position;
+    let desired = new THREE.Vector3(p.x - Math.sin(yaw) * 8.2, 5.4, p.z - Math.cos(yaw) * 9.4);
+    if (mode === "shoulder") desired.set(p.x - Math.sin(yaw) * 3.2 + Math.cos(yaw) * 1.1, 2.4, p.z - Math.cos(yaw) * 3.4 - Math.sin(yaw) * 1.1);
+    if (mode === "hood") desired.set(p.x + Math.sin(yaw) * 1.4, 1.5, p.z + Math.cos(yaw) * 1.4);
+    if (mode === "cinematic") desired.set(p.x + Math.sin(state.clock.elapsedTime * 0.15) * 14, 8, p.z + Math.cos(state.clock.elapsedTime * 0.15) * 14);
+    if (mode === "coop" && partner) {
+      const mid = p.clone().add(partner).multiplyScalar(0.5);
+      desired.set(mid.x - 10, 8.5, mid.z - 12);
+      look.copy(mid);
+    } else look.set(p.x, p.y + 1.4, p.z);
+    state.camera.position.lerp(desired, 1 - Math.pow(0.001, dt));
     state.camera.lookAt(look);
   });
   return null;
 }
 
-
-function DartsBoard({score,throws,onThrow}){
-  const [aim,setAim]=useState({x:0,y:0});
-  const [power,setPower]=useState(.72);
-  const boardRef=useRef();
-  const throwDart=()=>{
-    const accuracy=Math.max(0,1-Math.hypot(aim.x,aim.y));
-    const base=accuracy>.88?60:accuracy>.62?20:accuracy>.34?10:5;
-    const scored=Math.max(1,Math.round(base*(.65+power*.55)));
-    onThrow(scored);
-    setAim({x:(Math.random()-.5)*.55,y:(Math.random()-.5)*.55});
-  };
-  return <div className="darts-game">
-    <div className="darts-board" ref={boardRef}>
-      <div className="dart-ring ring-a"/><div className="dart-ring ring-b"/><div className="dart-ring ring-c"/>
-      <div className="dart-bull"/><div className="aim-dot" style={{left:`calc(50% + ${aim.x*38}%)`,top:`calc(50% + ${aim.y*38}%)`}}/>
+function DartsBoard({ throws, onThrow }) {
+  const [aim, setAim] = useState({ x: 0.1, y: -0.1 });
+  return (
+    <div className="darts-game">
+      <div className="darts-board">
+        <div className="aim-dot" style={{ left: `${50 + aim.x * 38}%`, top: `${50 + aim.y * 38}%` }} />
+      </div>
+      <div className="darts-hud"><span>THROW {throws + 1}/3</span><b>AIM</b></div>
+      <button className="primary-btn" onClick={() => { const accuracy = Math.max(0, 1 - Math.hypot(aim.x, aim.y)); onThrow(Math.round((accuracy > 0.75 ? 50 : 18) * (0.7 + Math.random() * 0.4))); setAim({ x: (Math.random() - 0.5) * 0.7, y: (Math.random() - 0.5) * 0.7 }); }}>THROW</button>
     </div>
-    <div className="darts-hud"><span>THROW {throws+1}/3</span><b>{score}</b></div>
-    <input className="power" type="range" min=".2" max="1" step=".01" value={power} onChange={e=>setPower(Number(e.target.value))}/>
-    <button className="primary-btn full" onClick={throwDart}>THROW DART</button>
-  </div>;
+  );
 }
 
-function App(){
-  const [balance,setBalance]=useState(10000),[modal,setModal]=useState(null),[stake,setStake]=useState(1000),[message,setMessage]=useState("FREE ROAM"),[locked,setLocked]=useState(false),[sprinting,setSprinting]=useState(false),[playerScore,setPlayerScore]=useState(0),[npcScore,setNpcScore]=useState(0),[throws,setThrows]=useState(0);
-  const playerRef=useRef(null),movementRef=useRef({x:0,z:0,sprint:false}),keys=useRef({});
-  useEffect(()=>{
-    const down=e=>{keys.current[e.key.toLowerCase()]=true;if(e.key.toLowerCase()==="shift")setSprinting(true)};
-    const up=e=>{keys.current[e.key.toLowerCase()]=false;if(e.key.toLowerCase()==="shift")setSprinting(false)};
-    const tick=()=>{const k=keys.current;movementRef.current={x:(k.d||k.arrowright?1:0)-(k.a||k.arrowleft?1:0),z:(k.s||k.arrowdown?1:0)-(k.w||k.arrowup?1:0),sprint:sprinting||!!k.shift};};
-    window.addEventListener("keydown",down);window.addEventListener("keyup",up);
-    const id=setInterval(tick,16);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);clearInterval(id)};
-  },[sprinting]);
-  const joystick=(x,z)=>{movementRef.current={...movementRef.current,x,z}};
-  const openDuel=()=>{setMessage("DARTS DUEL READY");setModal("duel")};
-  const confirmDuel=()=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(a>balance){setMessage("INSUFFICIENT BET");return}setBalance(b=>b-a);setPlayerScore(0);setNpcScore(0);setThrows(0);setLocked(true);setModal("playing");setMessage("LIVE DARTS DUEL")};
-  const finishDuel=win=>{const a=Math.max(100,Math.floor(Number(stake)||0));if(win)setBalance(b=>b+Math.floor(a*1.9));setLocked(false);setModal(null);setMessage(win?"YOU WON":"YOU LOST")};
-  const playerThrow=score=>{const nextThrows=throws+1;const nextPlayer=playerScore+score;setPlayerScore(nextPlayer);setThrows(nextThrows);if(nextThrows>=3){const npc=Math.round(15+Math.random()*55);const nextNpc=npcScore+npc;setNpcScore(nextNpc);setTimeout(()=>finishDuel(nextPlayer>=nextNpc),180);return;}const npc=Math.round(10+Math.random()*50);const nextNpc=npcScore+npc;setNpcScore(nextNpc);if(nextThrows>=2&&nextNpc>nextPlayer){setTimeout(()=>finishDuel(false),180);}};
-  return <div className="app">
-    <div className="scene"><Canvas shadows dpr={[1,1.5]} camera={{position:[14,7,17],fov:54}} gl={{antialias:true,powerPreference:"high-performance"}} onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.18;gl.outputColorSpace=THREE.SRGBColorSpace}}>
-      <color attach="background" args={["#93b8d5"]}/><fog attach="fog" args={["#93b8d5",42,110]}/>
-      <City onShop={()=>{setMessage("LUCKY SHOP");setModal("info")}} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef}/>
-      <CameraRig playerRef={playerRef}/>
-    </Canvas></div>
-    <header className="topbar"><div className="brand"><span className="brand-mark">B</span><div><strong>BET CITY</strong><small>OPEN WORLD • LIVE TOWN</small></div></div><div className="wallet"><span>BET</span><strong>{balance.toLocaleString()}</strong></div></header>
-    <div className="status-pill"><i className={locked?"live":""}/>{message}</div>
-    <div className="hud-left"><div className="mini-map"><span>◈</span><i>LUCKY</i><i>POOL</i><i>DARTS</i></div><div className="quest"><b>MAIN QUEST</b><span>Explore Bet City</span><small>Walk to Lucky Shop</small></div></div>
-    <div className="hud-right"><button onClick={()=>setModal("map")}>MAP</button><button>PHONE</button><button>INV</button><button>⚙</button></div>
-    <div className="joystick" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId)}} onPointerMove={e=>{if(e.buttons){const r=e.currentTarget.getBoundingClientRect();joystick(clamp((e.clientX-(r.left+r.width/2))/(r.width*.42),-1,1),clamp((e.clientY-(r.top+r.height/2))/(r.height*.42),-1,1))}}} onPointerUp={()=>joystick(0,0)}><div className="stick"/></div>
-    <div className="action-pad"><button onPointerDown={()=>setSprinting(true)} onPointerUp={()=>setSprinting(false)}>RUN</button><button onClick={openDuel}>FIGHT</button><button>ACT</button><button onClick={()=>setModal("map")}>MAP</button></div>
-    <div className="bottom-ui"><button className="glass-btn" onClick={()=>setModal("map")}>TOWN MAP</button><button className="primary-btn" onClick={openDuel}>CHALLENGE KAY</button></div>
-    {modal==="duel"&&<div className="modal-backdrop"><div className="modal"><div className="modal-kicker">DARTS DUEL</div><h2>Challenge KAY</h2><p>Stake virtual BET and compete for the pot.</p><label>YOUR STAKE</label><div className="stake-row"><input value={stake} type="number" min="100" step="100" onChange={e=>setStake(e.target.value)}/><span>BET</span></div><div className="modal-actions"><button className="glass-btn" onClick={()=>setModal(null)}>CANCEL</button><button className="primary-btn" onClick={confirmDuel}>START DUEL</button></div></div></div>}
-    {modal==="playing"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LIVE DUEL</div><h2>Darts Arena</h2><p>Best of three throws. Aim, control power, and beat KAY.</p><div className="duel-score"><div><small>YOU</small><strong>{playerScore}</strong></div><span>VS</span><div><small>KAY</small><strong>{npcScore}</strong></div></div><DartsBoard score={playerScore} throws={throws} onThrow={playerThrow}/></div></div>}
-    {modal==="info"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LUCKY SHOP</div><h2>Town Hub</h2><p>Enter the shop to find opponents and wager with virtual BET.</p><button className="primary-btn full" onClick={()=>setModal(null)}>ENTER TOWN</button></div></div>}
-    {modal==="map"&&<div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">CITY MAP</div><h2>Bet City</h2><div className="map-list"><span>01 <b>Lucky Shop</b></span><span>02 <b>Pool House</b></span><span>03 <b>Arcade</b></span><span>04 <b>Darts Bar</b></span><span>05 <b>Downtown Towers</b></span></div><button className="glass-btn full" onClick={()=>setModal(null)}>CLOSE</button></div></div>}
-  </div>;
+function App() {
+  const [balance, setBalance] = useState(10000);
+  const [modal, setModal] = useState(null);
+  const [stake, setStake] = useState(1000);
+  const [message, setMessage] = useState("FREE ROAM");
+  const [locked, setLocked] = useState(false);
+  const [sprinting, setSprinting] = useState(false);
+  const [playerScore, setPlayerScore] = useState(0);
+  const [npcScore, setNpcScore] = useState(0);
+  const [throws, setThrows] = useState(0);
+  const [cameraMode, setCameraMode] = useState("follow");
+  const [channel, setChannel] = useState("news");
+  const [scope, setScope] = useState("screen");
+  const playerRef = useRef(null);
+  const partnerRef = useRef({ position: new THREE.Vector3(-4, 0, 4) });
+  const movementRef = useRef({ x: 0, z: 0, sprint: false });
+  const keys = useRef({});
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    const socket = io("http://localhost:3001", { autoConnect: true, timeout: 2000 });
+    socketRef.current = socket;
+    socket.on("tv:state", (state) => {
+      if (state?.scope === "city") {
+        setChannel(state.channel);
+        setScope("city");
+        setMessage(`CITY BROADCAST · ${state.title || state.channel}`);
+      }
+    });
+    socket.on("player:move", (p) => { partnerRef.current = { position: new THREE.Vector3(p.x, 0, p.z) }; });
+    return () => socket.close();
+  }, []);
+
+  useEffect(() => {
+    const down = (e) => { keys.current[e.key.toLowerCase()] = true; if (e.key === "Shift") setSprinting(true); };
+    const up = (e) => { keys.current[e.key.toLowerCase()] = false; if (e.key === "Shift") setSprinting(false); };
+    const id = setInterval(() => {
+      const k = keys.current;
+      movementRef.current = { x: (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), z: (k.s || k.arrowdown ? 1 : 0) - (k.w || k.arrowup ? 1 : 0), sprint: sprinting || !!k.shift };
+      const p = playerRef.current;
+      if (p && socketRef.current?.connected) socketRef.current.emit("player:move", { x: p.position.x, y: 0, z: p.position.z, rotation: p.rotation.y, name: "YOU" });
+    }, 50);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); clearInterval(id); };
+  }, [sprinting]);
+
+  const applyTv = (nextChannel, nextScope) => {
+    setChannel(nextChannel);
+    setScope(nextScope);
+    const found = CHANNELS.find((c) => c.id === nextChannel);
+    setMessage(nextScope === "city" ? `CITY BROADCAST · ${found.title}` : found.title);
+    socketRef.current?.emit("tv:set", { channel: nextChannel, scope: nextScope, title: found.title });
+  };
+  const openDuel = () => { setMessage("DARTS DUEL READY"); setModal("duel"); };
+  const confirmDuel = () => {
+    const a = Math.max(100, Math.floor(Number(stake) || 0));
+    if (a > balance) { setMessage("INSUFFICIENT BET"); return; }
+    setBalance((b) => b - a); setPlayerScore(0); setNpcScore(0); setThrows(0); setLocked(true); setModal("playing");
+  };
+  const finishDuel = (win) => {
+    const a = Math.max(100, Math.floor(Number(stake) || 0));
+    if (win) setBalance((b) => b + Math.floor(a * 1.9));
+    setLocked(false); setModal(null); setMessage(win ? "YOU WON" : "YOU LOST");
+  };
+  const playerThrow = (score) => {
+    const nextThrows = throws + 1;
+    const nextPlayer = playerScore + score;
+    setPlayerScore(nextPlayer); setThrows(nextThrows);
+    const npc = Math.round(12 + Math.random() * 48);
+    const nextNpc = npcScore + npc;
+    setNpcScore(nextNpc);
+    if (nextThrows >= 3) setTimeout(() => finishDuel(nextPlayer >= nextNpc), 160);
+  };
+  const current = CHANNELS.find((c) => c.id === channel);
+
+  return (
+    <div className="app">
+      <div className="scene">
+        <Canvas shadows dpr={[1, 1.5]} camera={{ position: [16, 8, 18], fov: 48 }} gl={{ antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.05; }}>
+          <color attach="background" args={["#f0b27a"]} />
+          <fog attach="fog" args={["#e7c3a2", 28, 120]} />
+          <City onShop={() => setModal("info")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} />
+          <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={cameraMode} />
+          <EffectComposer>
+            <SMAA />
+            <Bloom intensity={0.35} luminanceThreshold={0.75} mipmapBlur />
+            <Noise opacity={0.025} />
+            <Vignette eskil={false} offset={0.15} darkness={0.55} />
+          </EffectComposer>
+        </Canvas>
+      </div>
+      <header className="topbar">
+        <div className="brand"><span className="brand-mark">B</span><div><strong>BET CITY</strong><small>ORIGINAL CITY · DUSK</small></div></div>
+        <div className="pickers">
+          <label>CAMERA<select value={cameraMode} onChange={(e) => setCameraMode(e.target.value)}><option value="follow">Follow</option><option value="shoulder">Shoulder</option><option value="hood">Hood</option><option value="cinematic">Cinematic</option><option value="coop">Co-op</option></select></label>
+          <label>TELE<select value={channel} onChange={(e) => applyTv(e.target.value, scope)}>{CHANNELS.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+          <label>BROADCAST<select value={scope} onChange={(e) => applyTv(channel, e.target.value)}><option value="screen">This screen</option><option value="city">City broadcast</option></select></label>
+        </div>
+        <div className="wallet"><span>BET</span><strong>{balance.toLocaleString()}</strong></div>
+      </header>
+      <div className="status-pill"><i className={locked || scope === "city" ? "live" : ""} />{message}</div>
+      <div className="hud-left"><div className="mini-map"><span /><b style={{ left: 12, top: 18 }}>SHOP</b><b style={{ right: 12, top: 18 }}>POOL</b><b style={{ left: 18, bottom: 16 }}>DARTS</b></div><div className="quest"><b>LIVE TV</b><span>{current.title}</span><small>{current.line}</small></div></div>
+      <div className="hud-right"><button className={cameraMode === "coop" ? "on" : ""} onClick={() => setCameraMode(cameraMode === "coop" ? "follow" : "coop")}>CO-OP</button><button className="on" onClick={() => setModal("tv")}>TELE</button><button onClick={() => setModal("map")}>MAP</button><button>INV</button></div>
+      <div className="joystick" onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={(e) => { if (!e.buttons) return; const r = e.currentTarget.getBoundingClientRect(); movementRef.current = { ...movementRef.current, x: clamp((e.clientX - (r.left + r.width / 2)) / (r.width * 0.42), -1, 1), z: clamp((e.clientY - (r.top + r.height / 2)) / (r.height * 0.42), -1, 1) }; }} onPointerUp={() => { movementRef.current = { ...movementRef.current, x: 0, z: 0 }; }}><div className="stick" /></div>
+      <div className="action-pad"><button onPointerDown={() => setSprinting(true)} onPointerUp={() => setSprinting(false)}>RUN</button><button onClick={openDuel}>FIGHT</button><button onClick={() => setModal("tv")}>TELE</button><button onClick={() => setModal("map")}>MAP</button></div>
+      <div className="bottom-ui"><button className="glass-btn" onClick={() => setModal("tv")}>TELEVISION</button><button className="primary-btn" onClick={openDuel}>CHALLENGE KAY</button></div>
+      {modal === "duel" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">DARTS DUEL</div><h2>Challenge Kay</h2><p>Stake virtual BET. Winner takes the pot minus the house cut.</p><label>YOUR STAKE</label><div className="stake-row"><input value={stake} type="number" min="100" step="100" onChange={(e) => setStake(e.target.value)} /><span>BET</span></div><div className="modal-actions"><button className="glass-btn" onClick={() => setModal(null)}>CANCEL</button><button className="primary-btn" onClick={confirmDuel}>START</button></div></div></div>}
+      {modal === "playing" && <div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LIVE DUEL</div><h2>Darts Arena</h2><div className="duel-score"><div><small>YOU</small><strong>{playerScore}</strong></div><span>VS</span><div><small>KAY</small><strong>{npcScore}</strong></div></div><DartsBoard throws={throws} onThrow={playerThrow} /></div></div>}
+      {modal === "info" && <div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">LUCKY SHOP</div><h2>Town hub</h2><p>Original storefront. Find opponents and wager virtual BET.</p><button className="primary-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
+      {modal === "map" && <div className="modal-backdrop"><div className="modal compact"><div className="modal-kicker">CITY MAP</div><h2>Bet City</h2><p>Lucky Shop, Pool House, Arcade, Darts Bar, downtown towers.</p><button className="glass-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
+      {modal === "tv" && <div className="modal-backdrop"><div className="modal"><div className="modal-kicker">TELEVISION</div><h2>{current.title}</h2><p>{current.line}</p><div className="channel-grid">{CHANNELS.map((c) => <button key={c.id} className={c.id === channel ? "on" : ""} onClick={() => applyTv(c.id, scope)}>{c.title}</button>)}</div><div className="scope-row"><button className={scope === "screen" ? "on" : ""} onClick={() => applyTv(channel, "screen")}>This screen</button><button className={scope === "city" ? "on" : ""} onClick={() => applyTv(channel, "city")}>City broadcast</button></div><div className="tv-readout">{scope === "city" ? "Broadcasting to every connected player." : "Only your screen changes."}</div><button className="glass-btn full" onClick={() => setModal(null)}>CLOSE</button></div></div>}
+    </div>
+  );
 }
-createRoot(document.getElementById("root")).render(<App/>);
+
+createRoot(document.getElementById("root")).render(<App />);
