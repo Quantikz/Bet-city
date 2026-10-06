@@ -410,9 +410,10 @@ function render(alpha: number, frameDt: number): void {
 
   const ax = lerp(player.px, player.x, alpha);
   const az = lerp(player.pz, player.z, alpha);
+  const ay = lerp(player.py, player.y, alpha);
   const ah = angleLerp(player.ph, player.heading, alpha);
   updateHumanAnimation(avatar, player.speed, frameDt);
-  avatar.position.set(ax, player.y, az);
+  avatar.position.set(ax, ay, az);
   avatar.rotation.y = ah;
   avatar.visible = mode === 'foot';
 
@@ -437,10 +438,15 @@ function render(alpha: number, frameDt: number): void {
     camVx = Math.cos(ah) * player.speed;
     camVz = -Math.sin(ah) * player.speed;
   }
+  const look = controls.cameraLook();
+  if (look.x !== 0 || look.y !== 0) follow.lookInput(look.x, look.y);
+
   const baseCam = mode === 'driving' ? CAR_CAM : FOOT_CAM;
   const viewPitch = options.cameraView === 'low' ? -0.08 : options.cameraView === 'high' ? 0.38 : options.cameraView === 'top' ? 0.95 : 0.05;
   const viewHeight = options.cameraView === 'top' ? baseCam.height + 1.5 : baseCam.height;
-  follow.update(active.x, active.z, active.heading, { ...baseCam, height: viewHeight, pitch: viewPitch, zoom: options.cameraZoom }, frameDt, camVx, camVz);
+  const aimZoom = mode === 'foot' && controls.aimHeld() ? 0.72 : 1;
+  const cameraZoom = Math.max(0.65, Math.min(1.6, options.cameraZoom * aimZoom));
+  follow.update(active.x, active.z, active.heading, { ...baseCam, height: viewHeight, pitch: viewPitch, zoom: cameraZoom }, frameDt, camVx, camVz);
 
   const speedMph = mode === 'driving' ? toMph(vehicles.playerForwardSpeed()) : toMph(player.speed);
   hud.update(speedMph, mode, active, vehicles.positions());
@@ -454,12 +460,16 @@ function render(alpha: number, frameDt: number): void {
   hud.setClock(timeOfDay);
   // BUSTED UI removed for AFEC City beta.
 
-  const look = controls.cameraLook();
-  if (look.x !== 0 || look.y !== 0) follow.lookInput(look.x, look.y);
-
-  const fireOrigin = new THREE.Vector3(ax, player.y + 1.35, az);
+  const fireOrigin = new THREE.Vector3(ax, ay + 1.35, az);
   const fireDir = new THREE.Vector3(Math.cos(follow.yaw), 0, -Math.sin(follow.yaw)).normalize();
-  gun.update(frameDt, mode === 'foot' && controls.fireHeld(), mode === 'foot' && controls.reloadPressed(), fireOrigin, fireDir, (dx, dz) => peds.shoot(ax, az, dx, dz));
+  gun.update(
+    frameDt,
+    mode === 'foot' && controls.fireHeld(),
+    mode === 'foot' && controls.reloadPressed(),
+    fireOrigin,
+    fireDir,
+    (dx, dz) => peds.shoot(ax, az, dx, dz, 48, 0.18, city.colliders),
+  );
 
   const driving = mode === 'driving';
   if (driving) {
