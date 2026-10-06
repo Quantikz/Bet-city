@@ -19,8 +19,28 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
 /** Procedural beta humans do not use skeletal animation yet; keep these hooks stable. */
-export function updateHumanAnimation(_group: THREE.Group, _speed: number, _dt: number): void {}
-export function freezeHumanAnimation(_group: THREE.Group): void {}
+export function updateHumanAnimation(group: THREE.Group, speed: number, dt: number): void {
+  // Lightweight procedural animation keeps the beta characters visibly alive
+  // without relying on the unvalidated GLB rig.  Parts are named in makePed().
+  const walk = Math.min(1, Math.max(0, speed / 2.2));
+  const t = performance.now() * 0.012;
+  const swing = Math.sin(t * (0.75 + walk * 1.8)) * 0.65 * walk;
+  const leftArm = group.getObjectByName('ped-arm-l');
+  const rightArm = group.getObjectByName('ped-arm-r');
+  const leftLeg = group.getObjectByName('ped-leg-l');
+  const rightLeg = group.getObjectByName('ped-leg-r');
+  if (leftArm) leftArm.rotation.z = swing;
+  if (rightArm) rightArm.rotation.z = -swing;
+  if (leftLeg) leftLeg.rotation.z = -swing * 0.55;
+  if (rightLeg) rightLeg.rotation.z = swing * 0.55;
+  group.position.y += Math.sin(t * 2.2) * 0.003 * walk * Math.min(1, dt * 60);
+}
+export function freezeHumanAnimation(group: THREE.Group): void {
+  for (const name of ['ped-arm-l', 'ped-arm-r', 'ped-leg-l', 'ped-leg-r']) {
+    const part = group.getObjectByName(name);
+    if (part) part.rotation.z = 0;
+  }
+}
 
 export class CityAssets {
   private readonly facadesByStyle: Record<FacadeStyle, THREE.CanvasTexture[]>;
@@ -421,34 +441,32 @@ export function makeCar(color: number, shape: CarShape = CAR_SHAPES[0]): CarMesh
   return { group, steerWheels };
 }
 export function makePed(color: number): THREE.Group {
-  // Keep the beta character renderer deterministic and dependency-free.
-  // The GLB rig is retained in the repo for the next character pass, but we
-  // do not replace a visible character asynchronously until its render path
-  // has been validated on mobile GPUs.
   const group = new THREE.Group();
   const skinTone = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68][Math.abs(Math.trunc(color)) % 5];
   const skin = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.72 });
   const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
   const pants = new THREE.MeshStandardMaterial({ color: 0x263142, roughness: 0.9 });
   const shoes = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.92 });
-  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0): void => {
+  const add = (name: string, geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0): THREE.Mesh => {
     const m = new THREE.Mesh(geo, mat);
+    m.name = name;
     m.position.set(x, y, z);
     m.castShadow = true;
     m.receiveShadow = true;
     group.add(m);
+    return m;
   };
-  add(new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
-  add(new THREE.SphereGeometry(0.105, 10, 8), skin, 0, 1.42);
-  add(new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
-  add(new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 }), 0, 1.77);
-  add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, -0.30, 1.08);
-  add(new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, 0.30, 1.08);
-  add(new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
-  add(new THREE.SphereGeometry(0.08, 8, 6), skin, 0.32, 0.79);
-  add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, -0.12, 0.48);
-  add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, 0.12, 0.48);
-  add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, -0.12, 0.08, -0.06);
-  add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
+  add('ped-body', new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
+  add('ped-neck', new THREE.CylinderGeometry(0.09, 0.09, 0.16, 8), skin, 0, 1.42);
+  add('ped-head', new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
+  add('ped-hair', new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 }), 0, 1.77);
+  add('ped-arm-l', new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, -0.30, 1.08);
+  add('ped-arm-r', new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, 0.30, 1.08);
+  add('ped-hand-l', new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
+  add('ped-hand-r', new THREE.SphereGeometry(0.08, 8, 6), skin, 0.32, 0.79);
+  add('ped-leg-l', new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, -0.12, 0.48);
+  add('ped-leg-r', new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, 0.12, 0.48);
+  add('ped-shoe-l', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, -0.12, 0.08, -0.06);
+  add('ped-shoe-r', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
   return group;
 }
