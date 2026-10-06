@@ -5,6 +5,8 @@ import {
   Car,
   Hand,
   ChevronsRight,
+  Crosshair,
+  ChevronsUp,
   RotateCcw,
   Radio,
   Grab,
@@ -40,6 +42,17 @@ export class TouchControls {
   private resetEdge = false;
   private radioEdge = false;
   private punchEdge = false;
+  private jumpEdge = false;
+  private reloadEdge = false;
+  private fireHeld = false;
+  private aimHeld = false;
+  private crouchHeld = false;
+  private lookPointer: number | null = null;
+  private lookX = 0;
+  private lookY = 0;
+  private readonly buttons = new Map<string, HTMLElement>();
+  private lookDx = 0;
+  private lookDy = 0;
 
   private stickPointer: number | null = null;
   private readonly base: HTMLElement;
@@ -95,35 +108,44 @@ export class TouchControls {
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
 
-    // A 2x2 grid keeps every button on screen even on a short landscape phone
-    // (a tall column pushed the top button off the top edge).
+    // PUBG-style combat layout: movement on the left, free-look on the right,
+    // with only context-relevant actions visible.
     const pad = div(
       root,
       'tc-buttons',
-      'position:absolute;right:calc(20px + env(safe-area-inset-right));' +
-        'bottom:calc(20px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,66px);' +
-        'grid-auto-rows:66px;gap:12px;pointer-events:none;',
+      'position:absolute;right:calc(3vw + env(safe-area-inset-right));bottom:calc(3vw + env(safe-area-inset-bottom));' +
+        'display:grid;grid-template-columns:repeat(2,62px);grid-auto-rows:62px;gap:9px;pointer-events:none;',
     );
-    this.holdButton(pad, 'tc-enter', Car, 'enter / exit', () => (this.enterEdge = true));
-    this.holdButton(
-      pad,
-      'tc-brake',
-      Hand,
-      'handbrake',
-      () => (this.brakeHeld = true),
-      () => (this.brakeHeld = false),
-    );
-    this.holdButton(
-      pad,
-      'tc-sprint',
-      ChevronsRight,
-      'sprint',
-      () => (this.sprintHeld = true),
-      () => (this.sprintHeld = false),
-    );
-    this.holdButton(pad, 'tc-reset', RotateCcw, 'reset', () => (this.resetEdge = true));
-    this.holdButton(pad, 'tc-radio', Radio, 'radio', () => (this.radioEdge = true));
+    this.holdButton(pad, 'tc-fire', Crosshair, 'fire', () => (this.fireHeld = true), () => (this.fireHeld = false));
+    this.holdButton(pad, 'tc-aim', Crosshair, 'aim', () => (this.aimHeld = true), () => (this.aimHeld = false));
+    this.holdButton(pad, 'tc-jump', ChevronsUp, 'jump', () => (this.jumpEdge = true));
+    this.holdButton(pad, 'tc-crouch', Hand, 'crouch', () => (this.crouchHeld = !this.crouchHeld));
+    this.holdButton(pad, 'tc-reload', RotateCcw, 'reload', () => (this.reloadEdge = true));
     this.holdButton(pad, 'tc-punch', Grab, 'punch', () => (this.punchEdge = true));
+    this.holdButton(pad, 'tc-sprint', ChevronsRight, 'sprint', () => (this.sprintHeld = true), () => (this.sprintHeld = false));
+    this.holdButton(pad, 'tc-enter', Car, 'enter / exit', () => (this.enterEdge = true));
+    this.holdButton(pad, 'tc-brake', Hand, 'handbrake', () => (this.brakeHeld = true), () => (this.brakeHeld = false));
+
+    // The entire unobstructed right side is the camera/look surface, like PUBG Mobile.
+    root.addEventListener('pointerdown', (e) => {
+      if (this.lookPointer !== null || e.clientX < window.innerWidth * 0.42) return;
+      this.lookPointer = e.pointerId;
+      this.lookX = e.clientX;
+      this.lookY = e.clientY;
+      (e.target as HTMLElement)?.setPointerCapture?.(e.pointerId);
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== this.lookPointer) return;
+      const dx = e.clientX - this.lookX;
+      const dy = e.clientY - this.lookY;
+      this.lookX = e.clientX;
+      this.lookY = e.clientY;
+      this.lookDx += dx;
+      this.lookDy += dy;
+    });
+    const releaseLook = (e: PointerEvent) => { if (e.pointerId === this.lookPointer) this.lookPointer = null; };
+    window.addEventListener('pointerup', releaseLook);
+    window.addEventListener('pointercancel', releaseLook);
 
     this.addFullscreenButton(root);
   }
@@ -192,8 +214,10 @@ export class TouchControls {
     );
     b.appendChild(icon(glyph));
     b.setAttribute('aria-label', label);
+    this.buttons.set(id, b);
     b.addEventListener('pointerdown', (e) => {
       onDown();
+      e.stopPropagation();
       b.style.background = 'rgba(90,120,180,.7)';
       e.preventDefault();
     });
@@ -231,10 +255,19 @@ export class TouchControls {
     this.radioEdge = false;
     return r;
   }
-  consumePunch(): boolean {
-    const p = this.punchEdge;
-    this.punchEdge = false;
-    return p;
+  consumePunch(): boolean { const p = this.punchEdge; this.punchEdge = false; return p; }
+  consumeJump(): boolean { const p = this.jumpEdge; this.jumpEdge = false; return p; }
+  consumeReload(): boolean { const p = this.reloadEdge; this.reloadEdge = false; return p; }
+  get fire(): boolean { return this.fireHeld; }
+  get aim(): boolean { return this.aimHeld; }
+  get crouch(): boolean { return this.crouchHeld; }
+  consumeLook(): { x: number; y: number } { const v={x:this.lookDx,y:this.lookDy}; this.lookDx=0; this.lookDy=0; return v; }
+
+  setMode(onFoot: boolean): void {
+    const foot = ['tc-fire','tc-aim','tc-jump','tc-crouch','tc-reload','tc-punch','tc-sprint'];
+    const car = ['tc-enter','tc-brake'];
+    for (const id of foot) { const b=this.buttons.get(id); if(b) b.style.display=onFoot?'flex':'none'; }
+    for (const id of car) { const b=this.buttons.get(id); if(b) b.style.display=onFoot?'none':'flex'; }
   }
 }
 
