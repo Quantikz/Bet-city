@@ -80,7 +80,7 @@ function Player({input,out,onNear,cameraState}){
    shops.forEach(([x,z,name])=>{const d=Math.hypot(r.current.position.x-x,r.current.position.z-z);if(d<6&&d<min){min=d;near=name}});
    onNear(near);
  });
- return <group ref={r}position={[0,0,12]}><Human src={A.people[0]}moving={cameraState.current.speed>.15}run={input.current.run}scale={1.05}/></group>;
+ return <group ref={r}position={[0,0,0]}><Human src={A.people[0]}moving={cameraState.current.speed>.15}run={input.current.run}scale={1.05}/></group>;
 }
 
 function Camera({player,state,zoom}){
@@ -205,8 +205,8 @@ function Town(){
 function ActivityModal({place,onClose,wallet,setWallet}){const[stake,setStake]=useState(100);const[result,setResult]=useState("");const play=()=>{const s=Math.min(Math.max(Number(stake)||0,10),wallet);if(s<10){setResult("Minimum stake is 10 BET.");return}setWallet(w=>w-s);const win=Math.random()<(place==="DARTS BAR"?.58:.5);if(win){const payout=Math.round(s*1.9);setWallet(w=>w+payout);setResult("WIN +"+payout+" BET");}else setResult("LOSS -"+s+" BET");};return <div className="activityModal"><div className="activityCard"><button className="closeActivity"onClick={onClose}>×</button><span>BET CITY ACTIVITY</span><h2>{place}</h2><p>Virtual wager prototype. Choose your stake and play.</p><div className="stakeRow"><input type="number"min="10"value={stake}onChange={e=>setStake(e.target.value)}/><b>BET</b></div><button className="playButton"onClick={play}>PLAY</button><div className="activityResult">{result||"Ready"}</div><small>Virtual BET only · no cashout</small></div></div>}
 
 function App(){
- const input=useRef({x:0,z:0,run:false}),keys=useRef(new Set()),player=useRef(),state=useRef({yaw:0,pitch:.28,speed:0}),drag=useRef({active:false,x:0,y:0});
- const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(8.5),[wallet,setWallet]=useState(()=>Number(localStorage.getItem("betcity_wallet")||10000)),[activity,setActivity]=useState(null),[stamina,setStamina]=useState(100);
+ const input=useRef({x:0,z:0,run:false}),keys=useRef(new Set()),player=useRef(),state=useRef({yaw:0,pitch:.18,speed:0}),drag=useRef({active:false,x:0,y:0});
+ const[speed,setSpeed]=useState("WALK"),[near,setNear]=useState(null),[joy,setJoy]=useState({x:0,z:0}),[time,setTime]=useState(.28),[zoom,setZoom]=useState(10.5),[wallet,setWallet]=useState(()=>Number(localStorage.getItem("betcity_wallet")||10000)),[activity,setActivity]=useState(null),[stamina,setStamina]=useState(100);
  useEffect(()=>{
    const sync=()=>{const k=keys.current;input.current.x=(k.has("a")||k.has("arrowleft")?-1:0)+(k.has("d")||k.has("arrowright")?1:0);input.current.z=(k.has("w")||k.has("arrowup")?-1:0)+(k.has("s")||k.has("arrowdown")?1:0);input.current.run=k.has("shift")&&stamina>3;setSpeed(input.current.run?"RUN":"WALK")};
    const down=e=>{keys.current.add(e.key.toLowerCase());sync()};const up=e=>{keys.current.delete(e.key.toLowerCase());sync()};
@@ -229,7 +229,7 @@ function App(){
  const touchMove=e=>{if(e.touches.length===2){e.preventDefault();const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(pinch.current.d){setZoom(z=>THREE.MathUtils.clamp(z-(d-pinch.current.d)*.025,4,14))}pinch.current.d=d}};
  const sun=Math.sin(time*Math.PI*2)*.5+.5;
  return <div className="game"onPointerDown={down}onPointerMove={moveLook}onPointerUp={up}onPointerCancel={up}onWheel={wheel}onTouchStart={touchStart}onTouchMove={touchMove}onTouchEnd={()=>pinch.current.d=0}>
-  <Canvas shadows dpr={[1,1.8]}camera={{position:[0,6,20],fov:55}}gl={{antialias:true}}>
+  <Canvas shadows dpr={[1,1.8]}camera={{position:[0,5,14],fov:55}}gl={{antialias:true}}>
    <color attach="background"args={["#87b9df"]}/><Sky distance={450000}sunPosition={[-80,55,-30]}rayleigh={.45}turbidity={7}mieCoefficient={.008}mieDirectionalG={.82}/>
    <fog attach="fog"args={["#a7c4d4",55,150]}/><hemisphereLight intensity={.6+sun*.35}groundColor="#344238"color="#d9edff"/>
    <ambientLight intensity={.28+sun*.3}/><directionalLight castShadow position={[-30,50,20]}intensity={.9+sun*1.8}shadow-mapSize-width={2048}shadow-mapSize-height={2048}shadow-bias={-.00012}/>
