@@ -535,18 +535,12 @@ window.__game = {
   get mode() {
     return mode;
   },
-  get health() {
-    return health;
-  },
+,
   get carHealth() {
     return vehicles.playerCarHealth();
   },
-  get wasted() {
-    return wasted;
-  },
-  get busted() {
-    return busted;
-  },
+,
+,
   get runOverCount() {
     return peds.runOverCount;
   },
