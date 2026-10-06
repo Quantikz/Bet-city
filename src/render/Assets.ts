@@ -327,21 +327,40 @@ export function makeCar(color: number, shape: CarShape = CAR_SHAPES[0]): CarMesh
 }
 
 export function makePed(color: number): THREE.Group {
+  // More human-like low-poly character: separate torso, neck, head, hair,
+  // arms, hands, legs and shoes instead of the old capsule + sphere.
   const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.26, 0.7, 4, 8),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.8 }),
-  );
-  body.position.y = 0.75;
-  body.castShadow = true;
-  group.add(body);
+  const skin = new THREE.MeshStandardMaterial({ color: 0xb97850, roughness: 0.72 });
+  const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
+  const pants = new THREE.MeshStandardMaterial({ color: 0x263142, roughness: 0.9 });
+  const shoes = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.92 });
+  const hair = new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 });
 
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 12, 10),
-    new THREE.MeshStandardMaterial({ color: 0xd8b48a, roughness: 0.7 }),
-  );
-  head.position.y = 1.45;
-  head.castShadow = true;
-  group.add(head);
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0, rx = 0): void => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.x = rx;
+    m.castShadow = true;
+    group.add(m);
+  };
+
+  add(new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
+  add(new THREE.SphereGeometry(0.105, 10, 8), skin, 0, 1.42);
+  add(new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
+  add(new THREE.SphereGeometry(0.225, 16, 8), hair, 0, 1.77);
+
+  // Upper arms + hands, slightly angled away from the torso.
+  const armGeo = new THREE.CapsuleGeometry(0.075, 0.42, 4, 8);
+  add(armGeo, shirt, -0.30, 1.08, 0, 0.10);
+  add(armGeo, shirt, 0.30, 1.08, 0, -0.10);
+  add(new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
+  add(new THREE.SphereGeometry(0.08, 8, 6), skin, 0.32, 0.79);
+
+  // Legs are separate so walking/tumbling reads as a person rather than a block.
+  add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, -0.12, 0.48);
+  add(new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, 0.12, 0.48);
+  add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, -0.12, 0.08, -0.06);
+  add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
+
   return group;
 }
