@@ -437,12 +437,12 @@ export function makePed(color: number): THREE.Group {
   // Use a textured real-scale human when available. Keep the procedural model as
   // an immediate fallback so the city never waits for a network asset.
   const group = new THREE.Group();
+  const SKIN_TONES = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68];
+  const skinTone = SKIN_TONES[Math.abs(Math.trunc(color)) % SKIN_TONES.length];
   if (realisticHumanTemplate) {
     setupHumanRig(group, SkeletonUtils.clone(realisticHumanTemplate), color, skinTone);
     return group;
   }
-  const SKIN_TONES = [0x4b2d1e, 0x6b3f29, 0x8b5a3c, 0xa96f4f, 0xc58a68];
-  const skinTone = SKIN_TONES[Math.abs(Math.trunc(color)) % SKIN_TONES.length];
   realisticHumanTargets.push({ target: group, shirtColor: color, skinTone });
   beginRealisticHumanLoad();
 
