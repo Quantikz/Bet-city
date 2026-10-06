@@ -18,41 +18,6 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
  */
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
-function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 0x3b82f6, skinTone = 0x8b5a3c): void {
-  target.clear();
-
-  // Normalize every imported human to real-world game scale. Cars are roughly
-  // 4m long, so an adult must be about 1.75m tall rather than inheriting the
-  // arbitrary GLB authoring units.
-  normalizeAssetHeight(model, 1.75);
-  prepareRealtimeAsset(model, { skinTone, accentColor: shirtColor, roughness: 0.55 });
-  target.add(model);
-
-  const mixer = new THREE.AnimationMixer(model);
-  const idleClip = realisticHumanAnimations.find((clip) => /idle|stand|rest/i.test(clip.name)) ?? realisticHumanAnimations[0];
-  const walkClip = realisticHumanAnimations.find((clip) => /walk|locomot/i.test(clip.name)) ?? realisticHumanAnimations[1] ?? idleClip;
-  const idle = idleClip ? mixer.clipAction(idleClip) : undefined;
-  const walk = walkClip ? mixer.clipAction(walkClip) : undefined;
-  if (idle) idle.play();
-  humanRigs.set(target, { mixer, idle, walk, current: idle ?? null });
-}
-
-function beginRealisticHumanLoad(): void {
-  if (realisticHumanLoading || realisticHumanTemplate) return;
-  realisticHumanLoading = new GLTFLoader().loadAsync(REAL_HUMAN_URL).then((character) => {
-    // Keep render mesh and animation clips from the exact same GLB/skeleton.
-    // This avoids remote-CORS failures and mismatched bone names/skeletons.
-    realisticHumanTemplate = character.scene;
-    realisticHumanAnimations = character.animations;
-    for (const pending of realisticHumanTargets) {
-      setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
-    }
-    realisticHumanTargets.length = 0;
-  }).catch((err) => {
-    console.warn('Rigged human model failed to load; keeping fallback character.', err);
-  });
-}
-
 /** Procedural beta humans do not use skeletal animation yet; keep these hooks stable. */
 export function updateHumanAnimation(_group: THREE.Group, _speed: number, _dt: number): void {}
 export function freezeHumanAnimation(_group: THREE.Group): void {}
