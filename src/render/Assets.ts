@@ -1,12 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { prepareRealtimeAsset, normalizeAssetHeight, createRealtimeLOD } from './RealisticPipeline';
+import { createRealtimeLOD } from './RealisticPipeline';
 import type { Building, Streetlight, Prop } from '../world/City';
 import type { FacadeStyle, PropType } from '../world/biome';
 import { makeFacadeTexture, makeGlowTexture } from './textures';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const LAMP_HEIGHT = 5.2;
 
@@ -19,23 +17,6 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
  * track each tower's real height.
  */
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
-
-// CC0 skinned humanoid with a real skeleton and embedded walk/idle clips.
-// Skin weights make elbows, knees, shoulders and hips deform with the bones.
-const REAL_HUMAN_URL = '/models/human.glb';
-let realisticHumanTemplate: THREE.Group | null = null;
-let realisticHumanAnimations: THREE.AnimationClip[] = [];
-let realisticHumanLoading: Promise<void> | null = null;
-const realisticHumanTargets: Array<{ target: THREE.Group; shirtColor: number; skinTone: number }> = [];
-
-interface HumanRig {
-  mixer: THREE.AnimationMixer;
-  idle?: THREE.AnimationAction;
-  walk?: THREE.AnimationAction;
-  current: THREE.AnimationAction | null;
-}
-
-const humanRigs = new WeakMap<THREE.Group, HumanRig>();
 
 function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 0x3b82f6, skinTone = 0x8b5a3c): void {
   target.clear();
@@ -56,7 +37,227 @@ function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 
   humanRigs.set(target, { mixer, idle, walk, current: idle ?? null });
 }
 
+function beginRealisticHumanLoad(): void {
+  if (realisticHumanLoading || realisticHumanTemplate) return;
+  realisticHumanLoading = new GLTFLoader().loadAsync(REAL_HUMAN_URL).then((character) => {
+    // Keep render mesh and animation clips from the exact same GLB/skeleton.
+    // This avoids remote-CORS failures and mismatched bone names/skeletons.
+    realisticHumanTemplate = character.scene;
+    realisticHumanAnimations = character.animations;
+    for (const pending of realisticHumanTargets) {
+      setupHumanRig(pending.target, SkeletonUtils.clone(realisticHumanTemplate), pending.shirtColor, pending.skinTone);
+    }
+    realisticHumanTargets.length = 0;
+  }).catch((err) => {
+    console.warn('Rigged human model failed to load; keeping fallback character.', err);
+  });
+}
 
+/** Procedural beta humans do not use skeletal animation yet; keep these hooks stable. */
+export function updateHumanAnimation(_group: THREE.Group, _speed: number, _dt: number): void {}
+export function freezeHumanAnimation(_group: THREE.Group): void {}
+
+export class CityAssets {
+  private readonly facadesByStyle: Record<FacadeStyle, THREE.CanvasTexture[]>;
+  private readonly sideCache = new Map<string, THREE.Material>();
+  private readonly roofMat: THREE.Material;
+
+  // Shared across every streetlight so the whole grid of lamps costs a handful
+  // of GPU resources, not one set per pole.
+  private readonly poleGeo = new THREE.CylinderGeometry(0.13, 0.18, LAMP_HEIGHT, 8);
+  private readonly headGeo = new THREE.SphereGeometry(0.42, 12, 10);
+  private readonly poolGeo = new THREE.PlaneGeometry(11, 11);
+  private readonly poleMat = new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.7, metalness: 0.4 });
+  private readonly headMat = new THREE.MeshStandardMaterial({
+    color: 0xffe6bf,
+    emissive: 0xffd9a0,
+    emissiveIntensity: 3,
+  });
+  private readonly poolMat: THREE.Material;
+
+  // Shared prototype geometry+material per prop type; each geometry is shifted so
+  // its base sits at y=0, so an instance matrix only needs world x/z + rotation.
+  private readonly propProto: Record<PropType, { geo: THREE.BufferGeometry; mat: THREE.Material }>;
+
+  constructor(seed: number, variants = 3) {
+    // A small pool of texture variants per facade style; buildings draw from the
+    // pool matching their biome-assigned style, so the skyline isn't all glass.
+    this.facadesByStyle = { glass: [], brick: [], concrete: [] };
+    FACADE_STYLES.forEach((style, s) => {
+      for (let i = 0; i < variants; i++) {
+        this.facadesByStyle[style].push(makeFacadeTexture(seed + s * 1000 + i * 101, style));
+      }
+    });
+    this.roofMat = new THREE.MeshStandardMaterial({ color: 0x14171f, roughness: 0.95 });
+    this.poolMat = new THREE.MeshBasicMaterial({
+      map: makeGlowTexture(),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      opacity: 0.9,
+    });
+
+    // Each prop is several primitives merged into ONE vertex-coloured geometry,
+    // so a whole prop type still renders as a single InstancedMesh while looking
+    // like an actual tree / hydrant / bench instead of a bare cone or box.
+    const vc = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
+    this.propProto = {
+      tree: { geo: makeTreeGeometry(), mat: vc() },
+      hydrant: { geo: makeHydrantGeometry(), mat: vc() },
+      bench: { geo: makeBenchGeometry(), mat: vc() },
+    };
+  }
+
+  /** One InstancedMesh per prop type (a few draw calls for the whole map). */
+  makeProps(props: Prop[]): THREE.Group {
+    const group = new THREE.Group();
+    const byType: Record<PropType, Prop[]> = { tree: [], hydrant: [], bench: [] };
+    for (const p of props) byType[p.type].push(p);
+
+    const dummy = new THREE.Object3D();
+    for (const type of Object.keys(byType) as PropType[]) {
+      const list = byType[type];
+      if (list.length === 0) continue;
+      const { geo, mat } = this.propProto[type];
+      const inst = new THREE.InstancedMesh(geo, mat, list.length);
+      inst.castShadow = true;
+      list.forEach((p, i) => {
+        dummy.position.set(p.x, 0, p.z);
+        dummy.rotation.set(0, p.rot, 0);
+        dummy.updateMatrix();
+        inst.setMatrixAt(i, dummy.matrix);
+      });
+      inst.instanceMatrix.needsUpdate = true;
+      group.add(inst);
+    }
+    return group;
+  }
+
+  makeStreetlight(s: Streetlight): THREE.Group {
+    const g = new THREE.Group();
+
+    const pole = new THREE.Mesh(this.poleGeo, this.poleMat);
+    pole.position.y = LAMP_HEIGHT / 2;
+    pole.castShadow = true;
+    g.add(pole);
+
+    const head = new THREE.Mesh(this.headGeo, this.headMat);
+    head.position.y = LAMP_HEIGHT;
+    g.add(head);
+
+    const pool = new THREE.Mesh(this.poolGeo, this.poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.y = 0.05; // hover just above the road to avoid z-fighting
+    g.add(pool);
+
+    g.position.set(s.x, 0, s.z);
+    return g;
+  }
+
+  makeBuilding(b: Building, index: number): THREE.Object3D {
+    const geo = new THREE.BoxGeometry(b.width, b.height, b.depth);
+    scaleFacadeUvs(geo, b.width, b.height, b.depth);
+    const pool = this.facadesByStyle[b.style];
+    const facade = pool[index % pool.length];
+    const side = this.sideMaterial(facade, b.color);
+
+    const far = new THREE.Mesh(geo, [side, side, this.roofMat, this.roofMat, side, side]);
+    far.position.set(b.cx, b.height / 2, b.cz);
+    far.castShadow = true;
+    far.receiveShadow = true;
+
+    const near = new THREE.Group();
+    near.add(far.clone());
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: b.style === 'glass' ? 0x1c2632 : 0x30343b,
+      metalness: b.style === 'glass' ? 0.55 : 0.18,
+      roughness: b.style === 'glass' ? 0.28 : 0.72,
+    });
+    const plinth = new THREE.Mesh(
+      new RoundedBoxGeometry(Math.max(3, b.width + 0.35), 0.65, Math.max(3, b.depth + 0.35), 2, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x20242b, roughness: 0.9 }),
+    );
+    plinth.position.set(b.cx, 0.33, b.cz);
+    near.add(plinth);
+    const roof = new THREE.Mesh(
+      new RoundedBoxGeometry(b.width + 0.3, 0.45, b.depth + 0.3, 2, 0.08),
+      trimMat,
+    );
+    roof.position.set(b.cx, b.height + 0.18, b.cz);
+    near.add(roof);
+    if (b.height > 18) {
+      const finGeo = new THREE.BoxGeometry(0.22, b.height - 1.5, 0.28);
+      for (const x of [b.cx - b.width / 2 + 0.22, b.cx + b.width / 2 - 0.22]) {
+        const fin = new THREE.Mesh(finGeo, trimMat);
+        fin.position.set(x, b.height / 2 + 0.55, b.cz + b.depth / 2 + 0.06);
+        near.add(fin);
+      }
+    }
+    const door = new THREE.Mesh(
+      new RoundedBoxGeometry(1.5, 2.6, 0.10, 2, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x18212a, metalness: 0.15, roughness: 0.3 }),
+    );
+    door.position.set(b.cx, 1.3, b.cz + b.depth / 2 + 0.055);
+    near.add(door);
+    const canopy = new THREE.Mesh(
+      new RoundedBoxGeometry(2.1, 0.12, 0.75, 2, 0.05),
+      trimMat,
+    );
+    canopy.position.set(b.cx, 2.72, b.cz + b.depth / 2 + 0.3);
+    near.add(canopy);
+    if (b.height > 28) {
+      const acMat = new THREE.MeshStandardMaterial({ color: 0x6b727b, metalness: 0.5, roughness: 0.6 });
+      for (let i = 0; i < 2; i++) {
+        const ac = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.9, 1.1, 2, 0.12), acMat);
+        ac.position.set(b.cx - b.width * 0.2 + i * b.width * 0.4, b.height + 0.72, b.cz - b.depth * 0.15);
+        near.add(ac);
+      }
+    }
+    near.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
+    });
+    return createRealtimeLOD(near, far, 0, 72);
+  }
+
+  /**
+   * Day/night: lit windows and lamp heads shouldn't glow in daylight, so scale
+   * their emissive by the daylight factor (`d`: 0 night → 1 noon). By day the
+   * facades also turn glassier (lower roughness, higher metalness) so windows
+   * read as reflective glass instead of dark holes.
+   */
+  setDaylight(d: number): void {
+    const lit = 1 - 0.92 * d; // full glow at night → nearly off at noon
+    for (const m of this.sideCache.values()) {
+      const sm = m as THREE.MeshStandardMaterial;
+      sm.emissiveIntensity = 1.8 * lit;
+      sm.roughness = 0.75 - 0.5 * d;
+      sm.metalness = 0.05 + 0.5 * d;
+    }
+    this.headMat.emissiveIntensity = 3 * lit;
+    (this.poolMat as THREE.MeshBasicMaterial).opacity = 0.9 * lit;
+  }
+
+  private sideMaterial(facade: THREE.CanvasTexture, tint: number): THREE.Material {
+    const key = `${facade.uuid}:${tint}`;
+    let mat = this.sideCache.get(key);
+    if (!mat) {
+      mat = new THREE.MeshStandardMaterial({
+        color: tint,
+        map: facade,
+        emissive: 0xffffff,
+        emissiveMap: facade,
+        emissiveIntensity: 1.8,
+        roughness: 0.75,
+        metalness: 0.05,
+      });
+      this.sideCache.set(key, mat);
+    }
+    return mat;
+  }
+}
+
+/** Scale per-face UVs so windows tile by real dimensions; roof/floor collapse to the dark texel. */
 function scaleFacadeUvs(geo: THREE.BoxGeometry, w: number, h: number, d: number): void {
   const uv = geo.attributes.uv as THREE.BufferAttribute;
   const set = (face: number, su: number, sv: number): void => {
@@ -286,4 +487,3 @@ export function makePed(color: number): THREE.Group {
   add(new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
   return group;
 }
-
