@@ -108,6 +108,19 @@ export class TouchControls {
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
 
+    const lookSurface = div(
+      root,
+      'tc-look',
+      'position:absolute;right:0;top:0;width:58%;height:100%;pointer-events:auto;touch-action:none;z-index:0;'
+    );
+    lookSurface.addEventListener('pointerdown', (e) => {
+      if (this.lookPointer !== null) return;
+      this.lookPointer = e.pointerId;
+      this.lookX = e.clientX;
+      this.lookY = e.clientY;
+      e.preventDefault();
+    });
+
     // PUBG-style combat layout: movement on the left, free-look on the right,
     // with only context-relevant actions visible.
     const pad = div(
