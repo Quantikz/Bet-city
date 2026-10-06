@@ -63,8 +63,7 @@ export class Controls {
 
   resetPressed(): boolean {
     const key = this.kb.wasPressed('KeyR');
-    const tap = this.touch?.consumeReset() ?? false;
-    return key || tap || this.pad.wasPressed(GP.Y);
+    return key || this.pad.wasPressed(GP.Y);
   }
 
   jumpPressed(): boolean {
@@ -102,8 +101,7 @@ export class Controls {
   radioStep(): number {
     const next = this.kb.wasPressed('BracketRight') || this.pad.wasPressed(GP.RB);
     const prev = this.kb.wasPressed('BracketLeft') || this.pad.wasPressed(GP.LB);
-    const tap = this.touch?.consumeRadio() ?? false; // touch button only goes forward
-    if (next || tap) return 1;
+    if (next) return 1;
     if (prev) return -1;
     return 0;
   }
