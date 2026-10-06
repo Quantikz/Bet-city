@@ -10,7 +10,7 @@ import { TouchControls } from '../ui/TouchControls';
  * abstraction instead of branching on input device.
  *
  * Steering/throttle and on-foot strafing are both derived from `move()`:
- *   driving: throttle = move.y, steer = -move.x
+ *   driving: throttle = move.y, steer = move.x
  *   on foot: forward  = move.y, strafe = move.x
  *
  * Inputs are CONTEXTUAL: callers pass `onFoot` so the gamepad can map the same
