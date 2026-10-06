@@ -25,12 +25,9 @@ export class HUD {
   private readonly mapCtx: CanvasRenderingContext2D;
   private readonly staticMap: HTMLCanvasElement;
   private readonly toWorld: number;
-  private readonly wastedEl: HTMLElement;
-  private readonly bustedEl: HTMLElement;
   private readonly scoreEl: HTMLElement;
   private readonly radioEl: HTMLElement;
   private readonly carEl: HTMLElement;
-  private readonly wantedEl: HTMLElement;
   private readonly clockEl: HTMLElement;
   private readonly ammoEl: HTMLElement;
   private viewX = 0; // streamed-radar centre (the player), set each update
@@ -73,14 +70,22 @@ export class HUD {
     // Mode chip removed for a cleaner in-world HUD.
     this.modeEl.style.display = 'none';
 
-    this.wantedEl = document.createElement('div');
-    this.wantedEl.style.cssText =
-      'position:absolute;left:20px;top:74px;font-size:18px;letter-spacing:3px;' +
-      'color:#ffd24a;text-shadow:0 1px 4px #000;';
-    const wantedStyle = document.createElement('style');
-    wantedStyle.textContent = '@keyframes wantedFlash{0%{opacity:1}100%{opacity:.25}}';
-    root.append(wantedStyle, this.wantedEl);
-    this.wantedEl.style.display = 'none';
+    const bigText =
+      'position:absolute;inset:0;display:none;align-items:center;justify-content:center;' +
+      'font-size:13vw;font-weight:800;letter-spacing:6px;' +
+      'text-shadow:0 4px 24px #000;font-family:Georgia,"Times New Roman",serif;';
+    this.wastedEl = document.createElement('div');
+    this.wastedEl.textContent = 'WASTED';
+    this.wastedEl.style.cssText =
+      bigText + 'color:#c0202a;background:radial-gradient(circle,rgba(40,0,0,.35),rgba(0,0,0,.85));';
+    root.appendChild(this.wastedEl);
+
+    this.bustedEl = document.createElement('div');
+    this.bustedEl.textContent = 'BUSTED';
+    this.bustedEl.style.cssText =
+      bigText + 'color:#3aa0ff;background:radial-gradient(circle,rgba(0,16,40,.4),rgba(0,0,0,.85));';
+    root.appendChild(this.bustedEl);
+    this.bustedEl.style.display = 'none';
 
     this.scoreEl = document.createElement('div');
     this.scoreEl.style.cssText =
@@ -228,9 +233,6 @@ export class HUD {
     this.speedEl.textContent = String(Math.round(speedKmh));
     this.modeEl.textContent = mode === 'driving' ? '🚗 DRIVING' : '🚶 ON FOOT';
 
-    this.wastedEl.style.display = 'none';
-    this.bustedEl.style.display = 'none';
-
     const ctx = this.mapCtx;
     ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
     if (this.streaming) {
@@ -282,11 +284,4 @@ export class HUD {
     this.clockEl.textContent = `🕐 ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
   }
 
-  setWanted(_stars: number, _cooling = false): void {
-    this.wantedEl.style.display = 'none';
-  }
-
-  setBusted(_on: boolean): void {
-    this.bustedEl.style.display = 'none';
-  }
 }
