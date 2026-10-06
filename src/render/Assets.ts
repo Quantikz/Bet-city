@@ -58,10 +58,7 @@ function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 
 
 function beginRealisticHumanLoad(): void {
   if (realisticHumanLoading || realisticHumanTemplate) return;
-  realisticHumanLoading = Promise.all([
-    new GLTFLoader().loadAsync(REAL_HUMAN_URL),
-    new GLTFLoader().loadAsync(REAL_HUMAN_ANIMATION_URL),
-  ]).then(([character]) => {
+  realisticHumanLoading = new GLTFLoader().loadAsync(REAL_HUMAN_URL).then((character) => {
     // Keep render mesh and animation clips from the exact same GLB/skeleton.
     // This avoids remote-CORS failures and mismatched bone names/skeletons.
     realisticHumanTemplate = character.scene;
