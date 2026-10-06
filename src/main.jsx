@@ -155,11 +155,7 @@ function TrafficCar({src,axis,lane,index}){
 }
 
 
-const worldObstacles=[
- [-12,10,"barrier"],[12,10,"barrier"],[-12,-10,"barrier"],[12,-10,"barrier"],
- [-6,27,"bin"],[6,27,"bin"],[-27,6,"pole"],[27,-6,"pole"],
- [-27,-6,"barrier"],[27,6,"barrier"]
-];
+const worldObstacles=[];
 
 function StreetObstacles(){
  return <group>
@@ -220,7 +216,7 @@ function TownDetails(){
 }
 
 function Town(){
- const tallScale=[2.35,2.7,3.1,2.5,3.25,2.8];
+ 
  return <group>
   <mesh receiveShadow rotation={[-Math.PI/2,0,0]}position={[0,-.1,0]}><planeGeometry args={[150,150]}/><meshStandardMaterial color="#55605b"roughness={.95}/></mesh>
   <Roads/><StreetFurniture/><TownDetails/><StreetObstacles/>
@@ -229,7 +225,7 @@ function Town(){
   {[-24,0,24].map((lane,i)=><TrafficCar key={"vz"+i}src={A.cars[i%A.cars.length]}axis="z"lane={lane}index={i}/>)}
   {[-24,12,36].map((lane,i)=><TrafficCar key={"hx"+i}src={A.cars[(i+1)%A.cars.length]}axis="x"lane={lane}index={i+3}/>)}
   {[[-16,-16],[16,-16],[-16,16],[16,16],[0,-18],[0,18],[-18,0],[18,0]].map((p,i)=><MovingNPC key={"n"+i}src={A.people[i%2]}start={p}index={i}/>)}
-  {shops.map(([x,z,name],i)=><Text key={i}position={[x,7,z]}fontSize={.5}color="#fff"outlineWidth={.018}outlineColor="#000"anchorX="center">{name}</Text>)}
+
  </group>;
 }
 
