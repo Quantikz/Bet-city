@@ -35,7 +35,7 @@ const STEP_DISTANCE = 1.7; // metres of travel between footstep sounds
 let footAccum = 0;
 
 let dayLength = 480; // seconds for a full day/night cycle (overridden by options)
-let timeOfDay = 0; // [0,1), 0 = midnight (the original night look)
+let timeOfDay = 0.5; // [0,1), start at bright midday for a clearer beta presentation
 
 const container = document.getElementById('app')!;
 const touch = isTouchDevice();
