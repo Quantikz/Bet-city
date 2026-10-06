@@ -77,6 +77,7 @@ export class HUD {
     const wantedStyle = document.createElement('style');
     wantedStyle.textContent = '@keyframes wantedFlash{0%{opacity:1}100%{opacity:.25}}';
     root.append(wantedStyle, this.wantedEl);
+    this.wantedEl.style.display = 'none';
 
     const healthTrack = document.createElement('div');
     healthTrack.style.cssText =
@@ -134,8 +135,13 @@ export class HUD {
     this.bustedEl.style.cssText =
       bigText + 'color:#3aa0ff;background:radial-gradient(circle,rgba(0,16,40,.4),rgba(0,0,0,.85));';
     root.appendChild(this.bustedEl);
+    this.bustedEl.style.display = 'none';
 
-    // (Control legend now lives in the title/pause menu — keep the HUD clean.)
+    const afec = document.createElement('div');
+    afec.textContent = 'AFEC CITY';
+    afec.style.cssText = 'position:absolute;left:20px;top:18px;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(12,18,24,.28);backdrop-filter:blur(10px);font:800 11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:#f4f8ff;';
+    root.appendChild(afec);
+    // Control legend now lives in the title/pause menu — keep the HUD clean.
 
     // (Decorative wordmark dropped — the splash/title menu carry the name; the
     // top-right corner is the clock now.)
@@ -259,13 +265,11 @@ export class HUD {
     this.clockEl.textContent = `🕐 ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
   }
 
-  setWanted(stars: number, cooling = false): void {
-    this.wantedEl.textContent = stars > 0 ? '★'.repeat(stars) : '';
-    // Flash the stars while you're shaking the cops (wanted cooling off).
-    this.wantedEl.style.animation = cooling ? 'wantedFlash .5s steps(2) infinite' : 'none';
+  setWanted(_stars: number, _cooling = false): void {
+    this.wantedEl.style.display = 'none';
   }
 
-  setBusted(on: boolean): void {
-    this.bustedEl.style.display = on ? 'flex' : 'none';
+  setBusted(_on: boolean): void {
+    this.bustedEl.style.display = 'none';
   }
 }
