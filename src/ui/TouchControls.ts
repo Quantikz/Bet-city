@@ -38,8 +38,6 @@ export class TouchControls {
   private brakeHeld = false;
   private sprintHeld = false;
   private enterEdge = false;
-  private resetEdge = false;
-  private radioEdge = false;
   private punchEdge = false;
   private jumpEdge = false;
   private reloadEdge = false;
@@ -261,16 +259,6 @@ export class TouchControls {
     const e = this.enterEdge;
     this.enterEdge = false;
     return e;
-  }
-  consumeReset(): boolean {
-    const r = this.resetEdge;
-    this.resetEdge = false;
-    return r;
-  }
-  consumeRadio(): boolean {
-    const r = this.radioEdge;
-    this.radioEdge = false;
-    return r;
   }
   consumePunch(): boolean { const p = this.punchEdge; this.punchEdge = false; return p; }
   consumeJump(): boolean { const p = this.jumpEdge; this.jumpEdge = false; return p; }
