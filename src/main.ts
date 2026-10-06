@@ -606,6 +606,8 @@ const menu = new Menu(container, options, worldSeed, gameMode, {
   },
 });
 
+addEventListener('afec-settings', () => setPaused(!menu.isOpen()));
+
 function setPaused(p: boolean): void {
   if (p) menu.openAs('pause');
   else menu.close();
