@@ -50,6 +50,9 @@ export class TouchControls {
   private readonly buttons = new Map<string, HTMLElement>();
   private lookDx = 0;
   private lookDy = 0;
+  private pinchZoomDelta = 0;
+  private readonly pointers = new Map<number, { x: number; y: number }>();
+  private pinchDistance = 0;
 
   private stickPointer: number | null = null;
   private readonly base: HTMLElement;
@@ -104,6 +107,34 @@ export class TouchControls {
     };
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
+
+    const trackPointer = (e: PointerEvent): void => {
+      if (e.pointerType !== 'touch') return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size === 2) {
+        const pts = [...this.pointers.values()];
+        this.pinchDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        this.lookPointer = null;
+      }
+    };
+    const movePointer = (e: PointerEvent): void => {
+      if (e.pointerType !== 'touch' || !this.pointers.has(e.pointerId)) return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size < 2) return;
+      const pts = [...this.pointers.values()];
+      const distance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (this.pinchDistance > 0) this.pinchZoomDelta += (this.pinchDistance - distance) / Math.max(80, this.pinchDistance);
+      this.pinchDistance = distance;
+      e.preventDefault();
+    };
+    const releasePointer = (e: PointerEvent): void => {
+      this.pointers.delete(e.pointerId);
+      if (this.pointers.size < 2) this.pinchDistance = 0;
+    };
+    window.addEventListener('pointerdown', trackPointer);
+    window.addEventListener('pointermove', movePointer, { passive: false });
+    window.addEventListener('pointerup', releasePointer);
+    window.addEventListener('pointercancel', releasePointer);
 
     const lookSurface = div(
       root,
@@ -266,6 +297,7 @@ export class TouchControls {
   get aim(): boolean { return this.aimHeld; }
   get crouch(): boolean { return this.crouchHeld; }
   consumeLook(): { x: number; y: number } { const v={x:this.lookDx,y:this.lookDy}; this.lookDx=0; this.lookDy=0; return v; }
+  consumePinchZoom(): number { const v=this.pinchZoomDelta; this.pinchZoomDelta=0; return v; }
 
   setMode(onFoot: boolean): void {
     const foot = ['tc-fire','tc-aim','tc-jump','tc-crouch','tc-reload','tc-punch','tc-sprint'];
