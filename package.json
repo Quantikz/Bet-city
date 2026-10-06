@@ -1,7 +1,7 @@
 {
-  "name": "gta7",
+  "name": "afec-city",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-beta",
   "type": "module",
   "description": "A browser-based, GTA-style 3D open-world driving slice. Built in TypeScript + Three.js. (Yes, the name is a joke.)",
   "scripts": {
