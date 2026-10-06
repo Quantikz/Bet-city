@@ -243,8 +243,8 @@ function City({ onShop, onDarts, onBuilding, playerRef, movementRef, channelRef,
       <CC0Asset url={assetUrl(ASSETS.roads.lamp)} position={[7,0,6]} rotation={[0,Math.PI,0]} scale={2.2} />
       {buildingSpots.map(([x,y,z,r,i]) => <group key={i} onClick={() => onBuilding?.(i)}><CC0Asset url={assetUrl(ASSETS.buildings[i % ASSETS.buildings.length])} position={[x,y,z]} rotation={[0,r,0]} scale={3.2} /></group>)}
       <NamedBuilding position={[-12,0,-12]} name="LUCKY SHOP" accent="#e15b4c" onClick={onShop} />
-      <NamedBuilding position={[12,0,-12]} name="POOL HOUSE" accent="#49b4d4" />
-      <NamedBuilding position={[-12,0,13]} name="ARCADE" accent="#9a74e0" />
+      <NamedBuilding position={[12,0,-12]} name="POOL HOUSE" accent="#49b4d4" onClick={() => onBuilding?.(101)} />
+      <NamedBuilding position={[-12,0,13]} name="ARCADE" accent="#9a74e0" onClick={() => onBuilding?.(102)} />
       <NamedBuilding position={[12,0,13]} name="DARTS BAR" accent="#e0a15a" onClick={onDarts} />
       {[[-10,-7],[10,-7],[-10,9],[10,9]].map((p,i)=><CC0Asset key={"l"+i} url={assetUrl(ASSETS.roads.lamp)} position={[p[0],0,p[1]]} scale={2} />)}
       {ROUTES.slice(0,4).map((route,i)=><TrafficCC0 key={i} route={route} asset={ASSETS.cars[i % ASSETS.cars.length]} pace={[8,6.5,7.2,6.8][i]} offset={i} trafficRef={trafficRef} playerRef={playerRef} />)}
