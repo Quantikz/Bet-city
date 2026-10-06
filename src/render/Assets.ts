@@ -33,7 +33,7 @@ export function updateHumanAnimation(group: THREE.Group, speed: number, dt: numb
   if (rightArm) rightArm.rotation.z = -swing;
   if (leftLeg) leftLeg.rotation.z = -swing * 0.55;
   if (rightLeg) rightLeg.rotation.z = swing * 0.55;
-  group.position.y += Math.sin(t * 2.2) * 0.003 * walk * Math.min(1, dt * 60);
+  // Keep locomotion entirely in limb rotations; root position is owned by the pedestrian system.
 }
 export function freezeHumanAnimation(group: THREE.Group): void {
   for (const name of ['ped-arm-l', 'ped-arm-r', 'ped-leg-l', 'ped-leg-r']) {
