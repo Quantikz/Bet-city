@@ -149,29 +149,9 @@ function windowRow(x,y,z,count,spacing,rot=0){
 const obstacles=[];
 function addObstacle(x,z,halfX,halfZ,padding=.45){ obstacles.push({x,z,halfX:halfX+padding,halfZ:halfZ+padding}); }
 
-function house(x,z,variant=0){
-  const w=16,h=variant===1?7:8,d=14;
-  const body=[M.wall2,M.wall,M.wall3][variant%3];
-  box("House",[x,h/2,z],[w,h,d],body);
-  const roofMat=variant===2?M.roofBlue:M.roof;
-  box("Roof",[x,h+.55,z],[w+1,.65,d+1],roofMat,[0,0,0]);
-  box("RoofCap",[x,h+1.0,z],[w*.72,.22,d*.9],M.trim);
-
-  const front=z-d/2-.08;
-  windowRow(x-3.7,4.5,front,2,4,0);
-  box("Door",[x,2.0,front-.06],[2.5,4,.16],M.door);
-  box("DoorTrim",[x,2.1,front-.15],[2.9,4.25,.12],M.trim);
-  box("Porch",[x,0.32,z-d/2-1.05],[6,.3,2.2],M.sidewalk);
-  addObstacle(x,z,w/2,d/2,.9);
-
-  if(variant!==1){
-    box("Balcony",[x,5.5,front-1.05],[6,.28,1.8],M.trim);
-    for(let i=-2;i<=2;i++) cyl("Rail",[x+i*1.2,6.05,front-2.0],[.07,.7,.07],M.frame);
-  }
-  for(let i=-1;i<=1;i++) box("Fence",[x+i*4.5,.75,z+d/2+1.5],[.14,1.5,7],M.wood);
-  box("Gate",[x,.75,z+d/2+1.5],[2.2,1.5,.16],M.wood);
-  return {x,z,w,d};
-}
+const BUILDING_BASE="https://github.com/bevyengine/bevy_asset_files/raw/main/kenney";
+const RESIDENTIAL_BUILDINGS=["b","c","d","e","f","g","h","i","k","l","o","u"];
+const COMMERCIAL_BUILDINGS=["a","b","c","d","f","g","h"];
 
 const plots=[];
 for(let gx=-3;gx<=2;gx++){
@@ -179,9 +159,43 @@ for(let gx=-3;gx<=2;gx++){
     const x=gx*STEP+17+(gz%2)*4;
     const z=gz*STEP+17+(gx%2)*4;
     if(Math.abs(x)>88||Math.abs(z)>88) continue;
-    plots.push(house(x,z,(gx+gz+9)%3));
+    plots.push({x,z,variant:(gx+gz+9)%RESIDENTIAL_BUILDINGS.length});
   }
 }
+
+function placeGLBBuilding(entity,x,z,scale=1,rot=0,halfX=8,halfZ=7){
+  entity.setPosition(x,0,z);
+  entity.setEulerAngles(0,rot,0);
+  entity.setLocalScale(scale,scale,scale);
+  obstacles.push({x,z,halfX,halfZ});
+}
+
+const residentialPromises=RESIDENTIAL_BUILDINGS.map((id,i)=>
+  loadGLB(BUILDING_BASE+"/city-kit-suburban/building-type-"+id+".glb","residential-"+i,[1,1,1])
+);
+const commercialPromises=COMMERCIAL_BUILDINGS.map((id,i)=>
+  loadGLB(BUILDING_BASE+"/city-kit-commercial/building-"+id+".glb","commercial-"+i,[1,1,1])
+);
+
+Promise.all(residentialPromises).then(models=>{
+  plots.forEach((p,i)=>{
+    const source=models[i%models.length].entity;
+    const building=source.clone();
+    app.root.addChild(building);
+    placeGLBBuilding(building,p.x,p.z,.72,(i%4)*90,7.5,6.5);
+  });
+  models.forEach(m=>m.entity.destroy());
+}).catch(err=>console.warn("Residential assets failed to load",err));
+
+Promise.all(commercialPromises).then(models=>{
+  [[-51,-17],[51,51]].forEach((pos,i)=>{
+    const source=models[i%models.length].entity;
+    const building=source.clone();
+    app.root.addChild(building);
+    placeGLBBuilding(building,pos[0],pos[1],.9,i%2?90:0,9,7);
+  });
+  models.forEach(m=>m.entity.destroy());
+}).catch(err=>console.warn("Commercial assets failed to load",err));
 
 function shop(x,z){
   box("Shop",[x,3.5,z],[19,7,13],M.wall3);
@@ -230,11 +244,6 @@ function loadGLB(url,name,scale=[1,1,1]){
     });
   });
 }
-
-const REAL_TREE_URLS=[
-  "https://cdn.cinevva.com/assets/kenney/nature/tree-pine-a.glb",
-  "https://cdn.cinevva.com/assets/kenney/nature/tree-oak.glb"
-];
 
 const realCarPromise=loadGLB(REAL_CAR_URL,"real-car",[.62,.62,.62]);
 const realHumanPromise=loadGLB(REAL_HUMAN_URL,"real-human",[1.0,1.0,1.0]);
