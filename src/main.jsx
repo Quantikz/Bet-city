@@ -225,7 +225,7 @@ function Citizen({ position, name, shirt, player, movementRef, playerRef, traffi
   );
 }
 
-function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef, peers = [] }) {
+function City({ onShop, onDarts, onBuilding, playerRef, movementRef, channelRef, trafficRef, peers = [] }) {
   const buildingSpots = [
     [-16,0,-4,0,0],[16,0,-3,Math.PI,0],[-16,0,16,0,1],[16,0,16,Math.PI,2],
     [-30,0,-28,0,3],[30,0,-28,Math.PI,4],[-30,0,24,0,5],[30,0,24,Math.PI,6],
@@ -241,7 +241,7 @@ function City({ onShop, onDarts, playerRef, movementRef, channelRef, trafficRef,
       <CC0Asset url={assetUrl(ASSETS.roads.intersection)} position={[0,0,0]} scale={[2.2,1,2.2]} />
       <CC0Asset url={assetUrl(ASSETS.roads.lamp)} position={[-7,0,-6]} scale={2.2} />
       <CC0Asset url={assetUrl(ASSETS.roads.lamp)} position={[7,0,6]} rotation={[0,Math.PI,0]} scale={2.2} />
-      {buildingSpots.map(([x,y,z,r,i]) => <CC0Asset key={i} url={assetUrl(ASSETS.buildings[i % ASSETS.buildings.length])} position={[x,y,z]} rotation={[0,r,0]} scale={3.2} />)}
+      {buildingSpots.map(([x,y,z,r,i]) => <group key={i} onClick={() => onBuilding?.(i)}><CC0Asset url={assetUrl(ASSETS.buildings[i % ASSETS.buildings.length])} position={[x,y,z]} rotation={[0,r,0]} scale={3.2} /></group>)}
       <NamedBuilding position={[-12,0,-12]} name="LUCKY SHOP" accent="#e15b4c" onClick={onShop} />
       <NamedBuilding position={[12,0,-12]} name="POOL HOUSE" accent="#49b4d4" />
       <NamedBuilding position={[-12,0,13]} name="ARCADE" accent="#9a74e0" />
@@ -325,7 +325,7 @@ function RemoteAvatar({ peer }) {
   return <group ref={ref}><CC0Asset url={assetUrl(ASSETS.people[0])} scale={1.8}/><Text position={[0,2.9,0]} fontSize={0.2} color="#fff" anchorX="center">{peer.name||"PLAYER"}</Text></group>;
 }
 
-function ShopInterior({ onExit, peers, onChallenge, playerRef, movementRef }) {
+function ShopInterior({ onExit, peers, onChallenge, playerRef, movementRef, title = "LUCKY SHOP" }) {
   return <group>
     <ambientLight intensity={0.9} />
     <CC0Asset url={assetUrl(ASSETS.buildings[0])} position={[0,0,-3]} scale={3.2} />
@@ -337,7 +337,7 @@ function ShopInterior({ onExit, peers, onChallenge, playerRef, movementRef }) {
       <CC0Asset url={assetUrl(ASSETS.people[i%ASSETS.people.length])} scale={1.7}/><Text position={[0,2.8,0]} fontSize={0.18} color="#fff" anchorX="center">{p.name}</Text>
     </group>)}
     <CC0Person position={[0,0,2.2]} name="YOU" index={0} player movementRef={movementRef} playerRef={playerRef} />
-    <Text position={[0,4.3,-1]} fontSize={0.35} color="#f2c56b" anchorX="center">LUCKY SHOP</Text>
+    <Text position={[0,4.3,-1]} fontSize={0.35} color="#f2c56b" anchorX="center">{title}</Text>
     <group position={[0,0,4.5]} onClick={onExit}><Text fontSize={0.25} color="#fff" anchorX="center">EXIT</Text></group>
   </group>;
 }
@@ -484,7 +484,7 @@ function App() {
         <Canvas shadows dpr={[1, 1.25]} camera={{ position: [16, 8, 18], fov: 50 }} gl={{ antialias: true, powerPreference: "high-performance" }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.08; }}>
           <color attach="background" args={["#e7b48a"]} />
           <fog attach="fog" args={["#e7c3a2", 26, 110]} />
-          {interior === "shop" ? <ShopInterior peers={[{ id: "kay", name: "KAY" }, ...peers]} onExit={() => setInterior(null)} onChallenge={() => { setInterior(null); openDuel(); }} playerRef={playerRef} movementRef={movementRef} /> : <City onShop={() => setInterior("shop")} onDarts={openDuel} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} peers={peers} />}
+          {interior ? <ShopInterior title={interior === "shop" ? "LUCKY SHOP" : "BUILDING INTERIOR"} peers={[{ id: "kay", name: "KAY" }, ...peers]} onExit={() => setInterior(null)} onChallenge={() => { setInterior(null); openDuel(); }} playerRef={playerRef} movementRef={movementRef} /> : <City onShop={() => setInterior("shop")} onDarts={openDuel} onBuilding={(i) => setInterior(`building-${i}`)} playerRef={playerRef} movementRef={movementRef} channelRef={channelRef} trafficRef={trafficRef} peers={peers} />}
           <CameraRig playerRef={playerRef} partnerRef={partnerRef} mode={interior ? "hood" : cameraMode} movementRef={movementRef} />
         </Canvas>
       </div>
