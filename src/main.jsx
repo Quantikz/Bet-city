@@ -140,6 +140,75 @@ function Car({ position, rotation = 0, color = "#8d3e38" }) {
   );
 }
 
+
+function Palm({ position, scale = 1 }) {
+  return <group position={position} scale={scale}>
+    <mesh castShadow position={[0,1.8,0]} rotation={[0.03,0,-0.05]}>
+      <cylinderGeometry args={[0.16,0.24,3.6,10]} />
+      <meshStandardMaterial color="#65442d" roughness={0.95} />
+    </mesh>
+    {Array.from({length:8}).map((_,i)=>{
+      const a=i*Math.PI/4;
+      return <mesh key={i} castShadow position={[Math.sin(a)*0.65,3.55,Math.cos(a)*0.65]} rotation={[0.55*Math.cos(a),a,0.55*Math.sin(a)]}>
+        <coneGeometry args={[0.16,1.9,6]} />
+        <meshStandardMaterial color="#24704c" roughness={0.9} />
+      </mesh>
+    })}
+  </group>;
+}
+
+function WindowRow({ y = 2.3, z = 3.48 }) {
+  return <group>
+    {[-2.65,-1.35,0,1.35,2.65].map((x,i)=>
+      <mesh key={i} position={[x,y,z]}>
+        <boxGeometry args={[0.82,1.05,0.08]} />
+        <meshStandardMaterial color="#172a31" metalness={0.25} roughness={0.16} />
+      </mesh>
+    )}
+  </group>;
+}
+
+function ShopAwning({ color = "#b44b40" }) {
+  return <group position={[0,2.7,3.66]}>
+    <mesh castShadow>
+      <boxGeometry args={[7.1,0.32,0.72]} />
+      <meshStandardMaterial color={color} roughness={0.7} />
+    </mesh>
+    {Array.from({length:9}).map((_,i)=>
+      <mesh key={i} position={[-3.55+i*0.8875,-0.18,0.01]}>
+        <boxGeometry args={[0.44,0.38,0.76]} />
+        <meshStandardMaterial color={i%2 ? "#f3e7cf" : color} roughness={0.72} />
+      </mesh>
+    )}
+  </group>;
+}
+
+function StreetVendor({ position, color="#d7b456" }) {
+  return <group position={position}>
+    <mesh castShadow position={[0,1.15,0]}><boxGeometry args={[2.2,1.45,1.25]}/><meshStandardMaterial color="#765238" roughness={0.9}/></mesh>
+    <mesh castShadow position={[0,2.05,0]}><boxGeometry args={[2.7,0.12,1.55]}/><meshStandardMaterial color={color} roughness={0.72}/></mesh>
+    <mesh position={[0,1.45,0.66]}><boxGeometry args={[1.55,0.5,0.05]}/><meshStandardMaterial color="#2a1712"/></mesh>
+    <Text position={[0,2.2,0.04]} fontSize={0.25} color="#fff4c9" anchorX="center">BET BITES</Text>
+  </group>;
+}
+
+function BackgroundBlock({ position, width=10, height=12, color="#303943" }) {
+  return <group position={position}>
+    <mesh castShadow position={[0,height/2,0]}>
+      <boxGeometry args={[width,height,7]}/>
+      <meshStandardMaterial color={color} roughness={0.78}/>
+    </mesh>
+    {Array.from({length:4}).map((_,row)=>
+      Array.from({length:Math.max(2,Math.floor(width/2.2))}).map((_,col)=>
+        <mesh key={row+"-"+col} position={[-width/2+1.1+col*2.2,2+row*2.3,3.54]}>
+          <boxGeometry args={[1.05,1.2,0.07]}/>
+          <meshStandardMaterial color="#263c45" metalness={0.2} roughness={0.2}/>
+        </mesh>
+      )
+    )}
+  </group>;
+}
+
 function Building({ position, color, accent, name, onClick }) {
   return (
     <group position={position} onClick={onClick}>
@@ -167,7 +236,7 @@ function Building({ position, color, accent, name, onClick }) {
         <boxGeometry args={[1.5, 1.65, 0.12]} />
         <meshStandardMaterial color="#30434a" metalness={0.15} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[0, 3.25, 3.7]}>
+      <WindowRow />\n      <ShopAwning color={accent} />\n      <mesh castShadow position={[0, 3.25, 3.7]}>
         <boxGeometry args={[7.05, 0.15, 0.1]} />
         <meshStandardMaterial color="#e6c76d" emissive="#b28c35" emissiveIntensity={0.2} />
       </mesh>
@@ -229,6 +298,16 @@ function Town({ onShop, onDarts }) {
       <Environment preset="city" />
       <fog attach="fog" args={["#11151b", 28, 82]} />
       <Ground />
+      <BackgroundBlock position={[-25,0,-27]} width={13} height={13} color="#252c35" />
+      <BackgroundBlock position={[24,0,-30]} width={17} height={16} color="#2c343d" />
+      <BackgroundBlock position={[-27,0,25]} width={16} height={14} color="#343b42" />
+      <BackgroundBlock position={[27,0,26]} width={14} height={12} color="#252b32" />
+      <Palm position={[-8.2,0,-5.4]} scale={1.1} />
+      <Palm position={[8.5,0,-5.7]} scale={0.95} />
+      <Palm position={[-8.7,0,7.4]} scale={0.85} />
+      <Palm position={[8.4,0,7.6]} scale={1.05} />
+      <StreetVendor position={[-5.1,0,-1.4]} />
+      <StreetVendor position={[5.2,0,1.1]} color="#4b9fc4" />
 
       <Building position={[-13, 0, -11]} color="#7d4034" accent="#c95f55" name="LUCKY SHOP" onClick={onShop} />
       <Building position={[13, 0, -11]} color="#255c77" accent="#4b9fc4" name="POOL HOUSE" />
@@ -248,6 +327,8 @@ function Town({ onShop, onDarts }) {
       <Character position={[-4, 0, 4]} name="KAY" shirt="#3d76a8" skin="#a96f4f" hair={0} onClick={onDarts} delay={1.2} />
       <Character position={[4, 0, 3]} name="MUSA" shirt="#9b4c8f" skin="#6f422f" hair={2} delay={2.4} />
       <Character position={[0, 0, -4]} name="ZEE" shirt="#3f8a73" skin="#c28762" hair={1} female delay={3.6} />
+      <Character position={[-6.4, 0, 0.4]} name="AMAKA" shirt="#d05c55" skin="#8b5a3c" hair={2} female delay={4.4} />
+      <Character position={[6.1, 0, -0.9]} name="TUNDE" shirt="#d7b456" skin="#a96f4f" hair={0} delay={5.1} />
 
       <ContactShadows position={[0, 0.03, 0]} opacity={0.42} scale={58} blur={2.5} far={18} />
     </>
