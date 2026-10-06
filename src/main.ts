@@ -272,10 +272,8 @@ function updateFoot(dt: number): void {
   const fixed = city.grid.resolve(player.x, player.z, FOOT_RADIUS);
   player.x = fixed.x;
   player.z = fixed.z;
-  // Don't walk through cars (parked or otherwise).
-  const offCar = vehicles.resolveActor(player.x, player.z, FOOT_RADIUS);
-  player.x = offCar.x;
-  player.z = offCar.z;
+  // Keep the impact query ahead of the static-car separation pass. Fast cars
+  // are intentionally allowed to overlap briefly so damage can register.
   clampToCity(player);
 }
 
@@ -395,6 +393,12 @@ function update(dt: number): void {
     flushCarWrecks();
     updateFoot(dt);
     checkPedestrianDamage();
+    // After damage is sampled, push the on-foot actor out of slow/parked cars.
+    // Fast cars remain an intentional gameplay collision for the impact system.
+    const offCar = vehicles.resolveActor(player.x, player.z, FOOT_RADIUS);
+    player.x = offCar.x;
+    player.z = offCar.z;
+    clampToCity(player);
 
     // Punch: gib the pedestrian in front of you (scores + raises heat, like a
     // run-over). Forward is the player's heading: (cos h, -sin h).
