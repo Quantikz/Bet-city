@@ -1,1 +1,34 @@
-export const ROOT="https://raw.githubusercontent.com/shorepine/kenney/main/3d/";export const A={road:"city-roads/road-straight.glb",roadCross:"city-roads/road-crossroad.glb",lamp:"city-roads/light-curved.glb",buildings:["city-commercial/building-a.glb","city-commercial/building-b.glb","city-commercial/building-c.glb","city-commercial/building-d.glb","city-commercial/building-e.glb","city-commercial/building-f.glb"],homes:["city-suburban/building-type-a.glb","city-suburban/building-type-b.glb","city-suburban/building-type-c.glb","city-suburban/building-type-d.glb"],trees:["city-suburban/tree-large.glb","city-suburban/tree-small.glb"],cars:["car/sedan.glb","car/suv.glb","car/taxi.glb","car/hatchback-sports.glb"],people:["blocky-characters/character-a.glb","blocky-characters/character-b.glb","blocky-characters/character-c.glb","blocky-characters/character-d.glb","blocky-characters/character-e.glb","blocky-characters/character-f.glb"]};export const url=p=>ROOT+p;
+const KENNEY="https://raw.githubusercontent.com/shorepine/kenney/main/3d/";
+const QBASE="https://raw.githubusercontent.com/kirbycope/godot-3d-player-controller-v2/main/assets/universal_base_characters/Base%20Characters/";
+const CITY="https://raw.githubusercontent.com/anshaneja5/skyline-run/main/public/assets/models/";
+
+export const A={
+  road:KENNEY+"city-roads/road-straight.glb",
+  roadCross:KENNEY+"city-roads/road-crossroad.glb",
+  lamp:KENNEY+"city-roads/light-curved.glb",
+  buildings:[
+    CITY+"b_small.glb",
+    CITY+"b_medium.glb",
+    CITY+"b_large.glb"
+  ],
+  homes:[
+    KENNEY+"city-suburban/building-type-a.glb",
+    KENNEY+"city-suburban/building-type-b.glb",
+    KENNEY+"city-suburban/building-type-c.glb",
+    KENNEY+"city-suburban/building-type-d.glb"
+  ],
+  trees:[
+    KENNEY+"city-suburban/tree-large.glb",
+    KENNEY+"city-suburban/tree-small.glb"
+  ],
+  cars:[
+    KENNEY+"car/sedan.glb",
+    KENNEY+"car/suv.glb",
+    KENNEY+"car/taxi.glb",
+    KENNEY+"car/hatchback-sports.glb"
+  ],
+  people:[
+    QBASE+"Superhero_Male_FullBody.gltf",
+    QBASE+"Superhero_Female_FullBody.gltf"
+  ]
+};
