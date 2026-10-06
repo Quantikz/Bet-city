@@ -25,7 +25,7 @@ const realisticHumanTargets: THREE.Group[] = [];
 
 function beginRealisticHumanLoad(): void {
   if (realisticHumanLoading || realisticHumanTemplate) return;
-  realisticHumanLoading = new Promise((resolve, reject) => {
+  realisticHumanLoading = new Promise<void>((resolve, reject) => {
     new GLTFLoader().load(REAL_HUMAN_URL, (gltf) => {
       realisticHumanTemplate = gltf.scene;
       realisticHumanTemplate.traverse((o) => {
