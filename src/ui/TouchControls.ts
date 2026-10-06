@@ -167,9 +167,8 @@ export class TouchControls {
 
   /**
    * Top-right fullscreen toggle. Uses the Fullscreen API where it exists
-   * (Android Chrome, iPadOS, desktop). iPhone Safari has no element-fullscreen
-   * API at all — there the real path is Add to Home Screen (the PWA meta tags in
-   * index.html make that launch chrome-less), so the button just no-ops there.
+   * (Android Chrome, iPadOS, desktop). Safari may not expose the API on every
+   * version; when unavailable, the button simply no-ops.
    */
   private addFullscreenButton(root: HTMLElement): void {
     const el = document.documentElement as HTMLElement & {
