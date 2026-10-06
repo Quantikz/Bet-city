@@ -195,16 +195,11 @@ function shop(x,z){
 shop(-51,-17);
 shop(51,51);
 
-function tree(x,z,scale=1){
-  cyl("Trunk",[x,1.5,z],[.5*scale,3*scale,.5*scale],M.trunk);
-  sphere("Crown",[x,4.2*scale,z],[2.8*scale,3.2*scale,2.8*scale],M.tree);
-  sphere("Crown",[x-1.1*scale,4*scale,z+.8*scale],[1.8*scale,2.1*scale,1.8*scale],M.tree2);
-  addObstacle(x,z,1.2*scale,1.2*scale,.25);
-}
+const treePositions=[];
 for(let i=0;i<55;i++){
   const x=((i*47)%190)-95,z=((i*73)%190)-95;
   if(Math.abs(x%STEP)<10||Math.abs(z%STEP)<10) continue;
-  tree(x,z,.8+(i%4)*.08);
+  treePositions.push({x,z,scale:.92+(i%4)*.08});
 }
 
 function streetLight(x,z){
@@ -236,8 +231,26 @@ function loadGLB(url,name,scale=[1,1,1]){
   });
 }
 
+const REAL_TREE_URLS=[
+  "https://cdn.cinevva.com/assets/kenney/nature/tree-pine-a.glb",
+  "https://cdn.cinevva.com/assets/kenney/nature/tree-oak.glb"
+];
+
 const realCarPromise=loadGLB(REAL_CAR_URL,"real-car",[.62,.62,.62]);
 const realHumanPromise=loadGLB(REAL_HUMAN_URL,"real-human",[1.0,1.0,1.0]);
+Promise.all(REAL_TREE_URLS.map((url,i)=>loadGLB(url,"real-tree-"+i,[5,5,5])))
+  .then(trees=>{
+    treePositions.forEach((p,i)=>{
+      const source=trees[i%trees.length].entity;
+      const tree=source.clone();
+      app.root.addChild(tree);
+      tree.setPosition(p.x,0,p.z);
+      tree.setLocalScale(p.scale,p.scale,p.scale);
+      obstacles.push({x:p.x,z:p.z,halfX:1.1,halfZ:1.1});
+    });
+    trees.forEach(t=>t.entity.destroy());
+  }).catch(err=>console.warn("Nature assets failed to load",err));
+
 
 realCarPromise.then(({entity})=>{
   entity.setPosition(-96,.05,-5);
