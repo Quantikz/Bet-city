@@ -138,7 +138,7 @@ export class CityAssets {
     const lit = 1 - 0.92 * d; // full glow at night → nearly off at noon
     for (const m of this.sideCache.values()) {
       const sm = m as THREE.MeshStandardMaterial;
-      sm.emissiveIntensity = 1.1 * lit;
+      sm.emissiveIntensity = 1.8 * lit;
       sm.roughness = 0.75 - 0.5 * d;
       sm.metalness = 0.05 + 0.5 * d;
     }
@@ -155,7 +155,7 @@ export class CityAssets {
         map: facade,
         emissive: 0xffffff,
         emissiveMap: facade,
-        emissiveIntensity: 1.1,
+        emissiveIntensity: 1.8,
         roughness: 0.75,
         metalness: 0.05,
       });
