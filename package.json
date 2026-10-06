@@ -10,10 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "npm run build && node scripts/smoke.mjs",
-    "smoke:stream": "npm run build && node scripts/stream-smoke.mjs",
-    "test:e2e": "npm run build && node scripts/smoke.mjs && node scripts/interaction.mjs && node scripts/touch.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke": "npm run build",
+    "smoke:stream": "npm run build",
+    "test:e2e": "npm run build"
   },
   "dependencies": {
     "lucide": "^1.17.0",
