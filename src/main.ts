@@ -40,7 +40,7 @@ let timeOfDay = 0.5; // [0,1), start at bright midday for a clearer beta present
 
 const container = document.getElementById('app')!;
 const touch = isTouchDevice();
-const options = loadOptions();
+let options = loadOptions();
 dayLength = options.dayLength;
 
 // New Game picks a seed and reloads with ?seed=; the world is built from it so
@@ -577,6 +577,7 @@ const loop = new GameLoop(update, render);
 
 /** Push the current options everywhere they take live effect. */
 function applyOptions(opts: GameOptions): void {
+  options = opts;
   sfx.setMasterVolume(opts.masterVolume);
   radio?.setMasterVolume(opts.masterVolume);
   env.renderer.setPixelRatio(Math.min(window.devicePixelRatio, qualityPixelRatio(opts.quality)));
