@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { prepareRealtimeAsset, normalizeAssetHeight, createRealtimeLOD } from './RealisticPipeline';
 import type { Building, Streetlight, Prop } from '../world/City';
 import type { FacadeStyle, PropType } from '../world/biome';
 import { makeFacadeTexture, makeGlowTexture } from './textures';
@@ -41,44 +43,9 @@ function setupHumanRig(target: THREE.Group, model: THREE.Object3D, shirtColor = 
   // Normalize every imported human to real-world game scale. Cars are roughly
   // 4m long, so an adult must be about 1.75m tall rather than inheriting the
   // arbitrary GLB authoring units.
-  const rawBox = new THREE.Box3().setFromObject(model);
-  const rawSize = rawBox.getSize(new THREE.Vector3());
-  if (rawSize.y > 0.001) {
-    model.scale.multiplyScalar(1.75 / rawSize.y);
-    const scaledBox = new THREE.Box3().setFromObject(model);
-    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
-    model.position.x -= scaledCenter.x;
-    model.position.z -= scaledCenter.z;
-    model.position.y -= scaledBox.min.y;
-  }
-
+  normalizeAssetHeight(model, 1.75);
+  prepareRealtimeAsset(model, { skinTone, accentColor: shirtColor, roughness: 0.55 });
   target.add(model);
-  model.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    if (mesh.isMesh) {
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      mesh.material = materials.map((source) => {
-        const material = source.clone() as THREE.MeshStandardMaterial;
-        const label = `${mesh.name} ${material.name}`.toLowerCase();
-        // Preserve embedded textures, but ensure untextured/material-only body
-        // parts still have natural human/clothing colors.
-        if (label.includes('skin') || label.includes('face') || label.includes('body')) {
-          material.color.setHex(skinTone);
-        } else if (label.includes('hair')) {
-          material.color.setHex(0x17120f);
-        } else if (!material.map) {
-          material.color.setHex(shirtColor);
-        } else if (label.includes('shirt') || label.includes('cloth') || label.includes('top') || label.includes('pants')) {
-          material.color.setHex(shirtColor);
-        }
-        material.roughness = Math.max(material.roughness, 0.55);
-        return material;
-      });
-    }
-  });
 
   const mixer = new THREE.AnimationMixer(model);
   const idleClip = realisticHumanAnimations.find((clip) => /idle|stand|rest/i.test(clip.name)) ?? realisticHumanAnimations[0];
@@ -220,19 +187,70 @@ export class CityAssets {
     return g;
   }
 
-  makeBuilding(b: Building, index: number): THREE.Mesh {
+  makeBuilding(b: Building, index: number): THREE.Object3D {
     const geo = new THREE.BoxGeometry(b.width, b.height, b.depth);
     scaleFacadeUvs(geo, b.width, b.height, b.depth);
-
     const pool = this.facadesByStyle[b.style];
     const facade = pool[index % pool.length];
     const side = this.sideMaterial(facade, b.color);
-    // Face order: +X, -X, +Y(roof), -Y(floor), +Z, -Z.
-    const mesh = new THREE.Mesh(geo, [side, side, this.roofMat, this.roofMat, side, side]);
-    mesh.position.set(b.cx, b.height / 2, b.cz);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
+
+    const far = new THREE.Mesh(geo, [side, side, this.roofMat, this.roofMat, side, side]);
+    far.position.set(b.cx, b.height / 2, b.cz);
+    far.castShadow = true;
+    far.receiveShadow = true;
+
+    const near = new THREE.Group();
+    near.add(far.clone());
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: b.style === 'glass' ? 0x1c2632 : 0x30343b,
+      metalness: b.style === 'glass' ? 0.55 : 0.18,
+      roughness: b.style === 'glass' ? 0.28 : 0.72,
+    });
+    const plinth = new THREE.Mesh(
+      new RoundedBoxGeometry(Math.max(3, b.width + 0.35), 0.65, Math.max(3, b.depth + 0.35), 2, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x20242b, roughness: 0.9 }),
+    );
+    plinth.position.set(b.cx, 0.33, b.cz);
+    near.add(plinth);
+    const roof = new THREE.Mesh(
+      new RoundedBoxGeometry(b.width + 0.3, 0.45, b.depth + 0.3, 2, 0.08),
+      trimMat,
+    );
+    roof.position.set(b.cx, b.height + 0.18, b.cz);
+    near.add(roof);
+    if (b.height > 18) {
+      const finGeo = new THREE.BoxGeometry(0.22, b.height - 1.5, 0.28);
+      for (const x of [b.cx - b.width / 2 + 0.22, b.cx + b.width / 2 - 0.22]) {
+        const fin = new THREE.Mesh(finGeo, trimMat);
+        fin.position.set(x, b.height / 2 + 0.55, b.cz + b.depth / 2 + 0.06);
+        near.add(fin);
+      }
+    }
+    const door = new THREE.Mesh(
+      new RoundedBoxGeometry(1.5, 2.6, 0.10, 2, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x18212a, metalness: 0.15, roughness: 0.3 }),
+    );
+    door.position.set(b.cx, 1.3, b.cz + b.depth / 2 + 0.055);
+    near.add(door);
+    const canopy = new THREE.Mesh(
+      new RoundedBoxGeometry(2.1, 0.12, 0.75, 2, 0.05),
+      trimMat,
+    );
+    canopy.position.set(b.cx, 2.72, b.cz + b.depth / 2 + 0.3);
+    near.add(canopy);
+    if (b.height > 28) {
+      const acMat = new THREE.MeshStandardMaterial({ color: 0x6b727b, metalness: 0.5, roughness: 0.6 });
+      for (let i = 0; i < 2; i++) {
+        const ac = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.9, 1.1, 2, 0.12), acMat);
+        ac.position.set(b.cx - b.width * 0.2 + i * b.width * 0.4, b.height + 0.72, b.cz - b.depth * 0.15);
+        near.add(ac);
+      }
+    }
+    near.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
+    });
+    return createRealtimeLOD(near, far, 0, 72);
   }
 
   /**
@@ -388,51 +406,88 @@ export const CAR_SHAPES: CarShape[] = [
 export function makeCar(color: number, shape: CarShape = CAR_SHAPES[0]): CarMesh {
   const group = new THREE.Group();
   const hl = shape.length / 2;
-
-  const bodyMat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.4 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(shape.length, shape.bodyH, shape.width), bodyMat);
+  const body = new THREE.Mesh(
+    new RoundedBoxGeometry(shape.length, shape.bodyH, shape.width, 3, 0.16),
+    new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.24, envMapIntensity: 1.5 }),
+  );
   body.position.y = shape.bodyY;
   body.castShadow = true;
   group.add(body);
 
   const cabin = new THREE.Mesh(
-    new THREE.BoxGeometry(shape.cabinLen, shape.cabinH, shape.width - 0.3),
-    new THREE.MeshStandardMaterial({ color: 0x10131a, metalness: 0.2, roughness: 0.3 }),
+    new RoundedBoxGeometry(shape.cabinLen, shape.cabinH, shape.width - 0.34, 3, 0.12),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x14202a, metalness: 0.05, roughness: 0.12, transmission: 0.08,
+      transparent: true, opacity: 0.88, envMapIntensity: 1.8,
+    }),
   );
   cabin.position.set(shape.cabinX, shape.bodyY + shape.bodyH / 2 + shape.cabinH / 2, 0);
   cabin.castShadow = true;
   group.add(cabin);
 
-  const wheelGeo = new THREE.CylinderGeometry(shape.wheelR, shape.wheelR, 0.35, 14);
-  wheelGeo.rotateX(Math.PI / 2); // roll axis -> Z (the car's lateral axis)
-  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.9 });
+  const lowerMat = new THREE.MeshStandardMaterial({ color: 0x17191d, metalness: 0.35, roughness: 0.55 });
+  const bumper = new THREE.Mesh(new RoundedBoxGeometry(0.18, 0.25, shape.width * 0.82, 2, 0.05), lowerMat);
+  bumper.position.set(hl + 0.02, shape.bodyY - 0.18, 0);
+  group.add(bumper);
+  const rearBumper = bumper.clone();
+  rearBumper.position.x = -hl - 0.02;
+  group.add(rearBumper);
+
+  const grille = new THREE.Mesh(
+    new RoundedBoxGeometry(0.04, 0.22, shape.width * 0.42, 2, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0x080a0d, metalness: 0.6, roughness: 0.3 }),
+  );
+  grille.position.set(hl + 0.08, shape.bodyY + 0.02, 0);
+  group.add(grille);
+
+  const mirrorMat = new THREE.MeshStandardMaterial({ color: 0x101419, metalness: 0.55, roughness: 0.28 });
+  for (const z of [-shape.width / 2 - 0.08, shape.width / 2 + 0.08]) {
+    const mirror = new THREE.Mesh(new RoundedBoxGeometry(0.28, 0.1, 0.18, 2, 0.04), mirrorMat);
+    mirror.position.set(shape.cabinX + shape.cabinLen * 0.32, shape.bodyY + shape.bodyH / 2 + shape.cabinH * 0.42, z);
+    group.add(mirror);
+  }
+
+  const wheelGeo = new THREE.CylinderGeometry(shape.wheelR, shape.wheelR, 0.32, 20);
+  wheelGeo.rotateX(Math.PI / 2);
+  const tireMat = new THREE.MeshStandardMaterial({ color: 0x08090b, roughness: 0.92 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0xb6bcc4, metalness: 0.9, roughness: 0.22 });
   const axle = shape.length * 0.32;
   const track = shape.width / 2;
   const steerWheels: THREE.Object3D[] = [];
   for (const wx of [axle, -axle]) {
     for (const wz of [track, -track]) {
-      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      const wheel = new THREE.Mesh(wheelGeo, tireMat);
       wheel.position.set(wx, shape.wheelR, wz);
       wheel.castShadow = true;
       group.add(wheel);
+      const rim = new THREE.Mesh(
+        new THREE.CylinderGeometry(shape.wheelR * 0.52, shape.wheelR * 0.52, 0.34, 16),
+        rimMat,
+      );
+      rim.rotation.x = Math.PI / 2;
+      rim.position.copy(wheel.position);
+      rim.position.z += wz > 0 ? -0.03 : 0.03;
+      group.add(rim);
       if (wx > 0) steerWheels.push(wheel);
     }
   }
 
-  const head = new THREE.MeshStandardMaterial({ color: 0xfff2cc, emissive: 0xfff0c0, emissiveIntensity: 2 });
-  const tail = new THREE.MeshStandardMaterial({ color: 0x551015, emissive: 0xff2030, emissiveIntensity: 1.4 });
-  for (const lz of [0.6, -0.6]) {
-    const hlMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.35), head);
-    hlMesh.position.set(hl, shape.bodyY - 0.05, lz);
+  const head = new THREE.MeshStandardMaterial({ color: 0xfff2cc, emissive: 0xfff0c0, emissiveIntensity: 3, roughness: 0.2 });
+  const tail = new THREE.MeshStandardMaterial({ color: 0x551015, emissive: 0xff2030, emissiveIntensity: 1.4, roughness: 0.3 });
+  for (const lz of [shape.width * 0.3, -shape.width * 0.3]) {
+    const hlMesh = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.25, 0.3, 2, 0.03), head);
+    hlMesh.position.set(hl, shape.bodyY + 0.02, lz);
     group.add(hlMesh);
-    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.35), tail);
-    tl.position.set(-hl, shape.bodyY - 0.05, lz);
+    const tl = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.25, 0.3, 2, 0.03), tail);
+    tl.position.set(-hl, shape.bodyY + 0.02, lz);
     group.add(tl);
   }
-
+  group.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.isMesh) mesh.receiveShadow = true;
+  });
   return { group, steerWheels };
 }
-
 export function makePed(color: number): THREE.Group {
   // Use a textured real-scale human when available. Keep the procedural model as
   // an immediate fallback so the city never waits for a network asset.
