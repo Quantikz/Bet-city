@@ -35,18 +35,18 @@ const LIT = ['#ffd9a0', '#ffe9c0', '#ffcf87', '#cfe6ff'];
 
 /** Dense grid of lit/dark windows — a glass tower. */
 function drawGlass(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
-  ctx.fillStyle = '#10131b';
+  ctx.fillStyle = '#394554';
   ctx.fillRect(0, 0, px, px);
   const cells = 8;
   const cell = px / cells;
   const pad = cell * 0.18;
   for (let y = 0; y < cells; y++) {
     for (let x = 0; x < cells; x++) {
-      if (rng.chance(0.42)) {
+      if (rng.chance(0.62)) {
         ctx.fillStyle = rng.pick(LIT);
         ctx.globalAlpha = rng.range(0.65, 1);
       } else {
-        ctx.fillStyle = '#1b2030';
+        ctx.fillStyle = '#667384';
         ctx.globalAlpha = 1;
       }
       ctx.fillRect(x * cell + pad, y * cell + pad, cell - pad * 2, cell - pad * 2);
@@ -56,14 +56,14 @@ function drawGlass(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
 
 /** Warm masonry with mortar courses and small, sparsely-lit windows — low-rise. */
 function drawBrick(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
-  ctx.fillStyle = '#5a3d30';
+  ctx.fillStyle = '#a77a62';
   ctx.fillRect(0, 0, px, px);
   // Mortar courses: faint horizontal lines, brick rows.
   const rows = 16;
   const rh = px / rows;
   ctx.globalAlpha = 1;
   for (let r = 0; r < rows; r++) {
-    ctx.fillStyle = r % 2 ? '#5f4133' : '#54392d';
+    ctx.fillStyle = r % 2 ? '#ad8068' : '#9c7059';
     ctx.fillRect(0, r * rh, px, rh - 1);
   }
   // Windows: a coarse grid, ~40% present, of those a third warmly lit.
@@ -79,7 +79,7 @@ function drawBrick(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
       ctx.fillStyle = '#241a14';
       ctx.globalAlpha = 1;
       ctx.fillRect(ox - 2, oy - 2, w + 4, h + 4); // frame
-      if (rng.chance(0.35)) {
+      if (rng.chance(0.65)) {
         ctx.fillStyle = '#ffdca0';
         ctx.globalAlpha = rng.range(0.55, 0.9);
       } else {
@@ -93,7 +93,7 @@ function drawBrick(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
 
 /** Concrete spandrels with horizontal ribbon windows — commercial/office. */
 function drawConcrete(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void {
-  ctx.fillStyle = '#565a62';
+  ctx.fillStyle = '#8c949d';
   ctx.fillRect(0, 0, px, px);
   const bands = 7;
   const bh = px / bands;
@@ -101,11 +101,11 @@ function drawConcrete(ctx: CanvasRenderingContext2D, rng: Rng, px: number): void
     const y = b * bh;
     // Spandrel (concrete) strip on top, then a darker ribbon window below it.
     ctx.globalAlpha = 1;
-    ctx.fillStyle = b % 2 ? '#5f636b' : '#52565d';
+    ctx.fillStyle = b % 2 ? '#949ba3' : '#858d96';
     ctx.fillRect(0, y, px, bh * 0.42);
     const ribY = y + bh * 0.42;
     const ribH = bh * 0.5;
-    ctx.fillStyle = '#161b24';
+    ctx.fillStyle = '#39434f';
     ctx.fillRect(0, ribY, px, ribH);
     // Lit office segments punched along the ribbon.
     const segs = 6;
