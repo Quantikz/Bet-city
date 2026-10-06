@@ -502,4 +502,10 @@ function App() {
   );
 }
 
+window.addEventListener("error", (event) => {
+  const el = document.getElementById("boot-error");
+  if (el) el.textContent = event.message || "SCRIPT ERROR";
+});
 createRoot(document.getElementById("root")).render(<App />);
+const boot = document.getElementById("boot-error");
+if (boot) boot.textContent = "";
