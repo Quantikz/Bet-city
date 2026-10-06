@@ -7,6 +7,8 @@ export interface FollowParams {
   speedPull?: number; // metres of distance pulled IN per m/s of speed (eye lag comp)
   slideSwing?: number; // 0..1: fraction of the lateral (powerslide) lag LEFT as on-screen swing — 0 pins the car centre, 1 lets it drift fully off
   maxSwing?: number; // hard cap (world metres) on that lateral swing — ~20% of screen at CAR_CAM
+  pitch?: number; // base vertical camera angle in radians
+  zoom?: number; // distance multiplier; <1 zooms in, >1 zooms out
 }
 
 /**
