@@ -7,21 +7,27 @@ import { clamp } from './math';
  * thin browser-storage glue around it.
  */
 export type Quality = 'low' | 'medium' | 'high';
+export type CameraView = 'low' | 'normal' | 'high' | 'top';
 export const QUALITIES: readonly Quality[] = ['low', 'medium', 'high'];
 
 export interface GameOptions {
   masterVolume: number; // 0..1, scales all SFX + radio
   quality: Quality; // render cost (device pixel ratio)
   dayLength: number; // seconds for a full day/night cycle
+  cameraView: CameraView;
+  cameraZoom: number; // 0.65..1.6; lower is closer
 }
 
 export const DEFAULT_OPTIONS: GameOptions = {
   masterVolume: 0.8,
   quality: 'high',
   dayLength: 480,
+  cameraView: 'normal',
+  cameraZoom: 1,
 };
 
 const DAY_LENGTH_RANGE = { min: 30, max: 1800 } as const;
+const CAMERA_ZOOM_RANGE = { min: 0.65, max: 1.6 } as const;
 
 /** Coerce an unknown blob into valid options, falling back per-field. Pure. */
 export function sanitize(raw: unknown): GameOptions {
@@ -32,6 +38,8 @@ export function sanitize(raw: unknown): GameOptions {
     masterVolume: clamp(num(o.masterVolume, DEFAULT_OPTIONS.masterVolume), 0, 1),
     quality: QUALITIES.includes(o.quality as Quality) ? (o.quality as Quality) : DEFAULT_OPTIONS.quality,
     dayLength: clamp(num(o.dayLength, DEFAULT_OPTIONS.dayLength), DAY_LENGTH_RANGE.min, DAY_LENGTH_RANGE.max),
+    cameraView: ['low', 'normal', 'high', 'top'].includes(o.cameraView as string) ? (o.cameraView as CameraView) : DEFAULT_OPTIONS.cameraView,
+    cameraZoom: clamp(num(o.cameraZoom, DEFAULT_OPTIONS.cameraZoom), CAMERA_ZOOM_RANGE.min, CAMERA_ZOOM_RANGE.max),
   };
 }
 
