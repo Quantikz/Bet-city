@@ -440,6 +440,11 @@ function render(alpha: number, frameDt: number): void {
   }
   const look = controls.cameraLook();
   if (look.x !== 0 || look.y !== 0) follow.lookInput(look.x, look.y);
+  const pinch = controls.cameraZoomGesture();
+  if (pinch !== 0) {
+    // Fingers together = camera closer; fingers apart = camera farther.
+    options.cameraZoom = Math.max(0.65, Math.min(1.6, options.cameraZoom + pinch * 0.9));
+  }
 
   const baseCam = mode === 'driving' ? CAR_CAM : FOOT_CAM;
   const viewPitch = options.cameraView === 'low' ? -0.08 : options.cameraView === 'high' ? 0.38 : options.cameraView === 'top' ? 0.95 : 0.05;
