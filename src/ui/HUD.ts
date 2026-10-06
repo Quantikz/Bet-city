@@ -54,7 +54,7 @@ export class HUD {
     // On touch the action buttons own the bottom-right corner, so the readout
     // moves to the top-right (the decorative title is hidden there instead).
     speedBox.style.cssText = touch
-      ? 'position:absolute;right:18px;top:12px;text-align:right;line-height:1;'
+      ? 'position:absolute;right:18px;top:78px;text-align:right;line-height:1;'
       : 'position:absolute;right:20px;bottom:20px;text-align:right;line-height:1;';
     this.speedEl = document.createElement('div');
     this.speedEl.style.cssText = `font-size:${touch ? 30 : 46}px;font-weight:700;letter-spacing:-1px;`;
@@ -67,7 +67,7 @@ export class HUD {
 
     this.modeEl = document.createElement('div');
     this.modeEl.style.cssText =
-      'position:absolute;left:20px;top:18px;font-size:14px;font-weight:700;letter-spacing:1px;' + CHIP;
+      'position:absolute;left:20px;top:58px;font-size:14px;font-weight:700;letter-spacing:1px;' + CHIP;
     root.appendChild(this.modeEl);
 
     this.wantedEl = document.createElement('div');
@@ -81,7 +81,7 @@ export class HUD {
 
     const healthTrack = document.createElement('div');
     healthTrack.style.cssText =
-      'position:absolute;left:20px;top:58px;width:182px;height:13px;' +
+      'position:absolute;left:20px;top:96px;width:182px;height:13px;' +
       'background:rgba(12,16,26,.6);border:1px solid rgba(255,255,255,.07);border-radius:7px;' +
       'overflow:hidden;backdrop-filter:blur(6px);';
     this.healthFill = document.createElement('div');
@@ -108,15 +108,15 @@ export class HUD {
     this.clockEl = document.createElement('div');
     this.clockEl.style.cssText =
       (touch
-        ? 'position:absolute;left:20px;top:104px;'
+        ? 'position:absolute;left:20px;top:126px;'
         : 'position:absolute;right:20px;top:16px;') +
       'font-size:14px;font-weight:700;letter-spacing:1px;' + CHIP;
     root.appendChild(this.clockEl);
 
     // Current car make/model, above the speedometer (driving only).
     this.carEl = document.createElement('div');
-    this.carEl.style.cssText = speedBox.style.cssText.includes('top:12px')
-      ? 'position:absolute;right:18px;top:84px;font-size:12px;opacity:.7;text-align:right;'
+    this.carEl.style.cssText = speedBox.style.cssText.includes('top:78px')
+      ? 'position:absolute;right:18px;top:142px;font-size:12px;opacity:.7;text-align:right;'
       : 'position:absolute;right:20px;bottom:92px;font-size:13px;opacity:.7;text-align:right;';
     root.appendChild(this.carEl);
 
@@ -139,7 +139,7 @@ export class HUD {
 
     const afec = document.createElement('div');
     afec.textContent = 'AFEC CITY';
-    afec.style.cssText = 'position:absolute;left:20px;top:18px;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(12,18,24,.28);backdrop-filter:blur(10px);font:800 11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:#f4f8ff;';
+    afec.style.cssText = 'position:absolute;left:20px;top:14px;padding:8px 11px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(12,18,24,.28);backdrop-filter:blur(10px);font:800 11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:#f4f8ff;';
     root.appendChild(afec);
     // Control legend now lives in the title/pause menu — keep the HUD clean.
 
@@ -156,6 +156,7 @@ export class HUD {
       this.mapCanvas.style.width = '128px';
       this.mapCanvas.style.height = '128px';
       this.mapCanvas.style.bottom = '12px';
+      this.mapCanvas.style.left = '50%';
     }
     root.appendChild(this.mapCanvas);
     this.mapCtx = this.mapCanvas.getContext('2d')!;
