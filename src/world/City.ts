@@ -108,14 +108,62 @@ export interface LandmarkZone {
   depth: number;
 }
 
-export function landmarkZones(city: Pick<City, 'half'>): LandmarkZone[] {
+export interface LandmarkLocations {
+  market: { x: number; z: number };
+  football: { x: number; z: number };
+  playground: { x: number; z: number };
+  supermarkets: { x: number; z: number }[];
+}
+
+function nearestBlockCenter(value: number, roads: readonly number[]): number {
+  let best = value;
+  let bestD = Infinity;
+  for (let i = 0; i < roads.length - 1; i++) {
+    const center = (roads[i] + roads[i + 1]) * 0.5;
+    const d = Math.abs(value - center);
+    if (d < bestD) {
+      bestD = d;
+      best = center;
+    }
+  }
+  return best;
+}
+
+/** Authoritative world-space locations shared by rendering, collision and gameplay. */
+export function landmarkLocations(
+  city: Pick<City, 'half' | 'roadCenters'>,
+): LandmarkLocations {
   const h = city.half;
+  const snap = (x: number, z: number): { x: number; z: number } => ({
+    x: nearestBlockCenter(x, city.roadCenters),
+    z: nearestBlockCenter(z, city.roadCenters),
+  });
+
+  return {
+    market: snap(-h * 0.42, h * 0.12),
+    football: snap(h * 0.35, -h * 0.28),
+    playground: snap(-h * 0.28, -h * 0.32),
+    supermarkets: [
+      snap(h * 0.28, h * 0.16),
+      snap(h * 0.48, -h * 0.08),
+    ],
+  };
+}
+
+export function landmarkZones(
+  city: Pick<City, 'half' | 'roadCenters'>,
+): LandmarkZone[] {
+  const loc = landmarkLocations(city);
   return [
-    { x: -h * 0.42, z: h * 0.12, width: 34, depth: 28 }, // market
-    { x: h * 0.35, z: -h * 0.28, width: 42, depth: 26 }, // football
-    { x: -h * 0.28, z: -h * 0.32, width: 28, depth: 22 }, // playground
-    { x: h * 0.28, z: h * 0.16, width: 18, depth: 12 }, // supermarket A
-    { x: h * 0.48, z: -h * 0.08, width: 18, depth: 12 }, // supermarket B
+    { x: loc.market.x, z: loc.market.z, width: 34, depth: 28 },
+    { x: loc.football.x, z: loc.football.z, width: 42, depth: 26 },
+    { x: loc.playground.x, z: loc.playground.z, width: 28, depth: 22 },
+    ...loc.supermarkets.map((p) => ({
+      x: p.x,
+      z: p.z,
+      width: 18,
+      depth: 12,
+    })),
   ];
 }
 
@@ -129,6 +177,15 @@ function overlapsZone(
 ): boolean {
   return Math.abs(x - zone.x) * 2 < width + zone.width + pad * 2
     && Math.abs(z - zone.z) * 2 < depth + zone.depth + pad * 2;
+}
+
+function roadCentersFor(config: CityConfig): number[] {
+  const { cell, half } = metrics(config);
+  const centers: number[] = [];
+  for (let i = 0; i <= config.grid; i++) {
+    centers.push(i * cell + config.roadWidth / 2 - half);
+  }
+  return centers;
 }
 
 /** Normalized urbanity (0–1) at a world point — drives the city→rural gradient. */
@@ -173,7 +230,7 @@ export function generateChunk(
       // footprints with the market, pitch, playground and retail buildings.
       const blockCx = blockX + blockSize / 2;
       const blockCz = blockZ + blockSize / 2;
-      if (landmarkZones({ half }).some((zone) => overlapsZone(blockCx, blockCz, blockSize, blockSize, zone))) {
+      if (landmarkZones({ half, roadCenters: landmarkRoadCenters }).some((zone) => overlapsZone(blockCx, blockCz, blockSize, blockSize, zone))) {
         continue;
       }
       addBlock(blockX, blockZ, blockSize, rng, biome, buildings, colliders);
@@ -384,7 +441,7 @@ function buildParkingSpots(
 
   const blockCenter = (b: number): number => b * cell + roadWidth + blockSize / 2 - half;
 
-  const zones = landmarkZones({ half });
+  const zones = landmarkZones({ half, roadCenters });
   const tryAdd = (x: number, z: number, heading: number): void => {
     if (!rng.chance(fill)) return;
     if (zones.some((zone) => overlapsZone(x, z, 3.2, 1.8, zone, 1))) return;
