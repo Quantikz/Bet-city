@@ -38,7 +38,14 @@ export class Controls {
     const g = this.pad.move(onFoot);
     x += g.x;
     y += g.y;
-    return { x: clamp(x, -1, 1), y: clamp(y, -1, 1) };
+    let mx = clamp(x, -1, 1);
+    let my = clamp(y, -1, 1);
+    const mag = Math.hypot(mx, my);
+    // Mobile sticks can report tiny residual values at rest. Ignore them so
+    // the character never spins or creeps when the player releases the stick.
+    if (mag < 0.12) return { x: 0, y: 0 };
+    if (mag > 1) { mx /= mag; my /= mag; }
+    return { x: mx, y: my };
   }
 
   handbrake(): boolean {
