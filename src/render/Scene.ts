@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { daylightFactor, sunPosition } from '../core/math';
 import { makeGlowTexture } from './textures';
-import type { City } from '../world/City';
+import { landmarkLocations, type City } from '../world/City';
 
 /**
  * Owns the renderer, scene graph, camera and the static environment (ground +
@@ -90,6 +90,7 @@ export class SceneEnv {
     });
     this.addGround(city);
     this.addLandmarks(city);
+    this.addWestminsterLandmarks(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
     if (!this.streaming) this.addRoads(city);
@@ -346,6 +347,35 @@ export class SceneEnv {
     this.footballBall.position.set(fx, 0.22, fz);
     this.footballBall.castShadow = true;
     this.scene.add(this.footballBall);
+  }
+
+  private addWestminsterLandmarks(city: City): void {
+    const mat=(color:number)=>new THREE.MeshStandardMaterial({color,roughness:0.82});
+    const plane=(color:number,w:number,d:number,x:number,z:number)=>{
+      const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));
+      m.rotation.x=-Math.PI/2;m.position.set(x,0.04,z);m.receiveShadow=true;this.scene.add(m);
+    };
+    const box=(color:number,w:number,h:number,d:number,x:number,y:number,z:number)=>{
+      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
+      m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;this.scene.add(m);
+    };
+    plane(0x5b8f72,275,165,-252,198);
+    plane(0x5b8f72,355,170,-142,315);
+    plane(0x4b7892,1300,100,0,640);
+    plane(0xb4aaa0,145,125,35,112);
+    box(0x8c7b63,7,55,7,35,27.5,112);
+    box(0xc9b99c,150,18,55,-30,9,286);
+    for(const x of [-82,-55,-28,0,28,55]) box(0x11151a,1.1,3.1,0.25,x,1.55,316);
+    box(0xb5a895,70,28,50,285,14,270);
+    box(0x9c8f7b,18,50,18,310,25,252);
+    box(0x8e816f,165,24,58,390,12,310);
+    box(0x9c8d73,14,96,14,430,48,250);
+    box(0x9b8a73,18,72,18,350,36,338);
+    plane(0x8f877a,95,62,455,225);
+    for(const x of [425,455,485]) box(0x6f6658,1,2.2,1,x,1.1,198);
+    box(0xb9aa8e,46,42,28,-160,21,405);
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(14,16,10,0,Math.PI*2,0,Math.PI/2),mat(0x8d4d38));
+    dome.position.set(-160,42,405);dome.castShadow=true;this.scene.add(dome);
   }
 
   /** Advance the ambient football match without adding a full NPC simulation cost. */
