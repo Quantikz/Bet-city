@@ -121,13 +121,13 @@ export class StreamedWorld {
       cell: cellOf(this.config),
       extent: this.viewExtent,
       half: 1e9,
-      roadCenters: [],
-      roadSegments: [],
+      roadCenters: this.map.roadCenters,
+      roadSegments: this.map.roadSegments,
       laneOffset: this.config.roadWidth / 4,
       buildings: [],
       props: [],
-      lanes: [],
-      parkingSpots: [],
+      lanes: this.map.lanes,
+      parkingSpots: this.map.parkingSpots,
       center: this.center,
       grid: this.grid,
       get colliders() {
@@ -136,6 +136,7 @@ export class StreamedWorld {
       get streetlights() {
         return self.liveStreetlights;
       },
+      landmarks: this.map.landmarks,
     };
   }
 

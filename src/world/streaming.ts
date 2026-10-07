@@ -1,17 +1,5 @@
 import { createRng, hashSeed, type Rng } from '../core/rng';
-import { classify, BIOMES } from './biome';
-import {
-  addBlock,
-  addProps,
-  makeWorldFields,
-  urbanityAt,
-  type CityConfig,
-  type Building,
-  type Prop,
-  type Streetlight,
-  type Lane,
-  type WorldFields,
-} from './City';
+import { generateCity, makeWorldFields, type CityConfig, type Building, type Prop, type Streetlight, type Lane, type WorldFields } from './City';
 import type { Aabb } from '../systems/Collision';
 
 /**
