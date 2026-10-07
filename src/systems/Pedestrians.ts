@@ -3,6 +3,12 @@ import type { City } from '../world/City';
 import { createRng, type Rng } from '../core/rng';
 import { lerp, angleLerp } from '../core/math';
 import { makePed, updateHumanAnimation } from '../render/Assets';
+
+function freezeHumanAnimation(group: any): void {
+  group.traverse((obj: any) => {
+    if (obj && obj.userData && typeof obj.userData === 'object') obj.userData.frozen = true;
+  });
+}
 import { Debris } from './Debris';
 import { World, defineComponent } from '../ecs/World';
 
