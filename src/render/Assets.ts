@@ -44,13 +44,6 @@ export function updateHumanAnimation(group: THREE.Group, speed: number, _dt: num
   if (hair) hair.position.y = 1.74 + bob * 0.55;
   // Keep locomotion inside the character; the root position belongs to physics.
 }
-export function freezeHumanAnimation(group: THREE.Group): void {
-  for (const name of ['ped-arm-l', 'ped-arm-r', 'ped-leg-l', 'ped-leg-r']) {
-    const part = group.getObjectByName(name);
-    if (part) { part.rotation.z = 0; part.rotation.x = 0; }
-  }
-}
-
 export class CityAssets {
   private readonly facadesByStyle: Record<FacadeStyle, THREE.CanvasTexture[]>;
   private readonly sideCache = new Map<string, THREE.Material>();
