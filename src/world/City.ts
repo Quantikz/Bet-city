@@ -259,9 +259,11 @@ export function addBlock(
 ): void {
   if (biome.buildingDensity <= 0) return; // e.g. water — nothing built here
 
-  const margin = 3; // sidewalk gap between facade and curb
+  const margin = biome.buildingDensity >= 0.72 ? 2.2 : biome.buildingDensity >= 0.48 ? 2.7 : 3.2; // compact urban frontage, wider suburban setbacks
   // Denser biomes subdivide into more, smaller lots; sparse biomes stay open.
-  const lots = rng.chance(0.3 + biome.buildingDensity * 0.5) ? 2 : 1;
+  const lots = biome.buildingDensity >= 0.58
+    ? 2
+    : rng.chance(0.18 + biome.buildingDensity * 0.42) ? 2 : 1;
   const lotSize = size / lots;
   const [hMin, hMax] = biome.heightRange;
 
