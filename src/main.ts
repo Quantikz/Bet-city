@@ -414,7 +414,7 @@ function render(alpha: number, frameDt: number): void {
   const ah = angleLerp(player.ph, player.heading, alpha);
   updateHumanAnimation(avatar, player.speed, frameDt);
   avatar.position.set(ax, ay, az);
-  avatar.rotation.y = ah;
+  avatar.rotation.y = ah + Math.PI / 2;
   avatar.visible = mode === 'foot';
 
   const carPose = vehicles.playerPoseInterp(alpha);
