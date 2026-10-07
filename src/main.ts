@@ -20,6 +20,7 @@ import { Sfx } from './audio/Sfx';
 import { Music } from './audio/Music';
 import { toMph, type VehicleInput } from './vehicles/VehicleModel';
 import { Gun } from './systems/Gun';
+import { addUrbanVisuals } from './render/UrbanVisuals';
 
 /** Touch UI + lower quality on coarse-pointer devices; `?touch=1|0` forces it. */
 function isTouchDevice(): boolean {
@@ -101,6 +102,7 @@ if (streamedWorld) {
   city.buildings.forEach((b, i) => env.scene.add(assets.makeBuilding(b, i)));
   city.streetlights.forEach((s) => env.scene.add(assets.makeStreetlight(s)));
   env.scene.add(assets.makeProps(city.props));
+  addUrbanVisuals(env.scene, city);
 }
 
 const avatar = makePed(0x2266dd);
