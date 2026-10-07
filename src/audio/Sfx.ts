@@ -1,14 +1,14 @@
 /**
- * Clean external game audio sourced from OpenGameArt CC0 assets.
+ * Clean CC0 game audio from OpenGameArt.
+ *
+ * Engine loops:
+ * https://opengameart.org/content/racing-car-engine-sound-loops
  *
  * Footsteps:
  * https://opengameart.org/content/footsteps-0
- * Engine:
- * https://opengameart.org/content/racing-car-engine-sound-loops
  *
- * These are deliberately kept as small HTMLAudio elements instead of being
- * synthesized with oscillators/noise. That removes the artificial "beep/drone"
- * character of the old beta audio and keeps the game bundle small.
+ * The samples are real recordings/loops. Playback rate and gain are driven
+ * continuously by the game's actual speed instead of swapping synthetic tones.
  */
 
 const STEP_URLS = [
@@ -29,82 +29,79 @@ const ENGINE_URLS = [
   'https://opengameart.org/sites/default/files/loop_5.wav',
 ] as const;
 
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+
 export class Sfx {
   private readonly engine = new Audio();
   private readonly steps = STEP_URLS.map((src) => {
     const a = new Audio(src);
     a.preload = 'auto';
     a.volume = 0;
+    a.playbackRate = 1;
     return a;
   });
   private started = false;
   private masterVolume = 0.8;
 
   start(): void {
-    if (this.started) {
-      void this.engine.play().catch(() => {});
-      return;
-    }
-
+    if (this.started) return;
     this.started = true;
-    this.engine.src = ENGINE_URLS[1];
+    this.engine.src = ENGINE_URLS[0];
     this.engine.loop = true;
     this.engine.preload = 'auto';
     this.engine.volume = 0;
-    // Load on the first gesture, but remain silent until driving.
+    this.engine.playbackRate = 0.9;
     this.engine.load();
   }
 
   setMasterVolume(v: number): void {
-    this.masterVolume = Math.max(0, Math.min(1, v));
-    this.engine.volume = this.masterVolume * 0.42;
+    this.masterVolume = clamp01(v);
+    if (!this.engine.paused) this.engine.volume = this.masterVolume * 0.34;
   }
 
   /**
-   * Uses real recorded CC0 footsteps rather than synthesized noise.
-   * Random selection prevents the repeated-machine-gun step pattern.
+   * A step is emitted by actual travelled distance in main.ts. Speed changes
+   * the sample rate slightly so walking, sprinting and crouching do not sound
+   * like the same cadence.
    */
-  footstep(): void {
+  footstep(speed: number, maxSpeed = 8): void {
     if (!this.started) return;
+    const normalized = clamp01(speed / Math.max(0.1, maxSpeed));
     const a = this.steps[Math.floor(Math.random() * this.steps.length)];
     a.currentTime = 0;
-    a.volume = this.masterVolume * 0.48;
+    a.playbackRate = 0.92 + normalized * 0.18;
+    a.volume = this.masterVolume * (0.24 + normalized * 0.12);
     void a.play().catch(() => {});
   }
 
   /**
-   * Uses one of the real CC0 engine loops and changes playback rate for
-   * believable acceleration without generating an artificial oscillator.
+   * The CC0 engine pack consists of the same engine at different pitches.
+   * We stay on one loop and continuously change playback rate instead of
+   * jumping between files, which makes throttle/speed transitions seamless.
    */
   setEngine(speed01: number, volume: number): void {
     if (!this.started) return;
-    const s = Math.max(0, Math.min(1, speed01));
-    const index = Math.min(ENGINE_URLS.length - 1, Math.floor(s * ENGINE_URLS.length));
-    const src = ENGINE_URLS[index];
+    const s = clamp01(speed01);
+    const v = clamp01(volume);
 
-    if (this.engine.src !== src) {
-      const wasPlaying = !this.engine.paused;
-      this.engine.src = src;
-      this.engine.load();
-      if (wasPlaying) void this.engine.play().catch(() => {});
-    }
+    // Low-speed idle remains audible; RPM rises non-linearly with road speed.
+    const rpm = Math.pow(s, 0.72);
+    this.engine.playbackRate = 0.88 + rpm * 0.48;
+    this.engine.volume = this.masterVolume * (0.16 + v * 0.30);
 
-    this.engine.playbackRate = 0.92 + s * 0.22;
-    this.engine.volume = Math.max(0, Math.min(1, volume)) * this.masterVolume * 0.42;
-
-    if (volume > 0.001 && this.engine.paused) {
+    if (this.engine.paused && v > 0.01) {
       void this.engine.play().catch(() => {});
-    } else if (volume <= 0.001 && !this.engine.paused) {
+    } else if (!this.engine.paused && v <= 0.001) {
       this.engine.pause();
     }
   }
 
-  // The old synthesized tyre screech was intentionally removed. Keep the
-  // method for the existing vehicle update API without producing noise.
+  // Tire squeal is currently intentionally silent; the old synthesized noise
+  // sounded artificial. It will be enabled with a dedicated recorded sample.
   setScreech(_amount01: number): void {}
 
-  // These placeholder effects are intentionally silent until a matching clean
-  // CC0 sample is added; no synthetic beeps/noise remain in the beta.
+  // Keep these APIs for the existing gameplay hooks without reintroducing
+  // synthetic beeps/noise.
   gib(): void {}
   explosion(): void {}
   enterCar(): void {}
