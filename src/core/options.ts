@@ -15,7 +15,7 @@ export interface GameOptions {
   quality: Quality; // render cost (device pixel ratio)
   dayLength: number; // seconds for a full day/night cycle
   cameraView: CameraView;
-  cameraZoom: number; // 0.65..1.6; lower is closer
+  cameraZoom: number; // 0.55..7; lower is closer
 }
 
 export const DEFAULT_OPTIONS: GameOptions = {
@@ -27,7 +27,7 @@ export const DEFAULT_OPTIONS: GameOptions = {
 };
 
 const DAY_LENGTH_RANGE = { min: 30, max: 1800 } as const;
-const CAMERA_ZOOM_RANGE = { min: 0.65, max: 1.6 } as const;
+const CAMERA_ZOOM_RANGE = { min: 0.55, max: 7 } as const;
 
 /** Coerce an unknown blob into valid options, falling back per-field. Pure. */
 export function sanitize(raw: unknown): GameOptions {
