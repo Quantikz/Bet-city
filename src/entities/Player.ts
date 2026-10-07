@@ -2,9 +2,9 @@ import { angleDelta, clamp } from '../core/math';
 
 const WALK = 4.2;
 const RUN = 8;
-const TURN_WALK = 1.8;
-const TURN_RUN = 2.4;
-const TURN_CROUCH = 1.35;
+const TURN_WALK = 1.05;
+const TURN_RUN = 1.35;
+const TURN_CROUCH = 0.8;
 const JUMP_SPEED = 6.2;
 const GRAVITY = 18;
 
