@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { daylightFactor, sunPosition } from '../core/math';
 import { makeGlowTexture } from './textures';
-import type { City } from '../world/City';
+import { landmarkLocations, type City } from '../world/City';
 
 /**
  * Owns the renderer, scene graph, camera and the static environment (ground +
@@ -47,6 +47,8 @@ export class SceneEnv {
   private followZ = 0;
   private readonly shadowHalf: number;
   private readonly houseLights: THREE.PointLight[];
+  private readonly footballPlayers: { group: THREE.Group; phase: number; lane: number; speed: number }[] = [];
+  private footballBall: THREE.Mesh | null = null;
 
   constructor(container: HTMLElement, city: City, quality: SceneQuality = {}) {
     const maxPixelRatio = quality.maxPixelRatio ?? 2;
@@ -213,6 +215,7 @@ export class SceneEnv {
     };
 
     // --- Coastal promenade / beach ---
+    const loc = landmarkLocations(city);
     const coastZ = city.half - 18;
     plane(0xd8c28b, city.extent, 34, 0, coastZ);
     plane(0x177f9e, city.extent * 1.18, 120, 0, city.half + 42, -0.04);
@@ -231,7 +234,7 @@ export class SceneEnv {
     }
 
     // --- Market square: stalls, awnings and central seating ---
-    const mx = -city.half * 0.42, mz = city.half * 0.12;
+    const mx = loc.market.x, mz = loc.market.z;
     plane(0x8b8170, 34, 28, mx, mz);
     for (let i = -2; i <= 2; i++) {
       const x = mx + i * 6;
@@ -246,7 +249,7 @@ export class SceneEnv {
     }
 
     // --- Football pitch, goals and simple perimeter ---
-    const fx = city.half * 0.35, fz = -city.half * 0.28;
+    const fx = loc.football.x, fz = loc.football.z;
     plane(0x2f824b, 42, 26, fx, fz, 0.04);
     plane(0xe9e1c7, 36, 0.18, fx, fz, 0.055);
     plane(0xe9e1c7, 0.18, 20, fx, fz, 0.055);
@@ -260,7 +263,7 @@ export class SceneEnv {
     }
 
     // --- Playground: slide, swings and benches ---
-    const px = -city.half * 0.28, pz = -city.half * 0.32;
+    const px = loc.playground.x, pz = loc.playground.z;
     plane(0xb98a5d, 28, 22, px, pz, 0.035);
     box(0xe66b42, 2, 2.8, 6, px, 1.4, pz);
     for (let i = -1; i <= 1; i++) {
@@ -272,16 +275,96 @@ export class SceneEnv {
     box(0x45413a, 3.2, 0.5, 0.7, px - 7, 0.25, pz + 6);
     box(0x6f5b43, 3.2, 0.08, 0.7, px - 7, 0.7, pz + 6);
 
-    // --- Supermarkets: entrance canopies, parking bays and sign bands ---
-    for (const [x, z] of [[city.half * 0.28, city.half * 0.16], [city.half * 0.48, -city.half * 0.08]]) {
-      box(0xd9d2c7, 18, 5, 12, x, 2.5, z);
-      box(0x1e7bd4, 14, 0.9, 0.18, x, 4.4, z - 6.05);
-      box(0xe9e5dd, 10, 0.22, 2.0, x, 4.7, z - 7.0);
-      for (let p = -2; p <= 2; p++) {
-        box(0x85888c, 0.16, 2.8, 0.16, x + p * 2.1, 1.4, z - 7.0);
-        plane(0x6b6f73, 1.5, 5.0, x + p * 2.1, z - 10.0, 0.025);
+    // --- Supermarkets: real shell + entrance + interior aisles ---
+    for (const [x, z] of loc.supermarkets) {
+      const wall = mat(0xd9d2c7, 0.72);
+      const inner = mat(0xf0ede5, 0.9);
+      // Floor is deliberately visible through the open entrance.
+      plane(0xe6e1d6, 17.2, 11.2, x, z, 0.045);
+      box(0xd9d2c7, 18, 5, 0.45, x, 2.5, z - 5.78);
+      box(0xd9d2c7, 0.45, 5, 12, x - 8.78, 2.5, z);
+      box(0xd9d2c7, 0.45, 5, 12, x + 8.78, 2.5, z);
+      const doorW = 3.8;
+      const sideW = (18 - doorW) / 2;
+      box(0xd9d2c7, sideW, 5, 0.45, x - (doorW / 2 + sideW / 2), 2.5, z + 5.78);
+      box(0xd9d2c7, sideW, 5, 0.45, x + (doorW / 2 + sideW / 2), 2.5, z + 5.78);
+      // Bright interior ceiling beam and entrance canopy.
+      box(0xffffff, 17.2, 0.18, 0.45, x, 4.8, z);
+      box(0x1e7bd4, 14, 0.9, 0.18, x, 4.4, z + 6.05);
+      box(0xe9e5dd, 10, 0.22, 2.0, x, 4.7, z + 7.0);
+      // Four shelf islands correspond exactly to the collision map in City.ts.
+      for (const sx of [-5.0, -1.7, 1.7, 5.0]) {
+        box(0x7a5b3f, 0.85, 1.2, 5.0, x + sx, 0.6, z - 1.0);
+        box(0xc7b18f, 0.95, 0.08, 5.2, x + sx, 1.25, z - 1.0);
       }
-      for (let p = -2; p <= 2; p++) plane(0xd9d9d5, 1.7, 0.16, x + p * 2.1, z - 8.2, 0.028);
+      box(0x4d5660, 8.0, 1.0, 0.8, x, 0.5, z + 4.0);
+      // Entrance doors are glass panels placed beside the walkable centre.
+      const glass = new THREE.MeshPhysicalMaterial({ color: 0x8bd8ef, transparent: true, opacity: 0.28, roughness: 0.08, transmission: 0.35 });
+      box(0x85888c, 0.16, 2.8, 0.16, x - doorW / 2, 1.4, z + 6.0);
+      box(0x85888c, 0.16, 2.8, 0.16, x + doorW / 2, 1.4, z + 6.0);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(doorW * 0.46, 2.8, 0.05), glass);
+      door.position.set(x - doorW * 0.23, 1.4, z + 6.0);
+      this.scene.add(door);
+      const door2 = door.clone();
+      door2.position.x = x + doorW * 0.23;
+      this.scene.add(door2);
+      // Parking bays remain outside the entrance.
+      for (let p = -2; p <= 2; p++) {
+        plane(0x6b6f73, 1.5, 5.0, x + p * 2.1, z + 10.0, 0.025);
+        plane(0xd9d9d5, 1.7, 0.16, x + p * 2.1, z + 8.2, 0.028);
+      }
+      void wall; void inner;
+    }
+
+    // --- Living football match: lightweight animated players + ball ---
+    const playerMatColors = [0xe84b3c, 0xf2f0e6, 0x2d72c7, 0xf0c54a];
+    const makeFootballer = (color: number): THREE.Group => {
+      const g = new THREE.Group();
+      const shirt = mat(color, 0.8);
+      const skin = mat(0x7a4b32, 0.78);
+      const pants = mat(0x202733, 0.9);
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 4, 8), shirt);
+      body.position.y = 1.0; g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), skin);
+      head.position.y = 1.55; g.add(head);
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.34, 3, 6), pants);
+        leg.position.set(side * 0.1, 0.52, 0); g.add(leg);
+      }
+      g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      return g;
+    };
+    for (let i = 0; i < 10; i++) {
+      const g = makeFootballer(playerMatColors[i % playerMatColors.length]);
+      const phase = i * 0.71;
+      const lane = (i % 5 - 2) * 3.5;
+      g.position.set(fx + Math.sin(phase) * 12, 0, fz + lane);
+      this.scene.add(g);
+      this.footballPlayers.push({ group: g, phase, lane, speed: 0.55 + (i % 3) * 0.16 });
+    }
+    this.footballBall = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), mat(0xf5f5f2, 0.5));
+    this.footballBall.position.set(fx, 0.22, fz);
+    this.footballBall.castShadow = true;
+    this.scene.add(this.footballBall);
+  }
+
+  /** Advance the ambient football match without adding a full NPC simulation cost. */
+  updateActivities(dt: number, time: number): void {
+    if (this.footballPlayers.length === 0) return;
+    for (let i = 0; i < this.footballPlayers.length; i++) {
+      const p = this.footballPlayers[i];
+      const t = time * p.speed + p.phase;
+      p.group.position.x += (Math.cos(t) * 0.9) * dt;
+      p.group.position.z = this.footballPlayers[i].group.position.z + Math.sin(t * 1.7) * 0.02;
+      p.group.rotation.y = Math.sin(t) * 0.7;
+      const stride = Math.sin(t * 7) * 0.16;
+      p.group.children[2]?.rotation.set(stride, 0, 0);
+      p.group.children[3]?.rotation.set(-stride, 0, 0);
+    }
+    if (this.footballBall) {
+      this.footballBall.position.x += Math.cos(time * 1.8) * 0.018;
+      this.footballBall.position.z += Math.sin(time * 2.1) * 0.02;
+      this.footballBall.position.y = 0.22 + Math.abs(Math.sin(time * 3.2)) * 0.18;
     }
   }
 
