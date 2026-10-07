@@ -100,6 +100,37 @@ export function makeWorldFields(seed: number): WorldFields {
 
 const URBANITY_FREQ = 0.012; // a few districts span the current finite city
 
+/** Deliberate open-world landmark footprints, expressed as normalized city coordinates. */
+export interface LandmarkZone {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+}
+
+export function landmarkZones(city: Pick<City, 'half'>): LandmarkZone[] {
+  const h = city.half;
+  return [
+    { x: -h * 0.42, z: h * 0.12, width: 34, depth: 28 }, // market
+    { x: h * 0.35, z: -h * 0.28, width: 42, depth: 26 }, // football
+    { x: -h * 0.28, z: -h * 0.32, width: 28, depth: 22 }, // playground
+    { x: h * 0.28, z: h * 0.16, width: 18, depth: 12 }, // supermarket A
+    { x: h * 0.48, z: -h * 0.08, width: 18, depth: 12 }, // supermarket B
+  ];
+}
+
+function overlapsZone(
+  x: number,
+  z: number,
+  width: number,
+  depth: number,
+  zone: LandmarkZone,
+  pad = 2,
+): boolean {
+  return Math.abs(x - zone.x) * 2 < width + zone.width + pad * 2
+    && Math.abs(z - zone.z) * 2 < depth + zone.depth + pad * 2;
+}
+
 /** Normalized urbanity (0–1) at a world point — drives the city→rural gradient. */
 export function urbanityAt(fields: WorldFields, wx: number, wz: number): number {
   const n = fbm(fields.urbanity, wx, wz, { octaves: 4, frequency: URBANITY_FREQ });
@@ -138,6 +169,13 @@ export function generateChunk(
       const biome = BIOMES[classify(u, 1)]; // elevation=1 (dry) until water lands
       // Reserve the outermost northern district for the coastal promenade/beach.
       if (gj === grid - 1) continue;
+      // Keep major public spaces genuinely open: the renderer dresses these
+      // footprints with the market, pitch, playground and retail buildings.
+      const blockCx = blockX + blockSize / 2;
+      const blockCz = blockZ + blockSize / 2;
+      if (landmarkZones({ half }).some((zone) => overlapsZone(blockCx, blockCz, blockSize, blockSize, zone))) {
+        continue;
+      }
       addBlock(blockX, blockZ, blockSize, rng, biome, buildings, colliders);
       addProps(blockX, blockZ, blockSize, rng, biome, colliders, props);
     }
@@ -340,8 +378,10 @@ function buildParkingSpots(
 
   const blockCenter = (b: number): number => b * cell + roadWidth + blockSize / 2 - half;
 
+  const zones = landmarkZones({ half });
   const tryAdd = (x: number, z: number, heading: number): void => {
     if (!rng.chance(fill)) return;
+    if (zones.some((zone) => overlapsZone(x, z, 3.2, 1.8, zone, 1))) return;
     if (insideAnyCollider(x, z, colliders, 2)) return;
     spots.push({ x, z, heading });
   };
