@@ -90,7 +90,7 @@ export class SceneEnv {
     });
     this.addGround(city);
     this.addLandmarks(city);
-    this.addWestminsterLandmarks();
+    this.addWestminsterLandmarks(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
     if (!this.streaming) this.addRoads(city);
@@ -351,15 +351,16 @@ export class SceneEnv {
     this.footballBall = ball;
   }
 
-  private addWestminsterLandmarks(): void {
+  private addWestminsterLandmarks(city: City): void {
+    const westminster = new THREE.Group();
     const mat=(color:number)=>new THREE.MeshStandardMaterial({color,roughness:0.82});
     const plane=(color:number,w:number,d:number,x:number,z:number)=>{
       const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));
-      m.rotation.x=-Math.PI/2;m.position.set(x,0.04,z);m.receiveShadow=true;this.scene.add(m);
+      m.rotation.x=-Math.PI/2;m.position.set(x,0.04,z);m.receiveShadow=true;westminster.add(m);
     };
     const box=(color:number,w:number,h:number,d:number,x:number,y:number,z:number)=>{
       const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
-      m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;this.scene.add(m);
+      m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;westminster.add(m);
     };
     plane(0x5b8f72,275,165,-252,198);
     plane(0x5b8f72,355,170,-142,315);
@@ -377,7 +378,7 @@ export class SceneEnv {
     for(const x of [425,455,485]) box(0x6f6658,1,2.2,1,x,1.1,198);
     box(0xb9aa8e,46,42,28,-160,21,405);
     const dome=new THREE.Mesh(new THREE.SphereGeometry(14,16,10,0,Math.PI*2,0,Math.PI/2),mat(0x8d4d38));
-    dome.position.set(-160,42,405);dome.castShadow=true;this.scene.add(dome);
+    dome.position.set(-160,42,405);dome.castShadow=true;westminster.add(dome);
   }
 
   /** Advance the ambient football match without adding a full NPC simulation cost. */
