@@ -99,41 +99,11 @@ const ROADS: RoadSegment[] = [
 // neighbourhood map includes many of these communities; these are used as named
 // districts for map generation rather than as arbitrary procedural zones.
 export interface WestminsterArea { name:string; x:number; z:number; radius:number; character:'historic'|'retail'|'residential'|'civic'|'park'; }
-const WESTMINSTER_AREAS: Array<[string,number,number,WestminsterArea['character']]> = [
-  ['Paddington',-535,-300,'residential'], ['Bayswater',-500,-120,'residential'], ['Queensway',-500,20,'retail'],
-  ['Notting Hill East',-500,170,'residential'], ['Westbourne',-430,300,'residential'], ['Queen\'s Park',-420,470,'residential'],
-  ['Maida Hill',-300,430,'residential'], ['Maida Vale',-165,465,'residential'], ['Little Venice',-30,470,'park'],
-  ['St John\'s Wood',145,470,'residential'], ['Church Street',-300,300,'retail'], ['Marylebone',-175,315,'residential'],
-  ['Fitzrovia West',-40,300,'retail'], ['Soho',55,300,'retail'], ['Mayfair',-105,170,'historic'],
-  ['St James\'s',55,170,'historic'], ['Covent Garden',180,180,'retail'], ['Strand',290,180,'retail'],
-  ['West End',35,55,'retail'], ['Hyde Park',-350,55,'park'], ['Knightsbridge',-175,55,'historic'],
-  ['Belgravia',-170,210,'historic'], ['Victoria',170,300,'civic'], ['Pimlico',175,430,'residential'],
-  ['Millbank',300,430,'civic'], ['Westminster',300,285,'civic'], ['Whitehall',350,145,'civic'],
-  ['Trafalgar Square',35,115,'civic'], ['Buckingham Palace',-30,275,'historic'], ['St James\'s Park',-145,300,'park'],
-  ['Green Park',-230,200,'park'], ['Vincent Square',130,380,'park'], ['Ebury Bridge',70,440,'residential'],
-  ['Churchill Gardens',300,500,'residential'], ['Harrow Road',-480,350,'residential'], ['Lisson Grove',-260,180,'residential'],
-  ['Regent\'s Park',-260,500,'park'], ['Lancaster Gate',-380,-80,'residential'], ['Hyde Park and Paddington',-400,-230,'park'],
-];
-const AREA_SCALE = MAP_SCALE;
-const AREA_POINTS: WestminsterArea[] = WESTMINSTER_AREAS.map(([name,x,z,character]) => ({name,x:x*AREA_SCALE,z:z*AREA_SCALE,radius:70,character}));
 const PARKS = [
   {x1:sx(-300),z1:sx(-470),x2:sx(300),z2:sx(-390),name:"Seafront"},
   {x1:sx(-240),z1:sx(35),x2:sx(-105),z2:sx(155),name:"West Park"},
   {x1:sx(105),z1:sx(60),x2:sx(250),z2:sx(170),name:"East Park"},
 ];
-
-function intersects(a:{x1:number;z1:number;x2:number;z2:number}, b:{x1:number;z1:number;x2:number;z2:number}, pad=0):boolean {
-  return !(a.x2 < b.x1-pad || a.x1 > b.x2+pad || a.z2 < b.z1-pad || a.z1 > b.z2+pad);
-}
-
-function nearRoad(x:number,z:number,pad=7):boolean {
-  for (const r of ROADS) {
-    const minX=Math.min(r.x1,r.x2)-r.width/2-pad, maxX=Math.max(r.x1,r.x2)+r.width/2+pad;
-    const minZ=Math.min(r.z1,r.z2)-r.width/2-pad, maxZ=Math.max(r.z1,r.z2)+r.width/2+pad;
-    if (x>minX&&x<maxX&&z>minZ&&z<maxZ) return true;
-  }
-  return false;
-}
 
 function roadLanes(): Lane[] {
   const lanes: Lane[] = [];
@@ -164,13 +134,6 @@ function streetlights(): Streetlight[] {
 
 function addBoxCollider(out:Aabb[],cx:number,cz:number,w:number,d:number):void {
   out.push({minX:cx-w/2,minZ:cz-d/2,maxX:cx+w/2,maxZ:cz+d/2});
-}
-
-function facadeFor(rng:ReturnType<typeof createRng>, z:number):{style:FacadeStyle;color:number;h:[number,number]} {
-  if (z < -300) return {style:'brick',color:rng.pick([0x9b6654,0xb27a62,0x7e4f43,0xc0a58d]),h:[12,24]};
-  if (z < 80) return {style:'concrete',color:rng.pick([0x8e8b84,0xa59d91,0xb7aea0,0x777a7d]),h:[14,32]};
-  if (z < 260) return {style:'concrete',color:rng.pick([0x8f8475,0xb2a38e,0xc1b39c,0x6d6b68]),h:[10,27]};
-  return {style:'brick',color:rng.pick([0x8a5545,0x9b624d,0xb07b61,0x6f4c43]),h:[9,22]};
 }
 
 function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:Aabb[];props:Prop[]} {
