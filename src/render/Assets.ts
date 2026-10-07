@@ -24,7 +24,8 @@ export function updateHumanAnimation(group: THREE.Group, speed: number, _dt: num
   // without relying on the unvalidated GLB rig.  Parts are named in makePed().
   const walk = Math.min(1, Math.max(0, speed / 2.2));
   const t = performance.now() * 0.012;
-  const swing = Math.sin(t * (0.75 + walk * 1.8)) * 0.65 * walk;
+  const swing = Math.sin(t * (0.75 + walk * 1.8)) * 0.52 * walk;
+  const bob = Math.abs(Math.sin(t * (0.75 + walk * 1.8))) * 0.035 * walk;
   const leftArm = group.getObjectByName('ped-arm-l');
   const rightArm = group.getObjectByName('ped-arm-r');
   const leftLeg = group.getObjectByName('ped-leg-l');
@@ -32,13 +33,21 @@ export function updateHumanAnimation(group: THREE.Group, speed: number, _dt: num
   if (leftArm) leftArm.rotation.z = swing;
   if (rightArm) rightArm.rotation.z = -swing;
   if (leftLeg) leftLeg.rotation.z = -swing * 0.55;
-  if (rightLeg) rightLeg.rotation.z = swing * 0.55;
-  // Keep locomotion entirely in limb rotations; root position is owned by the pedestrian system.
+  if (rightLeg) rightLeg.rotation.z = swing * 0.72;
+  if (leftArm) leftArm.rotation.x = bob * 0.35;
+  if (rightArm) rightArm.rotation.x = bob * 0.35;
+  const body = group.getObjectByName('ped-body');
+  const head = group.getObjectByName('ped-head');
+  const hair = group.getObjectByName('ped-hair');
+  if (body) body.position.y = 1.02 + bob;
+  if (head) head.position.y = 1.63 + bob * 0.55;
+  if (hair) hair.position.y = 1.74 + bob * 0.55;
+  // Keep locomotion inside the character; the root position belongs to physics.
 }
 export function freezeHumanAnimation(group: THREE.Group): void {
   for (const name of ['ped-arm-l', 'ped-arm-r', 'ped-leg-l', 'ped-leg-r']) {
     const part = group.getObjectByName(name);
-    if (part) part.rotation.z = 0;
+    if (part) { part.rotation.z = 0; part.rotation.x = 0; }
   }
 }
 
@@ -447,26 +456,50 @@ export function makePed(color: number): THREE.Group {
   const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
   const pants = new THREE.MeshStandardMaterial({ color: 0x263142, roughness: 0.9 });
   const shoes = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.92 });
-  const add = (name: string, geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z = 0): THREE.Mesh => {
+  const hair = new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 });
+
+  const mesh = (name: string, geo: THREE.BufferGeometry, mat: THREE.Material, parent: THREE.Object3D, x: number, y: number, z = 0): THREE.Mesh => {
     const m = new THREE.Mesh(geo, mat);
     m.name = name;
     m.position.set(x, y, z);
     m.castShadow = true;
     m.receiveShadow = true;
-    group.add(m);
+    parent.add(m);
     return m;
   };
-  add('ped-body', new THREE.CylinderGeometry(0.24, 0.29, 0.62, 10), shirt, 0, 1.05);
-  add('ped-neck', new THREE.CylinderGeometry(0.09, 0.09, 0.16, 8), skin, 0, 1.42);
-  add('ped-head', new THREE.SphereGeometry(0.22, 16, 12), skin, 0, 1.66);
-  add('ped-hair', new THREE.SphereGeometry(0.225, 16, 8), new THREE.MeshStandardMaterial({ color: 0x17110e, roughness: 0.9 }), 0, 1.77);
-  add('ped-arm-l', new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, -0.30, 1.08);
-  add('ped-arm-r', new THREE.CapsuleGeometry(0.075, 0.42, 4, 8), shirt, 0.30, 1.08);
-  add('ped-hand-l', new THREE.SphereGeometry(0.08, 8, 6), skin, -0.32, 0.79);
-  add('ped-hand-r', new THREE.SphereGeometry(0.08, 8, 6), skin, 0.32, 0.79);
-  add('ped-leg-l', new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, -0.12, 0.48);
-  add('ped-leg-r', new THREE.CapsuleGeometry(0.095, 0.48, 4, 8), pants, 0.12, 0.48);
-  add('ped-shoe-l', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, -0.12, 0.08, -0.06);
-  add('ped-shoe-r', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, 0.12, 0.08, -0.06);
+
+  mesh('ped-body', new THREE.CapsuleGeometry(0.25, 0.46, 5, 10), shirt, group, 0, 1.02);
+  mesh('ped-neck', new THREE.CylinderGeometry(0.09, 0.1, 0.14, 8), skin, group, 0, 1.39);
+  mesh('ped-head', new THREE.SphereGeometry(0.225, 18, 14), skin, group, 0, 1.63);
+  mesh('ped-hair', new THREE.SphereGeometry(0.228, 18, 10), hair, group, 0, 1.74);
+
+  const leftArm = new THREE.Group();
+  leftArm.name = 'ped-arm-l';
+  leftArm.position.set(-0.28, 1.25, 0);
+  group.add(leftArm);
+  mesh('ped-upperarm-l', new THREE.CapsuleGeometry(0.065, 0.34, 4, 8), shirt, leftArm, 0, -0.2);
+  mesh('ped-hand-l', new THREE.SphereGeometry(0.075, 8, 6), skin, leftArm, 0, -0.46);
+
+  const rightArm = new THREE.Group();
+  rightArm.name = 'ped-arm-r';
+  rightArm.position.set(0.28, 1.25, 0);
+  group.add(rightArm);
+  mesh('ped-upperarm-r', new THREE.CapsuleGeometry(0.065, 0.34, 4, 8), shirt, rightArm, 0, -0.2);
+  mesh('ped-hand-r', new THREE.SphereGeometry(0.075, 8, 6), skin, rightArm, 0, -0.46);
+
+  const leftLeg = new THREE.Group();
+  leftLeg.name = 'ped-leg-l';
+  leftLeg.position.set(-0.115, 0.73, 0);
+  group.add(leftLeg);
+  mesh('ped-thigh-l', new THREE.CapsuleGeometry(0.085, 0.38, 4, 8), pants, leftLeg, 0, -0.23);
+  mesh('ped-shoe-l', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, leftLeg, 0, -0.62, -0.06);
+
+  const rightLeg = new THREE.Group();
+  rightLeg.name = 'ped-leg-r';
+  rightLeg.position.set(0.115, 0.73, 0);
+  group.add(rightLeg);
+  mesh('ped-thigh-r', new THREE.CapsuleGeometry(0.085, 0.38, 4, 8), pants, rightLeg, 0, -0.23);
+  mesh('ped-shoe-r', new THREE.BoxGeometry(0.20, 0.10, 0.38), shoes, rightLeg, 0, -0.62, -0.06);
+
   return group;
 }
