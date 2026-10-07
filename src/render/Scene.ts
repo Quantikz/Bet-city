@@ -276,7 +276,7 @@ export class SceneEnv {
     box(0x6f5b43, 3.2, 0.08, 0.7, px - 7, 0.7, pz + 6);
 
     // --- Supermarkets: real shell + entrance + interior aisles ---
-    for (const [x, z] of loc.supermarkets) {
+    for (const { x, z } of loc.supermarkets) {
       const wall = mat(0xd9d2c7, 0.72);
       const inner = mat(0xf0ede5, 0.9);
       // Floor is deliberately visible through the open entrance.
