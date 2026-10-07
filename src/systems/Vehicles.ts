@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import type { City, Lane } from '../world/City';
 import { createRng } from '../core/rng';
-import { damp, lerp, angleLerp, safeApproachSpeed, leadTime, pursuitSpeed } from '../core/math';
+import { damp, lerp, angleLerp, safeApproachSpeed } from '../core/math';
 import { makeCar, CAR_SHAPES, type CarShape } from '../render/Assets';
-import { circleOverlap, nearestIndex, resolveCarImpulse, segmentBlocked, type Aabb } from './Collision';
+import { circleOverlap, nearestIndex, resolveCarImpulse } from './Collision';
 import { Debris } from './Debris';
 import { Smoke } from './Smoke';
 import { World, defineComponent } from '../ecs/World';
@@ -16,7 +16,7 @@ import {
   CAR_MAX_HEALTH,
   type VehicleInput,
 } from '../vehicles/VehicleModel';
-import { PROFILES, INTERCEPTOR, PLAYER_PROFILE, type CarProfile } from '../vehicles/profiles';
+import { PROFILES, PLAYER_PROFILE, type CarProfile } from '../vehicles/profiles';
 
 const shapeFor = (id: string): CarShape => CAR_SHAPES.find((s) => s.id === id) ?? CAR_SHAPES[0];
 
@@ -29,7 +29,7 @@ const shapeFor = (id: string): CarShape => CAR_SHAPES.find((s) => s.id === id) ?
  * `stepVehicle` model; the rest follow lanes or coast to rest.
  */
 
-type Role = 'ai' | 'parked' | 'police';
+type Role = 'ai' | 'parked';
 
 interface Car {
   x: number;
@@ -42,7 +42,7 @@ interface Car {
   pz: number;
   ph: number;
   role: Role;
-  active: boolean; // police idle in a pool until a wanted level activates them
+  active: boolean;
   lane: Lane | null;
   cruise: number;
   health: number; // body integrity; explodes at 0 (see crashDamage)
@@ -51,7 +51,6 @@ interface Car {
   profile: CarProfile; // make/model + tuned handling (used when this car is driven)
   group: THREE.Group;
   steerWheels: THREE.Object3D[];
-  lightMat?: THREE.MeshStandardMaterial; // police roof light (flashed in render)
 }
 
 const PLAYER_COLOR = 0x10a0c8;
@@ -71,23 +70,6 @@ const PED_BRAKE_RATE = 5; // how hard the car decelerates toward that safe speed
 const PED_REACH = CAR_RADIUS + 0.75; // generous contact distance for human/car collision
 const HIT_ACTOR_SPEED = 3; // above this, moving cars can actually hit on-foot actors
 
-const POLICE_COLOR = 0x12131c;
-const POLICE_POOL = 5; // one per wanted star
-const POLICE_SPEED = 32; // base cruise; rubber-bands up with the gap (pursuitSpeed)
-const POLICE_MAX_SPEED = 82; // chase ceiling — under the player's ~90 so escape is possible but hard
-const POLICE_RUBBERBAND = 0.6; // extra m/s of chase speed per metre of gap
-const POLICE_ACCEL = 5; // how hard cruisers wind up to their chase speed
-const POLICE_SPAWN_DIST = 72; // how far from the player a cruiser appears
-const POLICE_LEASH = 150; // a cop that falls beyond this is re-summoned near the player
-const POLICE_SIGHT = 70; // how far a cop can see the player (for the wanted cooldown)
-// Steering-behavior weights (Reynolds): blended into a desired direction.
-const POLICE_LEAD = 1.2; // s of interception lead, capped
-const POLICE_PURSUE_W = 1.0;
-const POLICE_SEP_RADIUS = 14; // cruisers repel each other within this range
-const POLICE_SEP_W = 1.7; // separation beats pursuit in a scrum, loses in open road
-const POLICE_AVOID_W = 3.0; // avoidance overrides everything so they don't grind walls
-const POLICE_FEELER = CAR_RADIUS + 7; // look-ahead distance for the avoidance probe
-
 export interface PedImpact {
   speed: number; // car speed at the moment of contact (m/s)
   nx: number; // knockback direction (from car toward pedestrian)
@@ -104,7 +86,6 @@ export class Vehicles {
   private readonly cars: Car[] = [];
   playerIndex: number | null = 0;
   private steer = 0;
-  private flash = 0; // render-frame counter for the flashing police lights
   private readonly smoke: Smoke;
   private explosions = 0; // car wrecks since main last consumed them (for SFX)
   private playerWreckPending = false; // player car blew up → main triggers WASTED
@@ -115,7 +96,6 @@ export class Vehicles {
   private curCity: City | null = null;
   private curInput: VehicleInput | null = null;
   private curPedestrian: { x: number; z: number } | null = null;
-  private curChase: { x: number; z: number; vx?: number; vz?: number } | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -145,29 +125,6 @@ export class Vehicles {
       this.spawn(scene, makeCar(color, shapeFor(profile.shapeId)), color, profile, spot.x, spot.z, spot.heading, 'parked', null, 0);
     }
 
-    // A pool of idle police cars (hidden off-map) that a wanted level activates.
-    for (let i = 0; i < POLICE_POOL; i++) {
-      const mesh = makeCar(POLICE_COLOR, shapeFor(INTERCEPTOR.shapeId));
-      const lightMat = new THREE.MeshStandardMaterial({
-        color: 0x220008,
-        emissive: 0xff2030,
-        emissiveIntensity: 2.5,
-      });
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 1.1), lightMat);
-      bar.position.set(-0.2, 1.62, 0);
-      mesh.group.add(bar);
-      mesh.group.visible = false;
-      scene.add(mesh.group);
-      const car: Car = {
-        x: 1e6, z: 1e6, heading: 0, vx: 0, vz: 0, px: 1e6, pz: 1e6, ph: 0,
-        role: 'police', active: false, lane: null, cruise: 0,
-        health: CAR_MAX_HEALTH, color: POLICE_COLOR, shapeId: INTERCEPTOR.shapeId, profile: INTERCEPTOR,
-        group: mesh.group, steerWheels: mesh.steerWheels, lightMat,
-      };
-      this.cars.push(car);
-      this.world.add(this.world.create(), Vehicle, car);
-    }
-  }
 
   private spawn(
     scene: THREE.Scene,
@@ -197,13 +154,11 @@ export class Vehicles {
     city: City,
     dt: number,
     input: VehicleInput | null,
-    pedestrian: { x: number; z: number } | null = null,
-    chaseTarget: { x: number; z: number; vx?: number; vz?: number } | null = null,
+    pedestrian: { x: number; z: number } | null = null ,
   ): void {
     this.curCity = city;
     this.curInput = input;
     this.curPedestrian = pedestrian;
-    this.curChase = chaseTarget;
     this.simStep(this.world, dt);
 
     if (this.playerIndex !== null) {
@@ -246,7 +201,6 @@ export class Vehicles {
       const car = w.get(e, Vehicle)!;
       if (car === playerCar || !car.active) continue;
       if (car.role === 'ai') this.driveAi(car, city, dt, this.curPedestrian);
-      else if (car.role === 'police') this.drivePolice(car, city, dt, this.curChase);
       else this.coast(car, dt);
     }
 
@@ -269,8 +223,6 @@ export class Vehicles {
 
   /** Render system: position each car mesh, interpolated between physics steps. */
   private renderCars(w: World, alpha: number): void {
-    this.flash++;
-    const blue = Math.floor(this.flash / 16) % 2 === 0;
     const playerCar = this.playerIndex !== null ? this.cars[this.playerIndex] : null;
     for (const e of w.query(Vehicle)) {
       const c = w.get(e, Vehicle)!;
@@ -280,7 +232,6 @@ export class Vehicles {
       if (c === playerCar) {
         for (const wheel of c.steerWheels) wheel.rotation.y = this.steer * 0.5;
       }
-      if (c.lightMat) c.lightMat.emissive.setHex(blue ? 0x2030ff : 0xff2030);
     }
   }
 
@@ -341,12 +292,11 @@ export class Vehicles {
    * skips cruisers — the on-foot player is ARRESTED (BUSTED) by police, not run
    * over by them, so a cop reaching you on foot shouldn't just splatter you.
    */
-  pedestrianImpact(px: number, pz: number, includePlayer = false, includePolice = true): PedImpact | null {
+  pedestrianImpact(px: number, pz: number, includePlayer = false): PedImpact | null {
     let best: PedImpact | null = null;
     for (let i = 0; i < this.cars.length; i++) {
       if (!includePlayer && i === this.playerIndex) continue;
       const c = this.cars[i];
-      if (!includePolice && c.role === 'police') continue;
       const dist = Math.hypot(c.x - px, c.z - pz);
       if (dist >= PED_REACH) continue;
       const speed = Math.hypot(c.vx, c.vz);
