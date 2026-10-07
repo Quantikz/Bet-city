@@ -31,7 +31,8 @@ function isTouchDevice(): boolean {
 
 const FOOT_RADIUS = 0.4;
 const ENTER_DISTANCE = 6; // generous so curbside parked cars are easy to get into
-const ENGINE_HEAR = 28; // on foot, how far a parked car's idle is audible
+const STEP_DISTANCE_WALK = 1.65;
+const STEP_DISTANCE_RUN = 2.05;
 let footAccum = 0;
 
 let dayLength = 480; // seconds for a full day/night cycle (overridden by options)
@@ -279,12 +280,14 @@ function update(dt: number): void {
     // Footsteps cadence with travel distance (faster when sprinting).
     if (player.speed > 0.1) {
       footAccum += player.speed * dt;
-      if (footAccum >= STEP_DISTANCE) {
+      const sprinting = controls.sprint(true);
+      const stepDistance = sprinting ? STEP_DISTANCE_RUN : STEP_DISTANCE_WALK;
+      if (footAccum >= stepDistance) {
         footAccum = 0;
         sfx.footstep(player.speed, sprinting ? 8 : 4.2);
       }
     } else {
-      footAccum = STEP_DISTANCE; // first move triggers a step promptly
+      footAccum = 0; // first movement begins a normal stride
     }
   }
 
@@ -494,7 +497,6 @@ const loop = new GameLoop(update, render);
 function applyOptions(opts: GameOptions): void {
   options = opts;
   sfx.setMasterVolume(opts.masterVolume);
-  radio?.setMasterVolume(opts.masterVolume);
   env.renderer.setPixelRatio(Math.min(window.devicePixelRatio, qualityPixelRatio(opts.quality)));
   dayLength = opts.dayLength;
 }
