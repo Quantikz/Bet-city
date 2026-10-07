@@ -213,6 +213,7 @@ export function generateChunk(
   const buildings: Building[] = [];
   const colliders: Aabb[] = [];
   const props: Prop[] = [];
+  const landmarkRoadCenters = roadCentersFor(config);
 
   for (let bi = 0; bi < chunkBlocks; bi++) {
     for (let bj = 0; bj < chunkBlocks; bj++) {
