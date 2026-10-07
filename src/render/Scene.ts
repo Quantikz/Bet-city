@@ -63,7 +63,7 @@ export class SceneEnv {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.shadowMap.autoUpdate = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.45;
+    this.renderer.toneMappingExposure = 1.7;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
@@ -80,13 +80,14 @@ export class SceneEnv {
     this.camera.position.set(0, 30, 30);
 
     this.addLights(city, shadowMapSize);
-    this.houseLights = Array.from({ length: 18 }, () => {
-      const light = new THREE.PointLight(0xffd6a0, 7, 18, 2);
+    this.houseLights = Array.from({ length: 42 }, () => {
+      const light = new THREE.PointLight(0xffd6a0, 9, 24, 2);
       light.castShadow = false;
       this.scene.add(light);
       return light;
     });
     this.addGround(city);
+    this.addLandmarks(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
     if (!this.streaming) this.addRoads(city);
@@ -187,6 +188,34 @@ export class SceneEnv {
     ground.receiveShadow = true;
     this.scene.add(ground);
     this.ground = ground;
+  }
+
+  /** Landmark dressing: coastline, beach, market, sport, playground and retail. */
+  private addLandmarks(city: City): void {
+    const addPlane = (color: number, w: number, d: number, x: number, z: number, y = 0.03): void => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.92 }));
+      m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; this.scene.add(m);
+    };
+    const coastZ = city.half - 18;
+    addPlane(0xd8c28b, city.extent, 34, 0, coastZ);
+    addPlane(0x177f9e, city.extent * 1.15, 120, 0, city.half + 42, -0.04);
+    addPlane(0x8b8170, 34, 28, -city.half * 0.42, city.half * 0.12);
+    for (let i = -2; i <= 2; i++) {
+      const stall = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.4, 3.2), new THREE.MeshStandardMaterial({ color: [0xc94d42,0xe0ad43,0x4e86c7][(i+2)%3] }));
+      stall.position.set(-city.half * 0.42 + i * 6, 1.2, city.half * 0.12); stall.castShadow = true; this.scene.add(stall);
+    }
+    addPlane(0x2f824b, 42, 26, city.half * 0.35, -city.half * 0.28, 0.04);
+    addPlane(0xe9e1c7, 36, 0.22, city.half * 0.35, -city.half * 0.28, 0.055);
+    addPlane(0xe9e1c7, 0.22, 20, city.half * 0.35, -city.half * 0.28, 0.055);
+    addPlane(0xb98a5d, 28, 22, -city.half * 0.28, -city.half * 0.32, 0.035);
+    const slide = new THREE.Mesh(new THREE.BoxGeometry(2, 2.8, 6), new THREE.MeshStandardMaterial({ color: 0xe66b42 }));
+    slide.position.set(-city.half * 0.28, 1.4, -city.half * 0.32); slide.castShadow = true; this.scene.add(slide);
+    for (const [x,z] of [[city.half*0.28, city.half*0.16], [city.half*0.48, -city.half*0.08]]) {
+      const shop = new THREE.Mesh(new THREE.BoxGeometry(18, 5, 12), new THREE.MeshStandardMaterial({ color: 0xd9d2c7, roughness: 0.7 }));
+      shop.position.set(x, 2.5, z); shop.castShadow = true; shop.receiveShadow = true; this.scene.add(shop);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 0.9, 0.18), new THREE.MeshStandardMaterial({ color: 0x1e7bd4, emissive: 0x164b88, emissiveIntensity: 1.4 }));
+      sign.position.set(x, 4.4, z - 6.05); this.scene.add(sign);
+    }
   }
 
   /**
