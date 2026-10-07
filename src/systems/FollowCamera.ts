@@ -61,8 +61,8 @@ export class FollowCamera {
 
   /** Apply touch/mouse free-look deltas. */
   lookInput(dx: number, dy: number): void {
-    this.orbitYaw -= dx * 0.012;
-    this.orbitPitch = Math.max(-0.2, Math.min(0.95, this.orbitPitch - dy * 0.008));
+    this.orbitYaw -= dx * 0.006;
+    this.orbitPitch = Math.max(-0.2, Math.min(0.95, this.orbitPitch - dy * 0.004));
   }
 
   resetOrbit(): void {
