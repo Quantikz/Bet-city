@@ -491,9 +491,6 @@ declare global {
       readonly carHealth: number;
       readonly runOverCount: number;
       readonly radioLabel: string;
-      readonly wanted: number;
-      readonly wantedCooling: boolean;
-      readonly police: number;
       readonly timeOfDay: number;
       readonly paused: boolean;
       readonly radioReady: boolean;
