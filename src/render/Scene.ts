@@ -379,6 +379,9 @@ export class SceneEnv {
     box(0xb9aa8e,46,42,28,-160,21,405);
     const dome=new THREE.Mesh(new THREE.SphereGeometry(14,16,10,0,Math.PI*2,0,Math.PI/2),mat(0x8d4d38));
     dome.position.set(-160,42,405);dome.castShadow=true;westminster.add(dome);
+    const s = city.half / 620;
+    westminster.scale.set(s, 1, s);
+    this.scene.add(westminster);
   }
 
   /** Advance the ambient football match without adding a full NPC simulation cost. */
