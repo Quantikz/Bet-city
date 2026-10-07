@@ -136,6 +136,8 @@ export function generateChunk(
       // The biome at this block sets its building density, height and palette.
       const u = urbanityAt(fields, blockX + blockSize / 2, blockZ + blockSize / 2);
       const biome = BIOMES[classify(u, 1)]; // elevation=1 (dry) until water lands
+      // Reserve the outermost northern district for the coastal promenade/beach.
+      if (gj === grid - 1) continue;
       addBlock(blockX, blockZ, blockSize, rng, biome, buildings, colliders);
       addProps(blockX, blockZ, blockSize, rng, biome, colliders, props);
     }
