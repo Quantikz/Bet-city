@@ -1,6 +1,6 @@
 import { createRng, hashSeed } from '../core/rng';
 import { makeNoise2D, fbm, type Noise2D } from '../core/noise';
-import { classify, BIOMES, type BiomeDef } from './biome';
+import type { BiomeDef } from './biome';
 import type { Aabb } from '../systems/Collision';
 import { SpatialGrid } from '../systems/SpatialGrid';
 import type { PropType, FacadeStyle } from './biome';
@@ -301,7 +301,7 @@ export interface LandmarkLocations {
   playground:{x:number;z:number};
   supermarkets:{x:number;z:number}[];
 }
-export function landmarkLocations(city:Pick<City,'half'|'roadCenters'>):LandmarkLocations {
+export function landmarkLocations(_city:Pick<City,'half'|'roadCenters'>):LandmarkLocations {
     return {
     market:{x:35,z:115},
     football:{x:-220,z:330},
