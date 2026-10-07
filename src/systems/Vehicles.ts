@@ -88,14 +88,9 @@ export class Vehicles {
   private steer = 0;
   private readonly smoke: Smoke;
   private explosions = 0; // car wrecks since main last consumed them (for SFX)
-  private playerWreckPending = false; // player car blew up → main triggers WASTED
-  wreckCount = 0; // monotonic total wrecks (debug/telemetry)
 
   // Cars are ECS entities in the shared game World; the per-car passes run over
   // query(Vehicle). (Collision and player-index logic stay array/index based.)
-  private curCity: City | null = null;
-  private curInput: VehicleInput | null = null;
-  private curPedestrian: { x: number; z: number } | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -156,10 +151,7 @@ export class Vehicles {
     input: VehicleInput | null,
     pedestrian: { x: number; z: number } | null = null ,
   ): void {
-    this.curCity = city;
-    this.curInput = input;
-    this.curPedestrian = pedestrian;
-    this.simStep(this.world, dt);
+    this.simStep(city, dt, input, pedestrian);
 
     if (this.playerIndex !== null) {
       const c = this.cars[this.playerIndex];
@@ -175,21 +167,20 @@ export class Vehicles {
    * Per-car loops iterate query(Vehicle); the collision pass and player identity
    * stay index-based (`this.cars`/`playerIndex`) since they're pair/index work.
    */
-  private simStep(w: World, dt: number): void {
-    const city = this.curCity!;
+  private simStep(city: City, dt: number, input: VehicleInput | null, pedestrian: { x: number; z: number } | null): void {
     const playerCar = this.playerIndex !== null ? this.cars[this.playerIndex] : null;
 
     // Snapshot the pre-step pose so render() can interpolate up to it.
-    for (const e of w.query(Vehicle)) {
+    for (const e of this.world.query(Vehicle)) {
       const c = w.get(e, Vehicle)!;
       c.px = c.x;
       c.pz = c.z;
       c.ph = c.heading;
     }
 
-    if (playerCar && this.curInput) {
-      this.steer = this.curInput.steer;
-      const next = stepVehicle(playerCar, this.curInput, playerCar.profile, dt);
+    if (playerCar && input) {
+      this.steer = input.steer;
+      const next = stepVehicle(playerCar, input, playerCar.profile, dt);
       playerCar.x = next.x;
       playerCar.z = next.z;
       playerCar.heading = next.heading;
@@ -388,10 +379,10 @@ export class Vehicles {
   private wreck(car: Car, i: number, city: City): void {
     this.debris.explode(car.x, car.z, car.color, car.vx, car.vz);
     this.explosions++;
-    this.wreckCount++;
     car.health = 0;
     if (i === this.playerIndex) {
-      this.playerWreckPending = true;
+      car.health = CAR_MAX_HEALTH;
+      car.vx = car.vz = 0;
       return;
     }
     if (car.role === 'ai' && city.lanes.length > 0) {
@@ -411,20 +402,6 @@ export class Vehicles {
     car.vx = 0;
     car.vz = 0;
     car.health = CAR_MAX_HEALTH;
-  }
-
-  /** Number of car explosions since the last call (for one-shot SFX). */
-  consumeExplosions(): number {
-    const n = this.explosions;
-    this.explosions = 0;
-    return n;
-  }
-
-  /** True once if the player's car was wrecked since the last call. */
-  consumePlayerWreck(): boolean {
-    const w = this.playerWreckPending;
-    this.playerWreckPending = false;
-    return w;
   }
 
   /**
@@ -448,30 +425,6 @@ export class Vehicles {
       }
     }
     return { x: rx, z: rz };
-  }
-
-  /** Live smoke-particle count (debug/telemetry). */
-  smokeParticles(): number {
-    return this.smoke.activeCount();
-  }
-
-  /** "Manufacturer Model" of the car you're driving, or null on foot. */
-  playerCarName(): string | null {
-    if (this.playerIndex === null) return null;
-    const p = this.cars[this.playerIndex].profile;
-    return `${p.manufacturer} ${p.model}`;
-  }
-
-  /** Top speed of the current car (for engine-pitch normalization), or a default. */
-  playerMaxSpeed(): number {
-    if (this.playerIndex === null) return PLAYER_PROFILE.maxSpeed;
-    return this.cars[this.playerIndex].profile.maxSpeed;
-  }
-
-  /** Player car body integrity (0–100), or full health on foot. */
-  playerCarHealth(): number {
-    if (this.playerIndex === null) return CAR_MAX_HEALTH;
-    return Math.max(0, this.cars[this.playerIndex].health);
   }
 
   /** Index of the nearest enterable car within range, or -1. */
@@ -535,20 +488,4 @@ export class Vehicles {
     return Math.abs(lateralSpeedOf(this.cars[this.playerIndex]));
   }
 
-  /** Player car's world velocity (for police interception), or zero on foot. */
-  playerVelocity(): { vx: number; vz: number } {
-    if (this.playerIndex === null) return { vx: 0, vz: 0 };
-    const c = this.cars[this.playerIndex];
-    return { vx: c.vx, vz: c.vz };
-  }
-
-  positions(): Array<{ x: number; z: number }> {
-    return this.cars.map((c) => ({ x: c.x, z: c.z }));
-  }
-
-  /** World position of car `i` (e.g. to fade its radio as you walk away). */
-  carPosition(i: number): { x: number; z: number } {
-    const c = this.cars[i];
-    return { x: c.x, z: c.z };
-  }
 }
