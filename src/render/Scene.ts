@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { daylightFactor, sunPosition } from '../core/math';
 import { makeGlowTexture } from './textures';
-import { landmarkLocations, type City } from '../world/City';
+import type { City } from '../world/City';
 
 /**
  * Owns the renderer, scene graph, camera and the static environment (ground +
@@ -381,25 +381,22 @@ export class SceneEnv {
   }
 
   private addRoads(city: City): void {
-    const asphalt = new THREE.MeshStandardMaterial({ color: 0x3a404b, roughness: 0.9 });
-    const roadGeoH = new THREE.PlaneGeometry(city.extent, city.config.roadWidth);
-    const roadGeoV = new THREE.PlaneGeometry(city.config.roadWidth, city.extent);
-
-    for (const c of city.roadCenters) {
-      const h = new THREE.Mesh(roadGeoH, asphalt);
-      h.rotation.x = -Math.PI / 2;
-      h.position.set(0, 0.02, c);
-      h.receiveShadow = true;
-      this.scene.add(h);
-
-      const v = new THREE.Mesh(roadGeoV, asphalt);
-      v.rotation.x = -Math.PI / 2;
-      v.position.set(c, 0.02, 0);
-      v.receiveShadow = true;
-      this.scene.add(v);
+    const asphalt=new THREE.MeshStandardMaterial({color:0x303238,roughness:0.93});
+    const curb=new THREE.MeshStandardMaterial({color:0x9b9b95,roughness:0.9});
+    for(const r of city.roadSegments){
+      const dx=r.x2-r.x1,dz=r.z2-r.z1,len=Math.hypot(dx,dz),ang=Math.atan2(dz,dx);
+      const road=new THREE.Mesh(new THREE.PlaneGeometry(len,r.width),asphalt);
+      road.rotation.x=-Math.PI/2;road.rotation.z=ang;
+      road.position.set((r.x1+r.x2)/2,0.018,(r.z1+r.z2)/2);
+      road.receiveShadow=true;this.scene.add(road);
+      for(const side of [-1,1]){
+        const c=new THREE.Mesh(new THREE.PlaneGeometry(len,0.55),curb);
+        c.rotation.x=-Math.PI/2;c.rotation.z=ang;
+        c.position.set((r.x1+r.x2)/2,0.025,(r.z1+r.z2)/2+side*r.width/2);
+        this.scene.add(c);
+      }
     }
   }
-
   /** Place a small pool of warm non-shadowing lights at the nearest buildings. */
   updateHouseLights(x: number, z: number, buildings: City['buildings']): void {
     const nearest = buildings
