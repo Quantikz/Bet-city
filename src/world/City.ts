@@ -210,6 +210,10 @@ export function generateCity(config: CityConfig = DEFAULT_CITY): City {
     }
   }
 
+  // Hand-authored landmark collision geometry is generated from the same snapped
+  // locations used by the renderer. No decorative landmark can overlap a road.
+  addLandmarkColliders({ half, roadCenters }, colliders);
+
   const laneOffset = roadWidth / 4;
   const lanes = buildLanes(roadCenters, half, laneOffset);
   const streetlights = buildStreetlights(roadCenters, roadWidth);
@@ -409,4 +413,52 @@ function insideAnyCollider(x: number, z: number, colliders: Aabb[], pad: number)
     }
   }
   return false;
+}
+
+
+/**
+ * Authoritative collision footprints for hand-authored landmarks.
+ * Supermarkets use wall segments with a real entrance gap, so the player can
+ * cross the threshold and walk through the interior. Other landmarks expose
+ * their physical fences/stalls rather than an invisible giant AABB.
+ */
+function addLandmarkColliders(city: Pick<City, 'half' | 'roadCenters'>, colliders: Aabb[]): void {
+  const loc = landmarkLocations(city);
+  const add = (cx: number, cz: number, w: number, d: number): void => {
+    colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
+  };
+
+  // Supermarket shells: 18 x 12, 0.45m wall thickness, 3.8m entrance.
+  for (const p of loc.supermarkets) {
+    const w = 18, d = 12, t = 0.45, door = 3.8;
+    add(p.x, p.z - d / 2 + t / 2, w, t); // back
+    add(p.x - w / 2 + t / 2, p.z, t, d); // left
+    add(p.x + w / 2 - t / 2, p.z, t, d); // right
+    const side = (w - door) / 2;
+    add(p.x - (door / 2 + side / 2), p.z + d / 2 - t / 2, side, t);
+    add(p.x + (door / 2 + side / 2), p.z + d / 2 - t / 2, side, t);
+    // Interior checkout/shelf islands. They are low obstacles, not walls.
+    add(p.x - 5.0, p.z - 1.0, 1.0, 5.2);
+    add(p.x - 1.7, p.z - 1.0, 1.0, 5.2);
+    add(p.x + 1.7, p.z - 1.0, 1.0, 5.2);
+    add(p.x + 5.0, p.z - 1.0, 1.0, 5.2);
+    add(p.x, p.z + 4.0, 8.0, 0.8); // checkout counter
+  }
+
+  // Football pitch perimeter is a fence, not a collision-filled field.
+  const fx = loc.football.x, fz = loc.football.z;
+  add(fx, fz - 13.0, 42, 0.25);
+  add(fx, fz + 13.0, 42, 0.25);
+  add(fx - 21.0, fz, 0.25, 26);
+  add(fx + 21.0, fz, 0.25, 26);
+
+  // Playground equipment has compact physical footprints.
+  const px = loc.playground.x, pz = loc.playground.z;
+  add(px, pz, 2.5, 6.2);
+  add(px, pz + 6.5, 5.0, 0.35);
+  add(px - 7, pz + 6, 3.2, 0.8);
+
+  // Market stalls are individually collidable so pedestrians can weave through.
+  const mx = loc.market.x, mz = loc.market.z;
+  for (let i = -2; i <= 2; i++) add(mx + i * 6, mz, 4.5, 3.2);
 }
