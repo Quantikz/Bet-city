@@ -124,7 +124,7 @@ export class Vehicles {
       const profile = rng.pick(PROFILES);
       this.spawn(scene, makeCar(color, shapeFor(profile.shapeId)), color, profile, spot.x, spot.z, spot.heading, 'parked', null, 0);
     }
-
+  }
 
   private spawn(
     scene: THREE.Scene,
