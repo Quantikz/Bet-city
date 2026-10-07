@@ -139,11 +139,11 @@ const PARKS = [
 ];
 
 const LANDMARKS = [
-  {x:-30,z:275,w:150,d:90,h:28,color:0xb8a994,style:'concrete' as FacadeStyle}, // Buckingham / Mall district
-  {x:390,z:320,w:95,d:75,h:24,color:0xb0a28f,style:'concrete' as FacadeStyle}, // Parliament
-  {x:430,z:250,w:50,d:45,h:96,color:0x9b8a72,style:'concrete' as FacadeStyle}, // Elizabeth Tower
-  {x:285,z:270,w:70,d:55,h:32,color:0xc5b9a4,style:'concrete' as FacadeStyle}, // Westminster Abbey
-  {x:35,z:115,w:115,d:90,h:18,color:0xbdb3a0,style:'concrete' as FacadeStyle}, // Trafalgar/National Gallery
+  {x:sx(-30),z:sx(275),w:sx(150),d:sx(90),h:28,color:0xb8a994,style:'concrete' as FacadeStyle},
+  {x:sx(390),z:sx(320),w:sx(95),d:sx(75),h:24,color:0xb0a28f,style:'concrete' as FacadeStyle},
+  {x:sx(430),z:sx(250),w:sx(50),d:sx(45),h:96,color:0x9b8a72,style:'concrete' as FacadeStyle},
+  {x:sx(285),z:sx(270),w:sx(70),d:sx(55),h:32,color:0xc5b9a4,style:'concrete' as FacadeStyle},
+  {x:sx(35),z:sx(115),w:sx(115),d:sx(90),h:18,color:0xbdb3a0,style:'concrete' as FacadeStyle},
 ];
 
 function intersects(a:{x1:number;z1:number;x2:number;z2:number}, b:{x1:number;z1:number;x2:number;z2:number}, pad=0):boolean {
