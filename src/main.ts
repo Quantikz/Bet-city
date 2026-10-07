@@ -16,8 +16,8 @@ import { Controls } from './core/Controls';
 import { GameLoop } from './core/GameLoop';
 import { loadOptions, saveOptions, qualityPixelRatio, type GameOptions } from './core/options';
 import { lerp, angleLerp, daylightFactor } from './core/math';
-import { Radio } from './audio/Radio';
 import { Sfx } from './audio/Sfx';
+import { Music } from './audio/Music';
 import { toMph, type VehicleInput } from './vehicles/VehicleModel';
 import { Gun } from './systems/Gun';
 
@@ -147,60 +147,24 @@ const follow = new FollowCamera(env.camera);
 const player = new Player();
 const gun = new Gun(env.scene);
 
-// The radio streams one track at a time from a CDN-hosted manifest, so the
-// (large) music library is never bundled. It loads asynchronously and stays
-// silent until the first user gesture (browser autoplay policy).
-let radio: Radio | null = null;
-let radioPrimed = false;
-let radioCarIndex: number | null = null; // which car's radio is currently loaded
+// Music uses local, user-supplied tracks. Copyrighted commercial songs are not
+// bundled or fetched from unofficial sources. Add licensed/owned files under
+// public/music using the filenames configured in Music.ts.
+const music = new Music();
 const sfx = new Sfx();
 let audioGestured = false;
 const markGesture = (): void => {
   audioGestured = true;
-  sfx.start(); // create/resume the audio context within the gesture
-  primeRadio(); // iOS only lets the <audio> element start from inside a gesture
+  sfx.start();
+  music.start();
 };
 addEventListener('keydown', markGesture);
 addEventListener('pointerdown', markGesture);
-addEventListener('touchend', markGesture); // some iOS taps surface here, not pointerdown
-// A backgrounded tab suspends the context; resume whenever we're focused again.
-// This is also why audio "came back after alt-tab" — make it reliable, not luck.
-addEventListener('focus', () => sfx.start());
+addEventListener('touchend', markGesture);
+addEventListener('focus', () => { sfx.start(); music.resume(); });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) sfx.start();
+  if (!document.hidden) { sfx.start(); music.resume(); }
 });
-
-/**
- * Kick the radio off. MUST be reachable from a user-gesture call stack: iOS
- * Safari refuses HTMLAudioElement.play() outside one, so priming from the game
- * loop left the radio silent until the player tapped the radio button. Called
- * from markGesture and retried each gesture until the manifest has loaded.
- */
-function primeRadio(): void {
-  if (!radio || radioPrimed || mode !== 'driving') return;
-  const i = vehicles.playerIndex ?? 0;
-  radio.enterCar(i);
-  radioCarIndex = i;
-  radioPrimed = true;
-}
-
-interface RadioManifest {
-  baseUrl: string;
-  stations: { name: string; tracks: { title: string; file: string }[] }[];
-}
-fetch('radio.json')
-  .then((r) => (r.ok ? (r.json() as Promise<RadioManifest>) : null))
-  .then((data) => {
-    if (!data?.stations?.length) return;
-    radio = new Radio(
-      data.stations.map((s) => ({
-        name: s.name,
-        tracks: s.tracks.map((t) => ({ title: t.title, url: t.file.startsWith('http') ? t.file : data.baseUrl + t.file })),
-      })),
-    );
-    if (audioGestured) primeRadio(); // gesture already happened, manifest just landed
-  })
-  .catch(() => {});
 
 let mode: Mode = 'driving';
 player.x = city.center.x;
@@ -230,9 +194,7 @@ function toggleVehicle(): void {
       vehicles.enter(i);
       mode = 'driving';
       follow.resetOrbit();
-      radio?.enterCar(i);
-      radioCarIndex = i;
-      radioPrimed = true;
+      music.start();
       sfx.enterCar();
     }
   }
@@ -324,11 +286,6 @@ function update(dt: number): void {
     } else {
       footAccum = STEP_DISTANCE; // first move triggers a step promptly
     }
-  }
-
-  if (radio) {
-    const step = controls.radioStep();
-    if (step !== 0) radio.step(step);
   }
 
   // Pedestrians fear the CAR only (not the player on foot): proximity, or a fast
@@ -435,9 +392,7 @@ function render(alpha: number, frameDt: number): void {
   hud.setAmmo(gun.state().ammo, gun.state().reserve, gun.state().reloading);
   hud.setRunOverCount(peds.runOverCount);
   hud.setCarName(mode === 'driving' ? vehicles.playerCarName() : null);
-  // Radio readout is a dashboard thing — only show it while driving (the audio
-  // itself still fades out with distance as you walk away).
-  hud.setRadio(mode === 'driving' ? (radio ? radio.label() : '📻 OFF') : '');
+  hud.setRadio('');
   // Wanted UI removed for AFEC City beta.
   hud.setClock(timeOfDay);
 
@@ -454,22 +409,16 @@ function render(alpha: number, frameDt: number): void {
   );
 
   const driving = mode === 'driving';
+  if (audioGestured) music.setDriving(driving);
   if (driving) {
     const speed01 = Math.min(1, Math.abs(vehicles.playerForwardSpeed()) / Math.max(1, vehicles.playerMaxSpeed()));
     const engineLoad = 0.28 + speed01 * 0.72;
     sfx.setEngine(speed01, engineLoad);
     sfx.setScreech(Math.max(0, (vehicles.playerLateralSpeed() - 2) / 8));
-    if (radio) radio.updateProximity(true, 0);
   } else {
     sfx.setScreech(0);
     // The car you left keeps idling and playing; both fade as you walk off.
-    const dist =
-      radioCarIndex !== null
-        ? Math.hypot(player.x - vehicles.carPosition(radioCarIndex).x, player.z - vehicles.carPosition(radioCarIndex).z)
-        : Infinity;
-    const near = Math.max(0, 1 - dist / ENGINE_HEAR);
-    sfx.setEngine(0, near * 0.35); // idle, quieter than under throttle
-    if (radio) radio.updateProximity(false, dist);
+    sfx.setEngine(0, 0); // car radio/music is independent of engine audio
   }
 
   env.setTimeOfDay(timeOfDay);
@@ -500,10 +449,8 @@ declare global {
       readonly mode: Mode;
       readonly carHealth: number;
       readonly runOverCount: number;
-      readonly radioLabel: string;
       readonly timeOfDay: number;
       readonly paused: boolean;
-      readonly radioReady: boolean;
       readonly carModel: string | null;
       readonly perf: Perf;
       vehicles: Vehicles;
@@ -523,17 +470,11 @@ window.__game = {
   get runOverCount() {
     return peds.runOverCount;
   },
-  get radioLabel() {
-    return radio ? radio.label() : '📻 OFF';
-  },
   get timeOfDay() {
     return timeOfDay;
   },
   get paused() {
     return loop.isPaused();
-  },
-  get radioReady() {
-    return radio !== null; // manifest fetched + tuner built
   },
   get carModel() {
     return vehicles.playerCarName();
