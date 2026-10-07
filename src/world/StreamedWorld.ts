@@ -120,6 +120,7 @@ export class StreamedWorld {
       extent: this.viewExtent,
       half: 1e9,
       roadCenters: [],
+      roadSegments: [],
       laneOffset: this.config.roadWidth / 4,
       buildings: [],
       props: [],
