@@ -208,8 +208,6 @@ player.x = city.center.x;
 player.z = city.center.z;
 
 // Health/death/arrest systems are intentionally absent from AFEC CITY beta.
-const stars = 0;
-let wantedCooling = false;
 const clampToCity = (p: { x: number; z: number }): void => {
   const b = city.half - 2;
   p.x = Math.max(-b, Math.min(b, p.x));
@@ -270,30 +268,6 @@ function updateFoot(dt: number): void {
 }
 
 
-/** Active player pose + velocity the police intercept (the car, or the avatar on foot). */
-function chaseTarget(): { x: number; z: number; vx: number; vz: number } {
-  const pose = vehicles.playerPose();
-  if (mode === 'driving' && pose) {
-    const v = vehicles.playerVelocity();
-    return { x: pose.x, z: pose.z, vx: v.vx, vz: v.vz };
-  }
-  return {
-    x: player.x,
-    z: player.z,
-    vx: Math.cos(player.heading) * player.speed,
-    vz: -Math.sin(player.heading) * player.speed,
-  };
-}
-
-/**
- * Crimes raise heat → wanted stars → police. You "get away" GTA-style: once no
- * cop has line of sight to you (broke LOS behind a building, or outran their
- * sight range), the heat cools after a short grace and the stars drop.
- */
-function updateWanted(): void {
-  vehicles.setWanted(0, { x: 0, z: 0 }, city);
-}
-
 // Any car (including the one you're driving) moving fast enough flattens peds.
 const runOverQuery = (x: number, z: number) => vehicles.pedestrianImpact(x, z, true);
 // Pedestrians (like the player on foot) get pushed out of cars they'd clip.
@@ -320,15 +294,12 @@ function update(dt: number): void {
 
   if (controls.enterExitPressed()) toggleVehicle();
 
-  updateWanted();
-  const chase = null;
-
   if (mode === 'driving') {
     if (controls.resetPressed()) vehicles.resetPlayer(city);
-    vehicles.update(city, dt, drivingInput(), null, chase);
+    vehicles.update(city, dt, drivingInput(), null);
     flushCarWrecks();
   } else {
-    vehicles.update(city, dt, null, { x: player.x, z: player.z }, chase);
+    vehicles.update(city, dt, null, { x: player.x, z: player.z });
     flushCarWrecks();
     updateFoot(dt);
     if (controls.jumpPressed()) player.jump();
