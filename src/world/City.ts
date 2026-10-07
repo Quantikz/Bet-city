@@ -1,522 +1,314 @@
 import { createRng, hashSeed } from '../core/rng';
-import { makeNoise2D, fbm, type Noise2D } from '../core/noise';
-import { classify, BIOMES, type BiomeDef, type FacadeStyle, type PropType } from './biome';
 import type { Aabb } from '../systems/Collision';
 import { SpatialGrid } from '../systems/SpatialGrid';
+import type { PropType, FacadeStyle } from './biome';
 
 export interface Building {
-  cx: number; // footprint center
-  cz: number;
-  width: number; // along X
-  depth: number; // along Z
-  height: number;
-  color: number; // base facade tint
-  style: FacadeStyle; // facade texture family
+  cx: number; cz: number;
+  width: number; depth: number; height: number;
+  color: number; style: FacadeStyle;
 }
-
-/** A drivable lane: a straight segment with a travel direction. */
 export interface Lane {
-  axis: 'x' | 'z'; // the axis the lane runs along
-  fixed: number; // the other coordinate (lane center)
-  dir: 1 | -1; // travel direction along `axis`
+  axis: 'x' | 'z';
+  fixed: number;
+  dir: 1 | -1;
 }
+export interface Streetlight { x: number; z: number; }
+export interface Prop { x: number; z: number; type: PropType; rot: number; }
+export interface ParkingSpot { x: number; z: number; heading: number; }
 
-/** A streetlight position (lamp sits on a pole at this ground point). */
-export interface Streetlight {
-  x: number;
-  z: number;
-}
-
-/** A sidewalk prop (tree / hydrant / bench) at a ground point. */
-export interface Prop {
-  x: number;
-  z: number;
-  type: PropType;
-  rot: number; // facing (radians) — matters for benches
-}
-
-/** A curbside parking spot: where a parked car sits and which way it faces. */
-export interface ParkingSpot {
-  x: number;
-  z: number;
-  heading: number;
+export interface RoadSegment {
+  x1: number; z1: number; x2: number; z2: number;
+  width: number;
+  name: string;
 }
 
 export interface CityConfig {
   seed: number;
-  grid: number; // blocks per side
-  blockSize: number; // building-area side length
+  grid: number;
+  blockSize: number;
   roadWidth: number;
-  chunkBlocks: number; // blocks per side of one generation chunk
+  chunkBlocks: number;
 }
 
 export interface City {
   config: CityConfig;
-  cell: number; // blockSize + roadWidth
-  extent: number; // total side length (centered on origin)
+  cell: number;
+  extent: number;
   half: number;
-  roadCenters: number[]; // shared by both axes (square grid)
-  laneOffset: number; // distance from road center to a lane
+  roadCenters: number[];
+  roadSegments: RoadSegment[];
+  laneOffset: number;
   buildings: Building[];
   colliders: Aabb[];
-  /** Spatial hash over `colliders`; the collision-query authority (see SpatialGrid). */
   grid: SpatialGrid;
   lanes: Lane[];
   streetlights: Streetlight[];
   props: Prop[];
   parkingSpots: ParkingSpot[];
-  /** A road intersection near the middle — a good place to spawn the player. */
   center: { x: number; z: number };
 }
 
 export const DEFAULT_CITY: CityConfig = {
   seed: 1971,
-  grid: 8,
-  blockSize: 42,
-  roadWidth: 16,
-  chunkBlocks: 4, // 8x8 grid → 2x2 generation chunks
+  // Westminster is compact but extremely dense. These legacy fields remain for
+  // compatibility with the rest of the engine; the actual map is road-segment based.
+  grid: 1,
+  blockSize: 300,
+  roadWidth: 12,
+  chunkBlocks: 1,
 };
 
-/** Shared geometry derived from a config: cell pitch, total extent, half-extent. */
-function metrics(config: CityConfig): { cell: number; extent: number; half: number } {
-  const cell = config.blockSize + config.roadWidth;
-  const extent = config.grid * cell + config.roadWidth; // trailing road closes the grid
-  return { cell, extent, half: extent / 2 };
-}
+const HALF = 620;
+const ROAD_W = 11;
+const SIDE = 4.5;
 
-/**
- * Continuous, seed-derived noise fields sampled at absolute world coordinates.
- * Because every chunk samples the same fields at the same world point, the
- * biome gradient is continuous across chunk seams for free. Created once per
- * world and shared across chunks (elevation/water join in a later phase).
+type District = {
+  x1: number; z1: number; x2: number; z2: number;
+  minH: number; maxH: number; palette: number[];
+  style: FacadeStyle;
+};
+
+const R = (x1:number,z1:number,x2:number,z2:number,width=ROAD_W,name=''): RoadSegment =>
+  ({x1,z1,x2,z2,width,name});
+
+/*
+ * Westminster-inspired central London street plan. Coordinates are deliberately
+ * metres, with north = -Z. The layout follows the real hierarchy: Thames to the
+ * south, Hyde Park/Green Park/St James's Park as large open spaces, and the
+ * dense West End/Whitehall streets between them.
+ *
+ * Major real streets represented here include Oxford Street, Regent Street,
+ * Piccadilly, Pall Mall, The Mall, Whitehall, Strand, Victoria Street,
+ * Buckingham Palace Road, Birdcage Walk, Millbank and Victoria Embankment.
  */
-export interface WorldFields {
-  urbanity: Noise2D;
+const ROADS: RoadSegment[] = [
+  R(-620,-535,620,-535,18,'Oxford Street'),
+  R(-620,-445,620,-445,10,'New Oxford Street'),
+  R(-620,-330,620,-330,12,'Marylebone Road'),
+  R(-520,-620,-520,620,12,'Park Lane'),
+  R(-390,-620,-390,620,10,'Edgware Road'),
+  R(-250,-620,-250,620,9,'Baker Street'),
+  R(-105,-620,-105,620,9,'Regent Street'),
+  R(35,-620,35,620,10,'Charing Cross Road'),
+  R(175,-620,175,620,10,'Shaftesbury Avenue'),
+  R(320,-620,320,620,11,'Victoria Embankment'),
+  R(455,-620,455,620,10,'Lambeth approach'),
+
+  R(-620,-240,620,-240,10,'Great Portland Street'),
+  R(-620,-115,620,-115,10,'Euston Road'),
+  R(-620,20,620,20,11,'Piccadilly'),
+  R(-620,105,620,105,10,'Pall Mall'),
+  R(-620,185,620,185,12,'The Mall'),
+  R(-620,285,620,285,11,'Birdcage Walk'),
+  R(-620,390,620,390,12,'Victoria Street'),
+  R(-620,500,620,500,12,'Millbank'),
+  R(-620,590,620,590,14,'River Embankment'),
+
+  R(-105,-535,-105,20,8,'Regent Street'),
+  R(-105,20,15,155,8,'Regent Street'),
+  R(15,155,155,185,8,'Waterloo Place'),
+  R(155,185,320,185,8,'Northumberland Avenue'),
+  R(320,185,455,185,8,'Whitehall'),
+  R(455,185,455,390,8,'Whitehall'),
+  R(455,390,620,390,8,'Parliament Street'),
+
+  R(-390,20,-250,390,9,'Constitution Hill'),
+  R(-250,285,105,285,9,'Constitution Hill / Birdcage'),
+  R(-250,390,105,390,9,'Buckingham Palace Road'),
+  R(105,390,320,390,9,'Victoria Street'),
+  R(-390,500,-250,500,8,'Grosvenor Place'),
+  R(-250,500,-105,500,8,'Belgrave Road'),
+  R(-105,500,105,500,8,'Vauxhall Bridge Road'),
+  R(105,500,320,500,8,'Horseferry Road'),
+
+  R(-320,20,-320,285,8,'St James Park West'),
+  R(15,20,15,105,8,'Haymarket'),
+  R(15,105,15,285,8,'Whitehall Gardens'),
+  R(320,-115,455,20,8,'Strand'),
+  R(320,20,455,105,8,'Strand'),
+  R(455,20,620,105,8,'Aldwych'),
+  R(-105,105,35,285,8,'St James’s Square'),
+  R(-250,105,-105,185,8,'Jermyn Street'),
+  R(-390,105,-250,185,8,'Pall Mall West'),
+];
+
+const PARKS = [
+  {x1:-390,z1:120,x2:-115,z2:285,name:"Green Park"},
+  {x1:-320,z1:205,x2:35,z2:375,name:"St James's Park"},
+  {x1:-620,z1:-535,x2:-390,z2:-240,name:"Hyde Park edge"},
+  {x1:-620,z1:285,x2:-390,z2:500,name:"Belgravia gardens"},
+];
+
+const LANDMARKS = [
+  {x:-30,z:275,w:150,d:90,h:28,color:0xb8a994,style:'concrete' as FacadeStyle}, // Buckingham / Mall district
+  {x:390,z:320,w:95,d:75,h:24,color:0xb0a28f,style:'concrete' as FacadeStyle}, // Parliament
+  {x:430,z:250,w:50,d:45,h:96,color:0x9b8a72,style:'concrete' as FacadeStyle}, // Elizabeth Tower
+  {x:285,z:270,w:70,d:55,h:32,color:0xc5b9a4,style:'concrete' as FacadeStyle}, // Westminster Abbey
+  {x:35,z:115,w:115,d:90,h:18,color:0xbdb3a0,style:'concrete' as FacadeStyle}, // Trafalgar/National Gallery
+];
+
+function intersects(a:{x1:number;z1:number;x2:number;z2:number}, b:{x1:number;z1:number;x2:number;z2:number}, pad=0):boolean {
+  return !(a.x2 < b.x1-pad || a.x1 > b.x2+pad || a.z2 < b.z1-pad || a.z1 > b.z2+pad);
 }
 
-export function makeWorldFields(seed: number): WorldFields {
-  return { urbanity: makeNoise2D(hashSeed(seed, 'urbanity')) };
+function pointInPark(x:number,z:number):boolean {
+  return PARKS.some(p => x > p.x1 && x < p.x2 && z > p.z1 && z < p.z2);
 }
-
-const URBANITY_FREQ = 0.012; // a few districts span the current finite city
-
-/** Deliberate open-world landmark footprints, expressed as normalized city coordinates. */
-export interface LandmarkZone {
-  x: number;
-  z: number;
-  width: number;
-  depth: number;
-}
-
-export interface LandmarkLocations {
-  market: { x: number; z: number };
-  football: { x: number; z: number };
-  playground: { x: number; z: number };
-  supermarkets: { x: number; z: number }[];
-}
-
-function nearestBlockCenter(value: number, roads: readonly number[]): number {
-  let best = value;
-  let bestD = Infinity;
-  for (let i = 0; i < roads.length - 1; i++) {
-    const center = (roads[i] + roads[i + 1]) * 0.5;
-    const d = Math.abs(value - center);
-    if (d < bestD) {
-      bestD = d;
-      best = center;
-    }
-  }
-  return best;
-}
-
-/** Authoritative world-space locations shared by rendering, collision and gameplay. */
-export function landmarkLocations(
-  city: Pick<City, 'half' | 'roadCenters'>,
-): LandmarkLocations {
-  const h = city.half;
-  const snap = (x: number, z: number): { x: number; z: number } => ({
-    x: nearestBlockCenter(x, city.roadCenters),
-    z: nearestBlockCenter(z, city.roadCenters),
-  });
-
-  return {
-    market: snap(-h * 0.42, h * 0.12),
-    football: snap(h * 0.35, -h * 0.28),
-    playground: snap(-h * 0.28, -h * 0.32),
-    supermarkets: [
-      snap(h * 0.28, h * 0.16),
-      snap(h * 0.48, -h * 0.08),
-    ],
-  };
-}
-
-export function landmarkZones(
-  city: Pick<City, 'half' | 'roadCenters'>,
-): LandmarkZone[] {
-  const loc = landmarkLocations(city);
-  return [
-    { x: loc.market.x, z: loc.market.z, width: 34, depth: 28 },
-    { x: loc.football.x, z: loc.football.z, width: 42, depth: 26 },
-    { x: loc.playground.x, z: loc.playground.z, width: 28, depth: 22 },
-    ...loc.supermarkets.map((p) => ({
-      x: p.x,
-      z: p.z,
-      width: 18,
-      depth: 12,
-    })),
-  ];
-}
-
-function overlapsZone(
-  x: number,
-  z: number,
-  width: number,
-  depth: number,
-  zone: LandmarkZone,
-  pad = 2,
-): boolean {
-  return Math.abs(x - zone.x) * 2 < width + zone.width + pad * 2
-    && Math.abs(z - zone.z) * 2 < depth + zone.depth + pad * 2;
-}
-
-function roadCentersFor(config: CityConfig): number[] {
-  const { cell, half } = metrics(config);
-  const centers: number[] = [];
-  for (let i = 0; i <= config.grid; i++) {
-    centers.push(i * cell + config.roadWidth / 2 - half);
-  }
-  return centers;
-}
-
-/** Normalized urbanity (0–1) at a world point — drives the city→rural gradient. */
-export function urbanityAt(fields: WorldFields, wx: number, wz: number): number {
-  const n = fbm(fields.urbanity, wx, wz, { octaves: 4, frequency: URBANITY_FREQ });
-  return Math.max(0, Math.min(1, 0.5 + n * 1.35)); // contrast-stretch toward the extremes
-}
-
-/**
- * Generate one chunk's worth of buildings + colliders: the blocks in the square
- * [cx,cz] of `chunkBlocks×chunkBlocks` blocks, in world coordinates. Seeded by
- * `hashSeed(seed, cx, cz)`, so a chunk is identical regardless of when/how it's
- * generated — the determinism the streamed world relies on. Blocks past the
- * finite `grid` are skipped (the current world is a finite tiling of chunks).
- */
-export function generateChunk(
-  cx: number,
-  cz: number,
-  config: CityConfig = DEFAULT_CITY,
-  fields: WorldFields = makeWorldFields(config.seed),
-): { buildings: Building[]; colliders: Aabb[]; props: Prop[] } {
-  const { grid, blockSize, roadWidth, chunkBlocks } = config;
-  const { cell, half } = metrics(config);
-  const rng = createRng(hashSeed(config.seed, cx, cz));
-  const buildings: Building[] = [];
-  const colliders: Aabb[] = [];
-  const props: Prop[] = [];
-  const landmarkRoadCenters = roadCentersFor(config);
-
-  for (let bi = 0; bi < chunkBlocks; bi++) {
-    for (let bj = 0; bj < chunkBlocks; bj++) {
-      const gi = cx * chunkBlocks + bi; // global block index
-      const gj = cz * chunkBlocks + bj;
-      if (gi >= grid || gj >= grid) continue;
-      const blockX = gi * cell + roadWidth - half;
-      const blockZ = gj * cell + roadWidth - half;
-      // The biome at this block sets its building density, height and palette.
-      const u = urbanityAt(fields, blockX + blockSize / 2, blockZ + blockSize / 2);
-      const biome = BIOMES[classify(u, 1)]; // elevation=1 (dry) until water lands
-      // Reserve the outermost northern district for the coastal promenade/beach.
-      if (gj === grid - 1) continue;
-      // Keep major public spaces genuinely open: the renderer dresses these
-      // footprints with the market, pitch, playground and retail buildings.
-      const blockCx = blockX + blockSize / 2;
-      const blockCz = blockZ + blockSize / 2;
-      if (landmarkZones({ half, roadCenters: landmarkRoadCenters }).some((zone) => overlapsZone(blockCx, blockCz, blockSize, blockSize, zone))) {
-        continue;
-      }
-      addBlock(blockX, blockZ, blockSize, rng, biome, buildings, colliders);
-      addProps(blockX, blockZ, blockSize, rng, biome, colliders, props);
-    }
-  }
-  return { buildings, colliders, props };
-}
-
-
-export function generateCity(config: CityConfig = DEFAULT_CITY): City {
-  const { grid, blockSize, roadWidth, chunkBlocks } = config;
-  const { cell, extent, half } = metrics(config);
-
-  // World is centered on the origin: shift every generated coordinate by -half.
-  const roadCenters: number[] = [];
-  for (let i = 0; i <= grid; i++) {
-    roadCenters.push(i * cell + roadWidth / 2 - half);
-  }
-
-  // Buildings come from a tiling of independently-seeded chunks (the same path a
-  // streamed world will load on demand), so the finite city is just chunk (0,0)..(n,n).
-  const buildings: Building[] = [];
-  const colliders: Aabb[] = [];
-  const props: Prop[] = [];
-  const fields = makeWorldFields(config.seed); // built once, shared across chunks
-  const chunksPerSide = Math.ceil(grid / chunkBlocks);
-  for (let cx = 0; cx < chunksPerSide; cx++) {
-    for (let cz = 0; cz < chunksPerSide; cz++) {
-      const chunk = generateChunk(cx, cz, config, fields);
-      buildings.push(...chunk.buildings);
-      colliders.push(...chunk.colliders);
-      props.push(...chunk.props);
-    }
-  }
-
-  // Hand-authored landmark collision geometry is generated from the same snapped
-  // locations used by the renderer. No decorative landmark can overlap a road.
-  addLandmarkColliders({ half, roadCenters }, colliders);
-
-  const laneOffset = roadWidth / 4;
-  const lanes = buildLanes(roadCenters, half, laneOffset);
-  const streetlights = buildStreetlights(roadCenters, roadWidth);
-  // Parking gets its own deterministic stream, independent of per-chunk building RNG.
-  const parkingRng = createRng(hashSeed(config.seed, 'parking'));
-  const parkingSpots = buildParkingSpots(roadCenters, cell, blockSize, roadWidth, half, parkingRng, colliders);
-
-  // Spawn at the central intersection of the grid.
-  const mid = roadCenters[Math.floor(roadCenters.length / 2)];
-
-  return {
-    config,
-    cell,
-    extent,
-    half,
-    roadCenters,
-    laneOffset,
-    buildings,
-    colliders,
-    grid: new SpatialGrid(colliders, cell),
-    lanes,
-    streetlights,
-    props,
-    parkingSpots,
-    center: { x: mid, z: mid },
-  };
-}
-
-/** Nudge a hex colour's brightness by ±`amt` (deterministic via rng). Pure int math (no THREE). */
-function jitterBrightness(hex: number, rng: ReturnType<typeof createRng>, amt: number): number {
-  const f = 1 + (rng.next() * 2 - 1) * amt;
-  const ch = (shift: number): number => {
-    const v = Math.round(((hex >> shift) & 0xff) * f);
-    return v < 0 ? 0 : v > 255 ? 255 : v;
-  };
-  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
-
-export function addBlock(
-  originX: number,
-  originZ: number,
-  size: number,
-  rng: ReturnType<typeof createRng>,
-  biome: BiomeDef,
-  buildings: Building[],
-  colliders: Aabb[],
-): void {
-  if (biome.buildingDensity <= 0) return; // e.g. water — nothing built here
-
-  const margin = biome.buildingDensity >= 0.72 ? 2.2 : biome.buildingDensity >= 0.48 ? 2.7 : 3.2; // compact urban frontage, wider suburban setbacks
-  // Denser biomes subdivide into more, smaller lots; sparse biomes stay open.
-  const lots = biome.buildingDensity >= 0.58
-    ? 2
-    : rng.chance(0.18 + biome.buildingDensity * 0.42) ? 2 : 1;
-  const lotSize = size / lots;
-  const [hMin, hMax] = biome.heightRange;
-
-  for (let li = 0; li < lots; li++) {
-    for (let lj = 0; lj < lots; lj++) {
-      // The biome's density is the per-lot occupancy: rural blocks are mostly
-      // empty, cores almost fully built.
-      if (!rng.chance(biome.buildingDensity)) continue;
-
-      const lotX = originX + li * lotSize;
-      const lotZ = originZ + lj * lotSize;
-      const width = lotSize - margin * 2;
-      const depth = lotSize - margin * 2;
-      if (width < 4 || depth < 4) continue;
-
-      const cx = lotX + lotSize / 2;
-      const cz = lotZ + lotSize / 2;
-      const height = rng.range(hMin, hMax);
-      const style = rng.pick(biome.facades);
-
-      // Per-building brightness jitter on the biome tint, so a block of the same
-      // palette still reads as many distinct buildings rather than clones.
-      const color = jitterBrightness(rng.pick(biome.palette), rng, 0.18);
-      buildings.push({ cx, cz, width, depth, height, color, style });
-
-      const hw = width / 2;
-      const hd = depth / 2;
-      colliders.push({ minX: cx - hw, minZ: cz - hd, maxX: cx + hw, maxZ: cz + hd });
-    }
-  }
-}
-
-/**
- * Scatter sidewalk props along a block's perimeter (inset onto the sidewalk
- * strip, clear of the road and of building footprints). Biome sets how many and
- * which kinds. Corners are skipped so props don't land in road intersections.
- */
-export function addProps(
-  originX: number,
-  originZ: number,
-  size: number,
-  rng: ReturnType<typeof createRng>,
-  biome: BiomeDef,
-  colliders: Aabb[],
-  props: Prop[],
-): void {
-  if (biome.propDensity <= 0 || biome.props.length === 0) return;
-  const inset = 1.6; // onto the sidewalk, between curb and building line
-  const slots = Math.max(2, Math.floor(size / 9)); // ~9 m spacing along an edge
-  const span = size - inset * 2;
-
-  for (let edge = 0; edge < 4; edge++) {
-    for (let k = 1; k < slots; k++) {
-      if (!rng.chance(biome.propDensity)) continue;
-      const t = (k / slots) * span + inset;
-      let x: number;
-      let z: number;
-      if (edge === 0) { x = originX + inset; z = originZ + t; }
-      else if (edge === 1) { x = originX + size - inset; z = originZ + t; }
-      else if (edge === 2) { x = originX + t; z = originZ + inset; }
-      else { x = originX + t; z = originZ + size - inset; }
-      x += rng.range(-0.8, 0.8);
-      z += rng.range(-0.8, 0.8);
-      if (insideAnyCollider(x, z, colliders, 0.6)) continue;
-      props.push({ x, z, type: rng.pick(biome.props), rot: rng.range(0, Math.PI * 2) });
-    }
-  }
-}
-
-function buildLanes(roadCenters: number[], half: number, laneOffset: number): Lane[] {
-  const lanes: Lane[] = [];
-  // Skip the two outermost roads so traffic stays inside the visible city.
-  for (let i = 1; i < roadCenters.length - 1; i++) {
-    const fixed = roadCenters[i];
-    if (Math.abs(fixed) > half) continue;
-    lanes.push({ axis: 'x', fixed: fixed - laneOffset, dir: 1 });
-    lanes.push({ axis: 'x', fixed: fixed + laneOffset, dir: -1 });
-    lanes.push({ axis: 'z', fixed: fixed - laneOffset, dir: -1 });
-    lanes.push({ axis: 'z', fixed: fixed + laneOffset, dir: 1 });
-  }
-  return lanes;
-}
-
-/** One lamp on the curb corner of every road intersection. */
-function buildStreetlights(roadCenters: number[], roadWidth: number): Streetlight[] {
-  const curb = roadWidth / 2 + 1.2;
-  const lights: Streetlight[] = [];
-  for (const x of roadCenters) {
-    for (const z of roadCenters) {
-      lights.push({ x: x + curb, z: z + curb });
-    }
-  }
-  return lights;
-}
-
-/**
- * Curbside parked cars: a chance of one car per block edge, hugging the curb
- * just outside the moving-traffic lanes and aligned with the road. Spots that
- * would clip a building are dropped.
- */
-function buildParkingSpots(
-  roadCenters: number[],
-  cell: number,
-  blockSize: number,
-  roadWidth: number,
-  half: number,
-  rng: ReturnType<typeof createRng>,
-  colliders: Aabb[],
-): ParkingSpot[] {
-  const offset = roadWidth / 2 + 0.3; // at the curb, clear of the lanes
-  const fill = 0.22;
-  const grid = roadCenters.length - 1;
-  const spots: ParkingSpot[] = [];
-
-  const blockCenter = (b: number): number => b * cell + roadWidth + blockSize / 2 - half;
-
-  const zones = landmarkZones({ half, roadCenters });
-  const tryAdd = (x: number, z: number, heading: number): void => {
-    if (!rng.chance(fill)) return;
-    if (zones.some((zone) => overlapsZone(x, z, 3.2, 1.8, zone, 1))) return;
-    if (insideAnyCollider(x, z, colliders, 2)) return;
-    spots.push({ x, z, heading });
-  };
-
-  for (const rc of roadCenters) {
-    for (let b = 0; b < grid; b++) {
-      const along = blockCenter(b);
-      // Parked along a road running on the Z axis (car faces ±Z).
-      const sx = rng.chance(0.5) ? 1 : -1;
-      tryAdd(rc + sx * offset, along, rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2);
-      // Parked along a road running on the X axis (car faces ±X).
-      const sz = rng.chance(0.5) ? 1 : -1;
-      tryAdd(along, rc + sz * offset, rng.chance(0.5) ? 0 : Math.PI);
-    }
-  }
-  return spots;
-}
-
-function insideAnyCollider(x: number, z: number, colliders: Aabb[], pad: number): boolean {
-  for (const c of colliders) {
-    if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad) {
-      return true;
-    }
+function nearRoad(x:number,z:number,pad=7):boolean {
+  for (const r of ROADS) {
+    const minX=Math.min(r.x1,r.x2)-r.width/2-pad, maxX=Math.max(r.x1,r.x2)+r.width/2+pad;
+    const minZ=Math.min(r.z1,r.z2)-r.width/2-pad, maxZ=Math.max(r.z1,r.z2)+r.width/2+pad;
+    if (x>minX&&x<maxX&&z>minZ&&z<maxZ) return true;
   }
   return false;
 }
 
+function roadLanes(): Lane[] {
+  const lanes: Lane[] = [];
+  for (const r of ROADS) {
+    if (Math.abs(r.x2-r.x1) > Math.abs(r.z2-r.z1)) {
+      lanes.push({axis:'x',fixed:r.z1-r.width*0.25,dir:1},{axis:'x',fixed:r.z1+r.width*0.25,dir:-1});
+    } else {
+      lanes.push({axis:'z',fixed:r.x1-r.width*0.25,dir:-1},{axis:'z',fixed:r.x1+r.width*0.25,dir:1});
+    }
+  }
+  return lanes;
+}
 
-/**
- * Authoritative collision footprints for hand-authored landmarks.
- * Supermarkets use wall segments with a real entrance gap, so the player can
- * cross the threshold and walk through the interior. Other landmarks expose
- * their physical fences/stalls rather than an invisible giant AABB.
- */
-function addLandmarkColliders(city: Pick<City, 'half' | 'roadCenters'>, colliders: Aabb[]): void {
-  const loc = landmarkLocations(city);
-  const add = (cx: number, cz: number, w: number, d: number): void => {
-    colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
-  };
+function streetlights(): Streetlight[] {
+  const out:Streetlight[]=[];
+  for (const r of ROADS) {
+    const len=Math.hypot(r.x2-r.x1,r.z2-r.z1);
+    const n=Math.max(2,Math.floor(len/42));
+    for(let i=1;i<n;i++){
+      const t=i/n;
+      const x=r.x1+(r.x2-r.x1)*t;
+      const z=r.z1+(r.z2-r.z1)*t;
+      out.push({x:x+r.width*0.48,z:z+r.width*0.48});
+    }
+  }
+  return out;
+}
 
-  // Supermarket shells: 18 x 12, 0.45m wall thickness, 3.8m entrance.
-  for (const p of loc.supermarkets) {
-    const w = 18, d = 12, t = 0.45, door = 3.8;
-    add(p.x, p.z - d / 2 + t / 2, w, t); // back
-    add(p.x - w / 2 + t / 2, p.z, t, d); // left
-    add(p.x + w / 2 - t / 2, p.z, t, d); // right
-    const side = (w - door) / 2;
-    add(p.x - (door / 2 + side / 2), p.z + d / 2 - t / 2, side, t);
-    add(p.x + (door / 2 + side / 2), p.z + d / 2 - t / 2, side, t);
-    // Interior checkout/shelf islands. They are low obstacles, not walls.
-    add(p.x - 5.0, p.z - 1.0, 1.0, 5.2);
-    add(p.x - 1.7, p.z - 1.0, 1.0, 5.2);
-    add(p.x + 1.7, p.z - 1.0, 1.0, 5.2);
-    add(p.x + 5.0, p.z - 1.0, 1.0, 5.2);
-    add(p.x, p.z + 4.0, 8.0, 0.8); // checkout counter
+function addBoxCollider(out:Aabb[],cx:number,cz:number,w:number,d:number):void {
+  out.push({minX:cx-w/2,minZ:cz-d/2,maxX:cx+w/2,maxZ:cz+d/2});
+}
+
+function facadeFor(rng:ReturnType<typeof createRng>, z:number):{style:FacadeStyle;color:number;h:[number,number]} {
+  if (z < -300) return {style:'brick',color:rng.pick([0x9b6654,0xb27a62,0x7e4f43,0xc0a58d]),h:[12,24]};
+  if (z < 80) return {style:'concrete',color:rng.pick([0x8e8b84,0xa59d91,0xb7aea0,0x777a7d]),h:[14,32]};
+  if (z < 260) return {style:'concrete',color:rng.pick([0x8f8475,0xb2a38e,0xc1b39c,0x6d6b68]),h:[10,27]};
+  return {style:'brick',color:rng.pick([0x8a5545,0x9b624d,0xb07b61,0x6f4c43]),h:[9,22]};
+}
+
+function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:Aabb[];props:Prop[]} {
+  const rng=createRng(hashSeed(seed,'westminster-buildings'));
+  const buildings:Building[]=[];
+  const colliders:Aabb[]=[];
+  const props:Prop[]=[];
+  const xs=[-620,-520,-390,-250,-105,35,175,320,455,620];
+  const zs=[-620,-535,-445,-330,-240,-115,20,105,185,285,390,500,590];
+
+  // Dense frontage blocks between the major road lines. Lots are deliberately
+  // narrow/deep, matching the terraced/mansion-block character of Westminster.
+  for(let xi=0;xi<xs.length-1;xi++){
+    for(let zi=0;zi<zs.length-1;zi++){
+      const x1=xs[xi]+SIDE, x2=xs[xi+1]-SIDE;
+      const z1=zs[zi]+SIDE, z2=zs[zi+1]-SIDE;
+      if(x2-x1<12||z2-z1<12) continue;
+      const cx=(x1+x2)/2, cz=(z1+z2)/2;
+      if(pointInPark(cx,cz)||nearRoad(cx,cz,2)) continue;
+      if(LANDMARKS.some(l=>intersects({x1,z1,x2,z2},{x1:l.x-l.w/2,z1:l.z-l.d/2,x2:l.x+l.w/2,z2:l.z+l.d/2},4))) continue;
+
+      const lots=Math.max(1,Math.min(4,Math.floor((x2-x1)/32)));
+      const lotW=(x2-x1)/lots;
+      for(let i=0;i<lots;i++){
+        const bx=x1+lotW*(i+0.5);
+        const width=Math.max(12,lotW-3.5);
+        const depth=Math.max(10,(z2-z1)-3.5);
+        const f=facadeFor(rng,cz);
+        let h=rng.range(f.h[0],f.h[1]);
+        if (Math.abs(bx)<230 && Math.abs(cz)<150) h=rng.range(18,39);
+        if (Math.abs(cz-20)<70) h=rng.range(16,34);
+        buildings.push({cx:bx,cz,width,depth,height:h,color:f.color,style:f.style});
+        addBoxCollider(colliders,bx,cz,width,depth);
+        if(rng.chance(0.35)) props.push({x:bx-width/2+2.5,z:cz+depth/2+1.7,type:rng.pick(['tree','bench','hydrant'] as PropType[]),rot:0});
+      }
+    }
   }
 
-  // Football pitch perimeter is a fence, not a collision-filled field.
-  const fx = loc.football.x, fz = loc.football.z;
-  add(fx, fz - 13.0, 42, 0.25);
-  add(fx, fz + 13.0, 42, 0.25);
-  add(fx - 21.0, fz, 0.25, 26);
-  add(fx + 21.0, fz, 0.25, 26);
+  // Hand-authored iconic structures use the same building collision/asset path.
+  for(const l of LANDMARKS){
+    buildings.push({cx:l.x,cz:l.z,width:l.w,depth:l.d,height:l.h,color:l.color,style:l.style});
+    addBoxCollider(colliders,l.x,l.z,l.w,l.d);
+  }
+  return {buildings,colliders,props};
+}
 
-  // Playground equipment has compact physical footprints.
-  const px = loc.playground.x, pz = loc.playground.z;
-  add(px, pz, 2.5, 6.2);
-  add(px, pz + 6.5, 5.0, 0.35);
-  add(px - 7, pz + 6, 3.2, 0.8);
+function parking():ParkingSpot[]{
+  const out:ParkingSpot[]=[];
+  for(const r of ROADS){
+    const len=Math.hypot(r.x2-r.x1,r.z2-r.z1);
+    const n=Math.floor(len/28);
+    for(let i=1;i<n;i+=2){
+      const t=i/n;
+      const x=r.x1+(r.x2-r.x1)*t, z=r.z1+(r.z2-r.z1)*t;
+      if(Math.random()>0.24) continue;
+      if(Math.abs(r.x2-r.x1)>Math.abs(r.z2-r.z1)) out.push({x,z:r.z1+r.width/2+2.2,heading:Math.PI/2});
+      else out.push({x:r.x1+r.width/2+2.2,z,heading:0});
+    }
+  }
+  return out;
+}
 
-  // Market stalls are individually collidable so pedestrians can weave through.
-  const mx = loc.market.x, mz = loc.market.z;
-  for (let i = -2; i <= 2; i++) add(mx + i * 6, mz, 4.5, 3.2);
+export function generateCity(config:CityConfig=DEFAULT_CITY):City {
+  const {buildings,colliders,props}=makeWestminsterBuildings(config.seed);
+  // Static park/landmark boundaries are real collision objects; parks themselves
+  // remain walkable open space.
+  for(const p of PARKS){
+    // Low perimeter collision only; this prevents building spill without boxing parks.
+    addBoxCollider(colliders,(p.x1+p.x2)/2,p.z1,(p.x2-p.x1),0.5);
+    addBoxCollider(colliders,(p.x1+p.x2)/2,p.z2,(p.x2-p.x1),0.5);
+    addBoxCollider(colliders,p.x1,(p.z1+p.z2)/2,0.5,(p.z2-p.z1));
+    addBoxCollider(colliders,p.x2,(p.z1+p.z2)/2,0.5,(p.z2-p.z1));
+  }
+  const lanes=roadLanes();
+  const extent=HALF*2;
+  const roadCenters=[-520,-390,-250,-105,35,175,320,455,620];
+  return {
+    config,
+    cell:100,
+    extent,
+    half:HALF,
+    roadCenters,
+    roadSegments:ROADS,
+    laneOffset:ROAD_W/4,
+    buildings,
+    colliders,
+    grid:new SpatialGrid(colliders,80),
+    lanes,
+    streetlights:streetlights(),
+    props,
+    parkingSpots:parking(),
+    center:{x:430,z:360}, // Parliament Square / Westminster
+  };
+}
+
+// Kept as a compatibility export for old integrations. New Westminster map does
+// not use the previous market/football/supermarket landmark system.
+export interface LandmarkLocations {
+  market:{x:number;z:number};
+  football:{x:number;z:number};
+  playground:{x:number;z:number};
+  supermarkets:{x:number;z:number}[];
+}
+export function landmarkLocations(city:Pick<City,'half'|'roadCenters'>):LandmarkLocations {
+  const c=city.half;
+  return {
+    market:{x:35,z:115},
+    football:{x:-220,z:330},
+    playground:{x:-420,z:40},
+    supermarkets:[{x:160,z:-60},{x:520,z:70}],
+  };
 }
