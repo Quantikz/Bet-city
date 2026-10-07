@@ -1,12 +1,30 @@
 {
-  "baseUrl": "https://opengameart.org/sites/default/files/",
+  "baseUrl": "",
   "stations": [
     {
-      "name": "AFRO RADIO",
+      "name": "AFROFUSION NAIJA",
       "tracks": [
         {
-          "title": "Tropical Loop — African Drums",
-          "file": "Tropical.wav"
+          "title": "Live Afrobeats",
+          "file": "https://play.streamafrica.net/afrofusionnaija"
+        }
+      ]
+    },
+    {
+      "name": "AFROFUSION AMAPIANO",
+      "tracks": [
+        {
+          "title": "Live Amapiano",
+          "file": "https://play.streamafrica.net/afrofusionamp"
+        }
+      ]
+    },
+    {
+      "name": "AFROFUSION GOLD",
+      "tracks": [
+        {
+          "title": "Classic African",
+          "file": "https://play.streamafrica.net/afrofusiongold"
         }
       ]
     }
