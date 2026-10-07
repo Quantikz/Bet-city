@@ -352,81 +352,27 @@ export class SceneEnv {
   }
 
   private addCompactCityLandmarks(city: City): void {
-    const mat = (color:number, roughness=0.85) =>
-      new THREE.MeshStandardMaterial({color, roughness});
-
-    const plane = (color:number,w:number,d:number,x:number,z:number,y=0.02) => {
-      const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));
-      m.rotation.x=-Math.PI/2; m.position.set(x,y,z); m.receiveShadow=true; this.scene.add(m); return m;
-    };
-    const box = (color:number,w:number,h:number,d:number,x:number,y:number,z:number) => {
-      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
-      m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; this.scene.add(m); return m;
-    };
-
-    // Open green ground: roads are drawn separately, so the city does not look like
-    // one giant sheet of asphalt.
-    plane(0x718064, city.extent*2, city.extent*2, 0, 0, -0.01);
-
-    // Sea and a simple protected shoreline on the south side.
-    plane(0x2e7187, city.extent*1.65, 105, 0, -235, -0.005);
-    box(0x9b9a86, city.extent*1.65, 0.18, 3, 0, 0.09, -182);
-
-    // Two proper football pitches.
-    for(const [x,z] of [[-175,95],[175,145]]){
-      plane(0x3f7d43, 116, 72, x, z, 0.025);
-      const lineMat=mat(0xe8e8d8);
-      const line=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(112,68)),new THREE.LineBasicMaterial({color:0xe8e8d8}));
-      line.rotation.x=-Math.PI/2; line.position.set(x,0.08,z); this.scene.add(line);
-      box(0x6d4c36,1.2,2.5,1.2,x-54,1.25,z);
-      box(0x6d4c36,1.2,2.5,1.2,x+54,1.25,z);
-    }
-
-    // Mosque: dome + small minaret.
-    const dome=new THREE.Mesh(new THREE.SphereGeometry(12,20,12,0,Math.PI*2,0,Math.PI/2),mat(0xd8d1c1));
-    dome.scale.y=0.7; dome.position.set(-70,9,205); dome.castShadow=true; this.scene.add(dome);
-    const minaret=box(0xc7c0b0,3.2,18,3.2,-58,9,205);
-    const cap=new THREE.Mesh(new THREE.ConeGeometry(2.5,5,12),mat(0xc7c0b0)); cap.position.set(-58,20.5,205); this.scene.add(cap);
-
-    // Church: simple tower and pitched roof silhouette.
-    box(0xc0b9ae,38,10,30,70,5,205);
-    box(0xa69b8d,8,22,8,82,11,205);
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(23,12,4),mat(0x746b61));
-    roof.rotation.y=Math.PI/4; roof.position.set(70,11,205); roof.castShadow=true; this.scene.add(roof);
-
-    // Train line, sleepers and a short passenger train near the station.
-    const railMat=new THREE.MeshStandardMaterial({color:0x46484b,metalness:0.7,roughness:0.5});
-    for(const x of [-32,32]){
-      const rail=box(0x4b4d50,1.1,0.18,220,x,0.12,120); rail.material=railMat;
-      for(let z=18;z<225;z+=9) box(0x6b5a49,70,0.12,1.2,0,0.06,z);
-    }
-    box(0x5c6d77,20,4.5,58,0,2.25,120);
-    for(const x of [-5,5,15]){
-      box(0xb7b9bd,8,3.2,16,x,3.8,120);
-    }
-
-    // Three small storefront signs/awnings make the shops readable.
-    for(const [x,z] of [[-185,-35],[-150,-35],[155,-35]]){
-      box(0x3e5564,18,1.8,1.2,x,5.2,z-9);
-      box(0xd2b36a,20,0.45,1.8,x,3.2,z-9);
-    }
-
-    // Boats in the sea.
-    for(const [x,z,scale] of [[-120,-215,1],[-5,-225,0.8],[115,-210,1.15]]){
-      const hull=box(0x4b3f36,10*scale,2.2*scale,4*scale,x,1.1,z);
-      hull.rotation.y=0.12;
-      const mast=box(0xe2ddd0,0.35,8*scale,0.35,x,5*scale,z);
-      const sail=new THREE.Mesh(new THREE.ConeGeometry(4*scale,7*scale,3),mat(0xe5dfd0));
-      sail.rotation.z=Math.PI/2; sail.position.set(x+2*scale,5*scale,z); this.scene.add(sail);
-    }
-
-    // Small hospital/police visual cues on the existing buildings.
-    box(0xf4f4ee,18,4,0.8,-190,12,14);
-    box(0xc84646,3,0.5,1,-190,12.3,13.5);
-    box(0xf4f4ee,16,3.5,0.8,190,12,25);
-    box(0x3564a8,2.5,0.45,1,190,13,24.5);
+    const mat=(color:number,roughness=0.86)=>new THREE.MeshStandardMaterial({color,roughness});
+    const plane=(color:number,w:number,d:number,x:number,z:number,y=0.02)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;this.scene.add(m);return m;};
+    const box=(color:number,w:number,h:number,d:number,x:number,y:number,z:number)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;this.scene.add(m);return m;};
+    const lm=(id:string)=>city.landmarks.find(l=>l.id===id)!;
+    plane(0x7d8d78,city.extent,city.extent,0,0,-0.012);
+    const park=lm('park');plane(0x668363,park.width,park.depth,park.x,park.z,0.018);
+    for(const [x,z] of [[-24,-143],[24,-143],[-24,-121],[24,-121]]){box(0x6a4a31,.42,2,.42,x,1,z);const c=new THREE.Mesh(new THREE.ConeGeometry(1.7,3,7),mat(0x3e6847));c.position.set(x,3.1,z);c.castShadow=true;this.scene.add(c);}
+    box(0x57514a,5.5,.45,.65,0,.23,park.z);box(0x766653,5.5,.08,.7,0,.5,park.z);
+    const field=lm('field');plane(0x3f7f48,field.width,field.depth,field.x,field.z,.024);const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(field.width-4,field.depth-4)),new THREE.LineBasicMaterial({color:0xe9eadf}));edge.rotation.x=-Math.PI/2;edge.position.set(field.x,.06,field.z);this.scene.add(edge);
+    for(const gx of [field.x-field.width/2+3,field.x+field.width/2-3]){box(0xf0eee4,.18,2.4,.18,gx,1.2,field.z-field.depth/2+8);box(0xf0eee4,.18,2.4,.18,gx,1.2,field.z+field.depth/2-8);box(0xf0eee4,.18,2.4,8.2,gx,1.2,field.z);box(0xf0eee4,8.2,.18,.18,gx,2.4,field.z);}
+    const market=lm('market');plane(0xa99a83,market.width,market.depth,market.x,market.z,.026);for(let i=-2;i<=2;i++){const x=market.x+i*8;box(i%2===0?0x566f78:0x8b6550,5.5,2.4,4,x,1.2,market.z);box(i%2===0?0x394d55:0x6e4939,5.9,.12,4.4,x,2.5,market.z);}
+    const town=lm('townhall');box(0xd7d2c8,town.width,9,town.depth,town.x,4.5,town.z);box(0x8d8b84,18,1,1,town.x,7.5,town.z-town.depth/2-.6);box(0xb6aa96,6,4,6,town.x,11,town.z);
+    const clinic=lm('clinic');box(0xe0d8cb,clinic.width,7,clinic.depth,clinic.x,3.5,clinic.z);box(0xd64b4b,10,1,.35,clinic.x,6.5,clinic.z-clinic.depth/2-.2);
+    const police=lm('police');box(0xb7c1c0,police.width,7,police.depth,police.x,3.5,police.z);box(0x426c9a,12,1,.35,police.x,6.5,police.z-police.depth/2-.2);
+    const school=lm('school');box(0xd0c4b4,school.width,5,school.depth,school.x,2.5,school.z);for(let x=school.x-school.width/2+7;x<school.x+school.width/2-4;x+=9)box(0x6f8b93,3.5,2.1,.18,x,2,school.z-school.depth/2-.12);
+    const mosque=lm('mosque');box(0xd8d1c4,mosque.width,7,mosque.depth,mosque.x,3.5,mosque.z);const dome=new THREE.Mesh(new THREE.SphereGeometry(10,20,12,0,Math.PI*2,0,Math.PI/2),mat(0xc7bda9));dome.scale.y=.7;dome.position.set(mosque.x,7.2,mosque.z);dome.castShadow=true;this.scene.add(dome);box(0xc7bda9,2.8,17,2.8,mosque.x+13,8.5,mosque.z);
+    const church=lm('church');box(0xcfc8bb,church.width,8,church.depth,church.x,4,church.z);box(0xaaa195,7,17,7,church.x+12,8.5,church.z);const roof=new THREE.Mesh(new THREE.ConeGeometry(19,9,4),mat(0x71695f));roof.rotation.y=Math.PI/4;roof.position.set(church.x,10,church.z);roof.castShadow=true;this.scene.add(roof);
+    const station=lm('station');box(0x8d989a,station.width,5,station.depth,station.x,2.5,station.z);for(let x=station.x-station.width/2+8;x<station.x+station.width/2;x+=12)box(0xb7b8b5,.5,4.2,station.depth+1,x,2.1,station.z);
+    const shop=lm('shop-east');box(0xc9a77d,shop.width,5.5,shop.depth,shop.x,2.75,shop.z);for(let x=shop.x-shop.width/2+4;x<shop.x+shop.width/2;x+=8)box(0x6c5550,5.5,1.6,.18,x,3.6,shop.z-shop.depth/2-.12);
+    const gas=lm('gas');box(0xd1c6b5,gas.width,.5,gas.depth,gas.x,.25,gas.z);for(const x of [gas.x-10,gas.x+10]){box(0x5b6265,.45,4.2,.45,x,2.1,gas.z);box(0xe5dfd2,8,.35,4,x,4.3,gas.z);box(0x5a6570,2.4,1.8,1.5,x,.9,gas.z);}
   }
-
   /** Advance the ambient football match without adding a full NPC simulation cost. */
   updateActivities(dt: number, time: number): void {
     if (this.footballPlayers.length === 0) return;
@@ -460,32 +406,16 @@ export class SceneEnv {
   }
 
   private addRoads(city: City): void {
-    const asphalt=new THREE.MeshStandardMaterial({color:0x303238,roughness:0.93});
-    const curb=new THREE.MeshStandardMaterial({color:0x9b9b95,roughness:0.9});
+    const asphalt=new THREE.MeshStandardMaterial({color:0x303238,roughness:.93});
+    const curb=new THREE.MeshStandardMaterial({color:0x9b9b95,roughness:.9});
+    const sidewalkMat=new THREE.MeshStandardMaterial({color:0xb7b2aa,roughness:1});
     for(const r of city.roadSegments){
-      const dx=r.x2-r.x1,dz=r.z2-r.z1,len=Math.hypot(dx,dz),ang=Math.atan2(dz,dx);
-      const road=new THREE.Mesh(new THREE.PlaneGeometry(len,r.width),asphalt);
-      road.rotation.x=-Math.PI/2;road.rotation.z=ang;
-      road.position.set((r.x1+r.x2)/2,0.018,(r.z1+r.z2)/2);
-      road.receiveShadow=true;this.scene.add(road);
+      const dx=r.x2-r.x1,dz=r.z2-r.z1,len=Math.hypot(dx,dz);if(len<.01)continue;
+      const tx=dx/len,tz=dz/len,nx=-tz,nz=tx,ang=Math.atan2(dz,dx),mx=(r.x1+r.x2)/2,mz=(r.z1+r.z2)/2;
+      const road=new THREE.Mesh(new THREE.PlaneGeometry(len,r.width),asphalt);road.rotation.x=-Math.PI/2;road.rotation.z=ang;road.position.set(mx,.018,mz);road.receiveShadow=true;this.scene.add(road);
       for(const side of [-1,1]){
-        const c=new THREE.Mesh(new THREE.PlaneGeometry(len,0.55),curb);
-        c.rotation.x=-Math.PI/2;c.rotation.z=ang;
-        c.position.set((r.x1+r.x2)/2,0.025,(r.z1+r.z2)/2+side*r.width/2);
-        this.scene.add(c);
-
-        const sidewalk=new THREE.Mesh(
-          new THREE.PlaneGeometry(len,2.2),
-          new THREE.MeshStandardMaterial({color:0xb7b2aa,roughness:1}),
-        );
-        sidewalk.rotation.x=-Math.PI/2;sidewalk.rotation.z=ang;
-        sidewalk.position.set(
-          (r.x1+r.x2)/2,
-          0.012,
-          (r.z1+r.z2)/2+side*(r.width/2+1.35),
-        );
-        sidewalk.receiveShadow=true;
-        this.scene.add(sidewalk);
+        const c=new THREE.Mesh(new THREE.PlaneGeometry(len,.55),curb);c.rotation.x=-Math.PI/2;c.rotation.z=ang;c.position.set(mx+nx*side*r.width/2,.025,mz+nz*side*r.width/2);this.scene.add(c);
+        const sw=new THREE.Mesh(new THREE.PlaneGeometry(len,2.2),sidewalkMat);sw.rotation.x=-Math.PI/2;sw.rotation.z=ang;sw.position.set(mx+nx*side*(r.width/2+1.35),.012,mz+nz*side*(r.width/2+1.35));sw.receiveShadow=true;this.scene.add(sw);
       }
     }
   }
