@@ -127,7 +127,6 @@ export class StreamedWorld {
       lanes: [],
       parkingSpots: [],
       center: this.center,
-      landmarks: [],
       grid: this.grid,
       get colliders() {
         return self.liveColliders;

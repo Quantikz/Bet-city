@@ -27,8 +27,8 @@ const LANDMARKS:Landmark[]=[
  {id:'townhall',name:'Town Hall',kind:'townhall',x:0,z:-48,width:46,depth:28},{id:'market',name:'Central Market',kind:'market',x:52,z:46,width:48,depth:34},
  {id:'clinic',name:'Community Clinic',kind:'clinic',x:154,z:-45,width:34,depth:28},{id:'police',name:'Police Station',kind:'police',x:-154,z:-45,width:34,depth:28},
  {id:'school',name:'Community School',kind:'school',x:-154,z:45,width:50,depth:32},{id:'mosque',name:'Central Mosque',kind:'mosque',x:154,z:-132,width:38,depth:32},
- {id:'church',name:'Town Church',kind:'church',x:-48,z:132,width:38,depth:30},{id:'station',name:'Bus Station',kind:'station',x:-42,z:132,width:58,depth:22},
- {id:'shop-east',name:'Corner Shops',kind:'shop',x:156,z:45,width:38,depth:24},{id:'gas',name:'Fuel Station',kind:'gas',x:52,z:-132,width:38,depth:28},
+ {id:'church',name:'Town Church',kind:'church',x:-65,z:130,width:38,depth:30},{id:'station',name:'Bus Station',kind:'station',x:10,z:160,width:58,depth:22},
+ {id:'shop-east',name:'Corner Shops',kind:'shop',x:156,z:45,width:38,depth:24},{id:'gas',name:'Fuel Station',kind:'gas',x:30,z:-132,width:38,depth:28},
  {id:'park',name:'Civic Park',kind:'park',x:0,z:-132,width:72,depth:44},{id:'field',name:'Town Football Field',kind:'field',x:150,z:132,width:76,depth:48}
 ];
 const addBox=(a:Aabb[],x:number,z:number,w:number,d:number)=>a.push({minX:x-w/2,minZ:z-d/2,maxX:x+w/2,maxZ:z+d/2});
@@ -37,7 +37,7 @@ function buildTown(){const bs:Building[]=[];const cs:Aabb[]=[];const ps:Prop[]=[
  B(bs,cs,0,-48,46,28,9,0xd7d2c8);B(bs,cs,52,46,48,34,5.5,0xc8b99f,'brick');B(bs,cs,154,-45,34,28,7,0xe0d8cb);B(bs,cs,-154,-45,34,28,7,0xb7c1c0);
  B(bs,cs,-154,45,50,32,5,0xd0c4b4,'brick');B(bs,cs,154,-132,38,32,9,0xd8d1c4);B(bs,cs,-48,132,38,30,8,0xcfc8bb);B(bs,cs,-42,132,58,22,5,0x8d989a);
  B(bs,cs,156,45,38,24,5.5,0xc9a77d,'brick');B(bs,cs,52,-132,38,28,5.5,0xd1c6b5);
- const homes=[[-165,-135,28,22],[-125,-135,28,22],[-65,-135,28,22],[70,-135,28,22],[120,-135,24,22],[-165,-48,24,22],[-120,-48,28,22],[120,-48,24,22],[-165,45,24,22],[-105,45,24,22],[120,45,22,20],[-165,132,28,22],[-105,132,28,22],[80,132,28,22],[-165,215,28,22],[-115,215,28,22],[-55,215,28,22],[10,215,28,22],[70,215,28,22],[130,215,28,22],[-165,-215,28,22],[-115,-215,28,22],[-55,-215,28,22],[5,-215,28,22],[65,-215,28,22],[125,-215,28,22]];
+ const homes=[[-165,-135,28,22],[-125,-135,28,22],[-65,-135,28,22],[70,-135,28,22],[120,-135,24,22],[-120,-48,28,22],[120,-48,24,22],[-105,45,24,22],[120,45,22,20],[-165,132,28,22],[-105,132,28,22],[80,132,28,22],[-165,215,28,22],[-115,215,28,22],[-55,215,28,22],[10,215,28,22],[70,215,28,22],[130,215,28,22],[-165,-215,28,22],[-115,-215,28,22],[-55,-215,28,22],[5,-215,28,22],[65,-215,28,22],[125,-215,28,22]];
  homes.forEach((v,i)=>B(bs,cs,v[0],v[1],v[2],v[3],5.2+(i%3)*.8,i%2?0xb8b1a7:0xc8c0b4,i%3?'concrete':'brick'));
  ps.push({x:-92,z:-132,type:'tree',rot:0},{x:92,z:-132,type:'tree',rot:1.2},{x:-78,z:132,type:'tree',rot:.4},{x:92,z:132,type:'tree',rot:2.1},{x:-190,z:45,type:'tree',rot:0},{x:190,z:-45,type:'tree',rot:0},{x:-20,z:132,type:'bench',rot:Math.PI/2},{x:25,z:-132,type:'bench',rot:Math.PI/2});
  return {bs,cs,ps};}
