@@ -32,7 +32,6 @@ function isTouchDevice(): boolean {
 const FOOT_RADIUS = 0.4;
 const ENTER_DISTANCE = 6; // generous so curbside parked cars are easy to get into
 const ENGINE_HEAR = 28; // on foot, how far a parked car's idle is audible
-const STEP_DISTANCE = 1.7; // metres of travel between footstep sounds
 let footAccum = 0;
 
 let dayLength = 480; // seconds for a full day/night cycle (overridden by options)
@@ -196,7 +195,7 @@ fetch('radio.json')
     radio = new Radio(
       data.stations.map((s) => ({
         name: s.name,
-        tracks: s.tracks.map((t) => ({ title: t.title, url: data.baseUrl + t.file })),
+        tracks: s.tracks.map((t) => ({ title: t.title, url: t.file.startsWith('http') ? t.file : data.baseUrl + t.file })),
       })),
     );
     if (audioGestured) primeRadio(); // gesture already happened, manifest just landed
@@ -320,7 +319,7 @@ function update(dt: number): void {
       footAccum += player.speed * dt;
       if (footAccum >= STEP_DISTANCE) {
         footAccum = 0;
-        sfx.footstep();
+        sfx.footstep(player.speed, sprinting ? 8 : 4.2);
       }
     } else {
       footAccum = STEP_DISTANCE; // first move triggers a step promptly
@@ -456,7 +455,9 @@ function render(alpha: number, frameDt: number): void {
 
   const driving = mode === 'driving';
   if (driving) {
-    sfx.setEngine(Math.abs(vehicles.playerForwardSpeed()) / vehicles.playerMaxSpeed(), 1);
+    const speed01 = Math.min(1, Math.abs(vehicles.playerForwardSpeed()) / Math.max(1, vehicles.playerMaxSpeed()));
+    const engineLoad = 0.28 + speed01 * 0.72;
+    sfx.setEngine(speed01, engineLoad);
     sfx.setScreech(Math.max(0, (vehicles.playerLateralSpeed() - 2) / 8));
     if (radio) radio.updateProximity(true, 0);
   } else {
@@ -467,7 +468,7 @@ function render(alpha: number, frameDt: number): void {
         ? Math.hypot(player.x - vehicles.carPosition(radioCarIndex).x, player.z - vehicles.carPosition(radioCarIndex).z)
         : Infinity;
     const near = Math.max(0, 1 - dist / ENGINE_HEAR);
-    sfx.setEngine(0, near * 0.6); // idle, quieter than under throttle
+    sfx.setEngine(0, near * 0.35); // idle, quieter than under throttle
     if (radio) radio.updateProximity(false, dist);
   }
 
