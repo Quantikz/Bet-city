@@ -2,7 +2,9 @@ import { angleDelta, clamp } from '../core/math';
 
 const WALK = 4.2;
 const RUN = 8;
-const TURN = 8; // rad/s: stable, deliberate foot turning
+const TURN_WALK = 4.2;
+const TURN_RUN = 5.8;
+const TURN_CROUCH = 3.2;
 const JUMP_SPEED = 6.2;
 const GRAVITY = 18;
 
@@ -19,13 +21,11 @@ export class Player {
   y = 0;
   vy = 0;
   crouched = false;
-  // Previous-step pose for render interpolation.
   px = 0;
   pz = 0;
   ph = 0;
   py = 0;
 
-  /** Snapshot the current pose as the previous one (call once per fixed step). */
   savePrev(): void {
     this.px = this.x;
     this.pz = this.z;
@@ -40,8 +40,6 @@ export class Player {
 
     const input = Math.min(1, mag);
     const targetSpeed = input * maxSpeed;
-    // Smooth acceleration/braking prevents tiny mobile-stick changes from
-    // instantly snapping the actor into a new direction.
     const response = targetSpeed > this.speed ? 10 : 14;
     this.speed += (targetSpeed - this.speed) * Math.min(1, response * dt);
 
@@ -52,7 +50,10 @@ export class Player {
       this.z += nz * this.speed * dt;
 
       const target = Math.atan2(-nz, nx);
-      this.heading += clamp(angleDelta(this.heading, target), -TURN * dt, TURN * dt);
+      const turnRate = this.crouched
+        ? TURN_CROUCH
+        : (running ? TURN_RUN : TURN_WALK);
+      this.heading += clamp(angleDelta(this.heading, target), -turnRate * dt, turnRate * dt);
     }
 
     if (this.speed < 0.02) this.speed = 0;
