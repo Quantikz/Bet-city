@@ -61,9 +61,11 @@ export const DEFAULT_CITY: CityConfig = {
   chunkBlocks: 1,
 };
 
-const HALF = 240;
+// The original beta city is ~1.54 km²; use ~1/5 of that footprint for Westminster.
+// 560m × 560m ≈ 0.31 km², while retaining comfortable game-scale streets.
+const HALF = 280;
 const ROAD_W = 11;
-const SIDE = 4.5;
+const SIDE = 5.5;
 const MAP_SCALE = HALF / 620;
 const sx = (v:number):number => v * MAP_SCALE;
 
@@ -130,6 +132,33 @@ const ROADS: RoadSegment[] = [
   R(-250,105,-105,185,8,'Jermyn Street'),
   R(-390,105,-250,185,8,'Pall Mall West'),
 ];
+
+// Major Westminster areas represented across the playable map. The council's
+// neighbourhood map includes many of these communities; these are used as named
+// districts for map generation rather than as arbitrary procedural zones.
+export interface WestminsterArea { name:string; x:number; z:number; radius:number; character:'historic'|'retail'|'residential'|'civic'|'park'; }
+const WESTMINSTER_AREAS: WestminsterArea[] = [
+  ['Paddington',-535,-300,'residential'], ['Bayswater',-500,-120,'residential'], ['Queensway',-500,20,'retail'],
+  ['Notting Hill East',-500,170,'residential'], ['Westbourne',-430,300,'residential'], ['Queen\'s Park',-420,470,'residential'],
+  ['Maida Hill',-300,430,'residential'], ['Maida Vale',-165,465,'residential'], ['Little Venice',-30,470,'park'],
+  ['St John\'s Wood',145,470,'residential'], ['Church Street',-300,300,'retail'], ['Marylebone',-175,315,'residential'],
+  ['Fitzrovia West',-40,300,'retail'], ['Soho',55,300,'retail'], ['Mayfair',-105,170,'historic'],
+  ['St James\'s',55,170,'historic'], ['Covent Garden',180,180,'retail'], ['Strand',290,180,'retail'],
+  ['West End',35,55,'retail'], ['Hyde Park',-350,55,'park'], ['Knightsbridge',-175,55,'historic'],
+  ['Belgravia',-170,210,'historic'], ['Victoria',170,300,'civic'], ['Pimlico',175,430,'residential'],
+  ['Millbank',300,430,'civic'], ['Westminster',300,285,'civic'], ['Whitehall',350,145,'civic'],
+  ['Trafalgar Square',35,115,'civic'], ['Buckingham Palace',-30,275,'historic'], ['St James\'s Park',-145,300,'park'],
+  ['Green Park',-230,200,'park'], ['Vincent Square',130,380,'park'], ['Ebury Bridge',70,440,'residential'],
+  ['Churchill Gardens',300,500,'residential'], ['Harrow Road',-480,350,'residential'], ['Lisson Grove',-260,180,'residential'],
+  ['Regent\'s Park',-260,500,'park'], ['Lancaster Gate',-380,-80,'residential'], ['Hyde Park and Paddington',-400,-230,'park'],
+];
+const AREA_SCALE = MAP_SCALE;
+const AREA_POINTS = WESTMINSTER_AREAS.map(a => ({...a,x:a.x*AREA_SCALE,z:a.z*AREA_SCALE}));
+function areaAt(x:number,z:number):WestminsterArea {
+  let best=AREA_POINTS[0],d=Infinity;
+  for(const a of AREA_POINTS){const dx=x-a.x,dz=z-a.z,d2=dx*dx+dz*dz;if(d2<d){d=d2;best=a;}}
+  return best;
+}
 
 const PARKS = [
   {x1:sx(-390),z1:sx(120),x2:sx(-115),z2:sx(285),name:"Green Park"},
@@ -226,11 +255,15 @@ function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:A
       for(let ix=0;ix<lotsX;ix++) for(let iz=0;iz<lotsZ;iz++){
         const bx=x1+lotW*(ix+0.5);
         const bz=z1+lotD*(iz+0.5);
-        const width=Math.max(8,lotW-3.2);
-        const depth=Math.max(8,lotD-3.2);
+        const width=Math.max(7,lotW-5.5);
+        const depth=Math.max(7,lotD-5.5);
+        const area=areaAt(bx,bz);
         const f=facadeFor(rng,bz);
         let h=rng.range(f.h[0],f.h[1]);
-        if (Math.abs(bx)<90 && Math.abs(bz)<60) h=rng.range(18,39);
+        if (area.character==='civic') h=rng.range(12,28);
+        if (area.character==='historic') h=rng.range(10,24);
+        if (area.character==='residential') h=rng.range(8,20);
+        if (Math.abs(bx)<90 && Math.abs(bz)<60) h=rng.range(12,26);
         if (Math.abs(bz-8)<28) h=rng.range(16,34);
         buildings.push({cx:bx,cz:bz,width,depth,height:h,color:f.color,style:f.style});
         addBoxCollider(colliders,bx,bz,width,depth);
@@ -292,7 +325,7 @@ export function generateCity(config:CityConfig=DEFAULT_CITY):City {
     streetlights:streetlights(),
     props,
     parkingSpots:parking(),
-    center:{x:430,z:360}, // Parliament Square / Westminster
+    center:{x:sx(430),z:sx(360)}, // Parliament Square / Westminster
   };
 }
 
@@ -306,10 +339,10 @@ export interface LandmarkLocations {
 }
 export function landmarkLocations(_city:Pick<City,'half'|'roadCenters'>):LandmarkLocations {
     return {
-    market:{x:35,z:115},
-    football:{x:-220,z:330},
-    playground:{x:-420,z:40},
-    supermarkets:[{x:160,z:-60},{x:520,z:70}],
+    market:{x:sx(35),z:sx(115)},
+    football:{x:sx(-220),z:sx(330)},
+    playground:{x:sx(-420),z:sx(40)},
+    supermarkets:[{x:sx(160),z:sx(-60)},{x:sx(520),z:sx(70)}],
   };
 }
 
