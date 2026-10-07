@@ -83,54 +83,17 @@ const R = (x1:number,z1:number,x2:number,z2:number,width=ROAD_W,name=''): RoadSe
  * Buckingham Palace Road, Birdcage Walk, Millbank and Victoria Embankment.
  */
 const ROADS: RoadSegment[] = [
-  R(-620,-535,620,-535,18,'Oxford Street'),
-  R(-620,-445,620,-445,10,'New Oxford Street'),
-  R(-620,-330,620,-330,12,'Marylebone Road'),
-  R(-520,-620,-520,620,12,'Park Lane'),
-  R(-390,-620,-390,620,10,'Edgware Road'),
-  R(-250,-620,-250,620,9,'Baker Street'),
-  R(-105,-620,-105,620,9,'Regent Street'),
-  R(35,-620,35,620,10,'Charing Cross Road'),
-  R(175,-620,175,620,10,'Shaftesbury Avenue'),
-  R(320,-620,320,620,11,'Victoria Embankment'),
-  R(455,-620,455,620,10,'Lambeth approach'),
-
-  R(-620,-240,620,-240,10,'Great Portland Street'),
-  R(-620,-115,620,-115,10,'Euston Road'),
-  R(-620,20,620,20,11,'Piccadilly'),
-  R(-620,105,620,105,10,'Pall Mall'),
-  R(-620,185,620,185,12,'The Mall'),
-  R(-620,285,620,285,11,'Birdcage Walk'),
-  R(-620,390,620,390,12,'Victoria Street'),
-  R(-620,500,620,500,12,'Millbank'),
-  R(-620,590,620,590,14,'River Embankment'),
-
-  R(-105,-535,-105,20,8,'Regent Street'),
-  R(-105,20,15,155,8,'Regent Street'),
-  R(15,155,155,185,8,'Waterloo Place'),
-  R(155,185,320,185,8,'Northumberland Avenue'),
-  R(320,185,455,185,8,'Whitehall'),
-  R(455,185,455,390,8,'Whitehall'),
-  R(455,390,620,390,8,'Parliament Street'),
-
-  R(-390,20,-250,390,9,'Constitution Hill'),
-  R(-250,285,105,285,9,'Constitution Hill / Birdcage'),
-  R(-250,390,105,390,9,'Buckingham Palace Road'),
-  R(105,390,320,390,9,'Victoria Street'),
-  R(-390,500,-250,500,8,'Grosvenor Place'),
-  R(-250,500,-105,500,8,'Belgrave Road'),
-  R(-105,500,105,500,8,'Vauxhall Bridge Road'),
-  R(105,500,320,500,8,'Horseferry Road'),
-
-  R(-320,20,-320,285,8,'St James Park West'),
-  R(15,20,15,105,8,'Haymarket'),
-  R(15,105,15,285,8,'Whitehall Gardens'),
-  R(320,-115,455,20,8,'Strand'),
-  R(320,20,455,105,8,'Strand'),
-  R(455,20,620,105,8,'Aldwych'),
-  R(-105,105,35,285,8,'St James’s Square'),
-  R(-250,105,-105,185,8,'Jermyn Street'),
-  R(-390,105,-250,185,8,'Pall Mall West'),
+  R(-620,-500,620,-500,14,'Coast Road'),
+  R(-620,-250,620,-250,10,'North Avenue'),
+  R(-620,0,620,0,11,'Central Avenue'),
+  R(-620,250,620,250,10,'South Avenue'),
+  R(-500,-620,-500,620,11,'West Road'),
+  R(-250,-620,-250,620,10,'Market Road'),
+  R(0,-620,0,620,12,'Station Road'),
+  R(250,-620,250,620,10,'East Road'),
+  R(500,-620,500,620,11,'Harbour Road'),
+  R(-500,-350,500,350,8,'Park Link'),
+  R(-420,350,420,-350,8,'River Link'),
 ];
 
 // Major Westminster areas represented across the playable map. The council's
@@ -161,10 +124,9 @@ function areaAt(x:number,z:number):WestminsterArea {
 }
 
 const PARKS = [
-  {x1:sx(-390),z1:sx(120),x2:sx(-115),z2:sx(285),name:"Green Park"},
-  {x1:sx(-320),z1:sx(205),x2:sx(35),z2:sx(375),name:"St James's Park"},
-  {x1:sx(-620),z1:sx(-535),x2:sx(-390),z2:sx(-240),name:"Hyde Park edge"},
-  {x1:sx(-620),z1:sx(285),x2:sx(-390),z2:sx(500),name:"Belgravia gardens"},
+  {x1:sx(-300),z1:sx(-470),x2:sx(300),z2:sx(-390),name:"Seafront"},
+  {x1:sx(-240),z1:sx(35),x2:sx(-105),z2:sx(155),name:"West Park"},
+  {x1:sx(105),z1:sx(60),x2:sx(250),z2:sx(170),name:"East Park"},
 ];
 
 const LANDMARKS = [
@@ -230,53 +192,51 @@ function facadeFor(rng:ReturnType<typeof createRng>, z:number):{style:FacadeStyl
 }
 
 function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:Aabb[];props:Prop[]} {
-  const rng=createRng(hashSeed(seed,'westminster-buildings'));
+  const rng=createRng(hashSeed(seed,'compact-city'));
   const buildings:Building[]=[];
   const colliders:Aabb[]=[];
   const props:Prop[]=[];
-  const xs=[-620,-520,-390,-250,-105,35,175,320,455,620].map(sx);
-  const zs=[-620,-535,-445,-330,-240,-115,20,105,185,285,390,500,590].map(sx);
 
-  // Dense frontage blocks between the major road lines. Lots are deliberately
-  // narrow/deep, matching the terraced/mansion-block character of Westminster.
-  for(let xi=0;xi<xs.length-1;xi++){
-    for(let zi=0;zi<zs.length-1;zi++){
-      const x1=xs[xi]+SIDE, x2=xs[xi+1]-SIDE;
-      const z1=zs[zi]+SIDE, z2=zs[zi+1]-SIDE;
-      if(x2-x1<12||z2-z1<12) continue;
-      const cx=(x1+x2)/2, cz=(z1+z2)/2;
-      if(pointInPark(cx,cz)||nearRoad(cx,cz,2)) continue;
-      if(LANDMARKS.some(l=>intersects({x1,z1,x2,z2},{x1:l.x-l.w/2,z1:l.z-l.d/2,x2:l.x+l.w/2,z2:l.z+l.d/2},4))) continue;
-
-      const lotsX=Math.max(1,Math.min(4,Math.floor((x2-x1)/18)));
-      const lotsZ=Math.max(1,Math.min(3,Math.floor((z2-z1)/22)));
-      const lotW=(x2-x1)/lotsX;
-      const lotD=(z2-z1)/lotsZ;
-      for(let ix=0;ix<lotsX;ix++) for(let iz=0;iz<lotsZ;iz++){
-        const bx=x1+lotW*(ix+0.5);
-        const bz=z1+lotD*(iz+0.5);
-        const width=Math.max(7,lotW-5.5);
-        const depth=Math.max(7,lotD-5.5);
-        const area=areaAt(bx,bz);
-        const f=facadeFor(rng,bz);
-        let h=rng.range(f.h[0],f.h[1]);
-        if (area.character==='civic') h=rng.range(12,28);
-        if (area.character==='historic') h=rng.range(10,24);
-        if (area.character==='residential') h=rng.range(8,20);
-        if (Math.abs(bx)<90 && Math.abs(bz)<60) h=rng.range(12,26);
-        if (Math.abs(bz-8)<28) h=rng.range(16,34);
-        buildings.push({cx:bx,cz:bz,width,depth,height:h,color:f.color,style:f.style});
-        addBoxCollider(colliders,bx,bz,width,depth);
-        if(rng.chance(0.28)) props.push({x:bx-width/2+2,z:bz+depth/2+1.4,type:rng.pick(['tree','bench','hydrant'] as PropType[]),rot:0});
-      }
-    }
+  // Five comfortable four-storey residential blocks. The gaps are intentional:
+  // this is a walkable small city, not a dense downtown.
+  const homes = [
+    [-185,-135,42,34],[-55,-145,42,34],[105,-135,42,34],
+    [-135,145,42,34],[115,145,42,34],
+  ];
+  for(const [x,z,w,d] of homes){
+    buildings.push({cx:sx(x),cz:sx(z),width:sx(w),depth:sx(d),height:14,color:0xb8a99a,style:'brick'});
+    addBoxCollider(colliders,sx(x),sx(z),sx(w),sx(d));
   }
 
-  // Hand-authored iconic structures use the same building collision/asset path.
-  for(const l of LANDMARKS){
-    buildings.push({cx:l.x,cz:l.z,width:l.w,depth:l.d,height:l.h,color:l.color,style:l.style});
-    addBoxCollider(colliders,l.x,l.z,l.w,l.d);
+  const special = [
+    [0,-115,74,48,9,0xc7bda9,'Supermarket'],
+    [-190,35,52,42,10,0xd0c7b8,'Hospital'],
+    [190,45,48,38,10,0x9eaaa0,'Police Station'],
+    [-70,205,34,26,9,0xd5d0c7,'Mosque'],
+    [70,205,38,30,10,0xb9b0a3,'Church'],
+    [-185,-35,22,18,7,0xc48b62,'Shop 1'],
+    [-150,-35,22,18,7,0xc48b62,'Shop 2'],
+    [155,-35,22,18,7,0xc48b62,'Shop 3'],
+    [0,120,120,34,6,0x8e989e,'Train Station'],
+  ] as const;
+  for(const [x,z,w,d,h,color] of special){
+    buildings.push({cx:sx(x),cz:sx(z),width:sx(w),depth:sx(d),height:h,color,style:'concrete'});
+    addBoxCollider(colliders,sx(x),sx(z),sx(w),sx(d));
   }
+
+  // Two football pitches are open activity zones.
+  const fields=[[-175,95],[175,145]];
+  for(const [x,z] of fields){
+    // only perimeter obstacles; the pitches themselves remain fully walkable
+    addBoxCollider(colliders,sx(x-55),sx(z-20),sx(1),sx(40));
+    addBoxCollider(colliders,sx(x+55),sx(z-20),sx(1),sx(40));
+  }
+
+  // Small street furniture around the residential streets.
+  for(const [x,z] of [[-215,-210],[-95,-210],[75,-210],[205,-210],[-215,210],[205,210]]){
+    props.push({x:sx(x),z:sx(z),type:rng.pick(['tree','bench','hydrant'] as PropType[]),rot:0});
+  }
+
   return {buildings,colliders,props};
 }
 
