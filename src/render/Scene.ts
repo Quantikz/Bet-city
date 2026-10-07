@@ -90,7 +90,7 @@ export class SceneEnv {
     });
     this.addGround(city);
     this.addLandmarks(city);
-    this.addWestminsterLandmarks(city);
+    this.addWestminsterLandmarks();
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
     if (!this.streaming) this.addRoads(city);
@@ -344,13 +344,14 @@ export class SceneEnv {
       this.scene.add(g);
       this.footballPlayers.push({ group: g, phase, lane, speed: 0.55 + (i % 3) * 0.16 });
     }
-    this.footballBall = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), mat(0xf5f5f2, 0.5));
-    this.footballBall.position.set(fx, 0.22, fz);
-    this.footballBall.castShadow = true;
-    this.scene.add(this.footballBall);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), mat(0xf5f5f2, 0.5));
+    ball.position.set(fx, 0.22, fz);
+    ball.castShadow = true;
+    this.scene.add(ball);
+    this.footballBall = ball;
   }
 
-  private addWestminsterLandmarks(city: City): void {
+  private addWestminsterLandmarks(): void {
     const mat=(color:number)=>new THREE.MeshStandardMaterial({color,roughness:0.82});
     const plane=(color:number,w:number,d:number,x:number,z:number)=>{
       const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));
