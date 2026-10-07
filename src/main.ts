@@ -50,7 +50,7 @@ const seedParam = Number(urlParams.get('seed'));
 const worldSeed = Number.isFinite(seedParam) && urlParams.get('seed') !== null ? seedParam : DEFAULT_CITY.seed;
 // The menu has no mode selector — modes (e.g. delivery/racing) are triggered in-game from
 // free-roam activities, not chosen at boot. ?mode= still sets the boot mode for testing.
-const gameMode = urlParams.get('mode') ?? 'explore';
+const gameMode = 'explore';
 // `?stream=1` runs the unbounded streamed world (R007); default is the finite city.
 const streaming = urlParams.get('stream') === '1';
 const config = { ...DEFAULT_CITY, seed: worldSeed };
@@ -290,9 +290,7 @@ function chaseTarget(): { x: number; z: number; vx: number; vz: number } {
  * cop has line of sight to you (broke LOS behind a building, or outran their
  * sight range), the heat cools after a short grace and the stars drop.
  */
-function updateWanted(_dt: number): void {
-  // AFEC City beta intentionally has no wanted/police system.
-  wantedCooling = false;
+function updateWanted(): void {
   vehicles.setWanted(0, { x: 0, z: 0 }, city);
 }
 
@@ -322,8 +320,8 @@ function update(dt: number): void {
 
   if (controls.enterExitPressed()) toggleVehicle();
 
-  updateWanted(dt);
-  const chase = stars > 0 ? chaseTarget() : null;
+  updateWanted();
+  const chase = null;
 
   if (mode === 'driving') {
     if (controls.resetPressed()) vehicles.resetPlayer(city);
@@ -447,10 +445,10 @@ function render(alpha: number, frameDt: number): void {
   }
 
   const baseCam = mode === 'driving' ? CAR_CAM : FOOT_CAM;
-  const viewPitch = options.cameraView === 'low' ? -0.08 : options.cameraView === 'high' ? 0.38 : options.cameraView === 'top' ? 0.95 : 0.05;
-  const viewHeight = options.cameraView === 'top' ? baseCam.height + 1.5 : baseCam.height;
+  const viewPitch = options.cameraView === 'low' ? -0.08 : options.cameraView === 'high' ? 0.38 : options.cameraView === 'top' ? 1.28 : 0.05;
+  const viewHeight = options.cameraView === 'top' ? baseCam.height + 4.5 : baseCam.height;
   const aimZoom = mode === 'foot' && controls.aimHeld() ? 0.72 : 1;
-  const cameraZoom = Math.max(0.65, Math.min(1.6, options.cameraZoom * aimZoom));
+  const cameraZoom = Math.max(0.55, Math.min(7.0, options.cameraZoom * aimZoom));
   follow.update(active.x, active.z, active.heading, { ...baseCam, height: viewHeight, pitch: viewPitch, zoom: cameraZoom }, frameDt, camVx, camVz);
 
   const speedMph = mode === 'driving' ? toMph(vehicles.playerForwardSpeed()) : toMph(player.speed);
@@ -549,15 +547,6 @@ window.__game = {
   },
   get radioLabel() {
     return radio ? radio.label() : '📻 OFF';
-  },
-  get wanted() {
-    return stars;
-  },
-  get wantedCooling() {
-    return wantedCooling;
-  },
-  get police() {
-    return vehicles.activePoliceCount();
   },
   get timeOfDay() {
     return timeOfDay;
