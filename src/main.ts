@@ -343,6 +343,7 @@ function update(dt: number): void {
 }
 
 peds.update(city, dt, runOverQuery, mode === 'driving' ? chaseTarget() : null, resolveCars);
+  env.updateActivities(dt, timeOfDay * dayLength);
   debris.update(dt); // shared pool, advanced once per frame
   controls.endFrame();
 }
