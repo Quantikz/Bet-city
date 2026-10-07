@@ -26,7 +26,7 @@ export class FollowCamera {
    */
   update(x: number, z: number, heading: number, p: FollowParams, dt: number, vx = 0, vz = 0): void {
     const yaw = heading + this.orbitYaw;
-    const pitch = Math.max(-0.25, Math.min(1.25, (p.pitch ?? 0.05) + this.orbitPitch));
+    const pitch = Math.max(-0.25, Math.min(1.48, (p.pitch ?? 0.05) + this.orbitPitch));
     const zoom = p.zoom ?? 1;
     const fx = Math.cos(yaw) * Math.cos(pitch);
     const fz = -Math.sin(yaw) * Math.cos(pitch);
