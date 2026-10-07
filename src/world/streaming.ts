@@ -56,40 +56,17 @@ export { makeWorldFields };
  * Generate one chunk's worth of content in absolute world coordinates. Pure and
  * deterministic: same (cx,cz,seed) ⇒ identical chunk, independent of neighbours.
  */
-export function generateChunk(
-  cx: number,
-  cz: number,
-  config: CityConfig,
-  fields: WorldFields,
-): ChunkData {
-  const { blockSize, roadWidth, chunkBlocks } = config;
-  const cell = cellOf(config);
-  const lampOffset = roadWidth / 2 + 1.2; // streetlight on the curb of the intersection
-
-  const buildings: Building[] = [];
-  const colliders: Aabb[] = [];
-  const props: Prop[] = [];
-  const streetlights: Streetlight[] = [];
-
-  const i0 = cx * chunkBlocks;
-  const j0 = cz * chunkBlocks;
-  for (let bi = 0; bi < chunkBlocks; bi++) {
-    for (let bj = 0; bj < chunkBlocks; bj++) {
-      const i = i0 + bi;
-      const j = j0 + bj;
-      const rng = createRng(hashSeed(config.seed, i, j)); // per-block, visit-order-independent
-      const blockX = i * cell + roadWidth / 2;
-      const blockZ = j * cell + roadWidth / 2;
-      const u = urbanityAt(fields, blockX + blockSize / 2, blockZ + blockSize / 2);
-      const biome = BIOMES[classify(u, 1)]; // elevation=1 (dry) until water lands
-      addBlock(blockX, blockZ, blockSize, rng, biome, buildings, colliders);
-      addProps(blockX, blockZ, blockSize, rng, biome, colliders, props);
-      // One streetlight at this block's NW-corner intersection (one per index ⇒
-      // no double-placing across chunks).
-      streetlights.push({ x: i * cell + lampOffset, z: j * cell + lampOffset });
-    }
-  }
-  return { buildings, colliders, props, streetlights };
+export function generateChunk(cx:number,cz:number,config:CityConfig,fields:WorldFields):ChunkData {
+  const city=generateCity(config);
+  const span=chunkSpan(config);
+  const minX=cx*span,minZ=cz*span,maxX=minX+span,maxZ=minZ+span;
+  const inChunk=(x:number,z:number,pad=0)=>x>=minX-pad&&x<maxX+pad&&z>=minZ-pad&&z<maxZ+pad;
+  return {
+    buildings:city.buildings.filter(b=>inChunk(b.cx,b.cz,Math.max(b.width,b.depth)/2)),
+    colliders:city.colliders.filter(c=>c.maxX>=minX&&c.minX<=maxX&&c.maxZ>=minZ&&c.minZ<=maxZ),
+    props:city.props.filter(p=>inChunk(p.x,p.z,2)),
+    streetlights:city.streetlights.filter(s=>inChunk(s.x,s.z,2)),
+  };
 }
 
 /** Chunk coords within Chebyshev `radius` of (cx,cz), nearest-first. */

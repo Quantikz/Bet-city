@@ -53,7 +53,7 @@ const worldSeed = Number.isFinite(seedParam) && urlParams.get('seed') !== null ?
 // free-roam activities, not chosen at boot. ?mode= still sets the boot mode for testing.
 const gameMode = 'explore';
 // `?stream=1` runs the unbounded streamed world (R007); default is the finite city.
-const streaming = urlParams.get('stream') === '1';
+const streaming = urlParams.get('stream') !== '0';
 const config = { ...DEFAULT_CITY, seed: worldSeed };
 const assets = new CityAssets(config.seed);
 
@@ -96,14 +96,13 @@ const env = new SceneEnv(container, city, {
 });
 
 if (streamedWorld) {
-  // env.scene now exists; load the initial ring around spawn (fires the hooks).
   streamedWorld.update(city.center.x, city.center.z);
 } else {
   city.buildings.forEach((b, i) => env.scene.add(assets.makeBuilding(b, i)));
   city.streetlights.forEach((s) => env.scene.add(assets.makeStreetlight(s)));
   env.scene.add(assets.makeProps(city.props));
-  addUrbanVisuals(env.scene, city);
 }
+addUrbanVisuals(env.scene, city);
 
 const avatar = makePed(0x2266dd);
 env.scene.add(avatar);
