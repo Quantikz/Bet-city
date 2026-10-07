@@ -19,7 +19,7 @@ const UV_TILE = 24; // world units per full facade-texture tile (~3 units/window
 const FACADE_STYLES: FacadeStyle[] = ['glass', 'brick', 'concrete'];
 
 /** Procedural beta humans do not use skeletal animation yet; keep these hooks stable. */
-export function updateHumanAnimation(group: THREE.Group, speed: number, dt: number): void {
+export function updateHumanAnimation(group: THREE.Group, speed: number, _dt: number): void {
   // Lightweight procedural animation keeps the beta characters visibly alive
   // without relying on the unvalidated GLB rig.  Parts are named in makePed().
   const walk = Math.min(1, Math.max(0, speed / 2.2));
