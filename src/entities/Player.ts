@@ -65,6 +65,28 @@ export class Player {
     }
   }
 
+  updateTank(forward: number, turn: number, running: boolean, dt: number): void {
+    const maxSpeed = this.crouched ? WALK * 0.55 : (running ? RUN : WALK);
+    const targetSpeed = Math.abs(forward) * maxSpeed;
+    const response = targetSpeed > this.speed ? 10 : 14;
+    this.speed += (targetSpeed - this.speed) * Math.min(1, response * dt);
+    if (Math.abs(turn) > 0.08) {
+      const turnRate = this.crouched ? TURN_CROUCH : (running ? TURN_RUN : TURN_WALK);
+      this.heading -= turn * turnRate * dt;
+    }
+    if (Math.abs(forward) > 0.08 && this.speed > 0.05) {
+      const sign = forward < 0 ? -1 : 1;
+      this.x += Math.cos(this.heading) * this.speed * dt * sign;
+      this.z += -Math.sin(this.heading) * this.speed * dt * sign;
+    }
+    if (this.speed < 0.02) this.speed = 0;
+    if (this.y > 0 || this.vy > 0) {
+      this.vy -= GRAVITY * dt;
+      this.y += this.vy * dt;
+      if (this.y <= 0) { this.y = 0; this.vy = 0; }
+    }
+  }
+
   jump(): boolean {
     if (this.y > 0.02) return false;
     this.vy = JUMP_SPEED;
