@@ -430,6 +430,19 @@ export class SceneEnv {
         c.rotation.x=-Math.PI/2;c.rotation.z=ang;
         c.position.set((r.x1+r.x2)/2,0.025,(r.z1+r.z2)/2+side*r.width/2);
         this.scene.add(c);
+
+        const sidewalk=new THREE.Mesh(
+          new THREE.PlaneGeometry(len,2.2),
+          new THREE.MeshStandardMaterial({color:0xb7b2aa,roughness:1}),
+        );
+        sidewalk.rotation.x=-Math.PI/2;sidewalk.rotation.z=ang;
+        sidewalk.position.set(
+          (r.x1+r.x2)/2,
+          0.012,
+          (r.z1+r.z2)/2+side*(r.width/2+1.35),
+        );
+        sidewalk.receiveShadow=true;
+        this.scene.add(sidewalk);
       }
     }
   }
