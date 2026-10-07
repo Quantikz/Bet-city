@@ -200,6 +200,26 @@ export class CityAssets {
         near.add(ac);
       }
     }
+    // Low-cost facade detail: balconies, shop awnings and rooftop utility boxes.
+    if (b.height >= 8 && b.style !== 'glass') {
+      const balconyMat = new THREE.MeshStandardMaterial({ color: 0x565d66, metalness: 0.45, roughness: 0.6 });
+      const levels = Math.min(4, Math.floor(b.height / 7));
+      for (let i = 1; i <= levels; i++) {
+        const y = i * 5.2;
+        const balcony = new THREE.Mesh(new RoundedBoxGeometry(Math.min(3.6, b.width * 0.55), 0.12, 0.95, 2, 0.05), balconyMat);
+        balcony.position.set(b.cx - b.width * 0.18, y, b.cz + b.depth / 2 + 0.35);
+        near.add(balcony);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(Math.min(3.4, b.width * 0.5), 0.45, 0.06), balconyMat);
+        rail.position.set(b.cx - b.width * 0.18, y + 0.28, b.cz + b.depth / 2 + 0.78);
+        near.add(rail);
+      }
+    }
+    if (b.height <= 14) {
+      const awningMat = new THREE.MeshStandardMaterial({ color: 0xb04c3d, roughness: 0.7 });
+      const awning = new THREE.Mesh(new RoundedBoxGeometry(Math.min(4.2, b.width * 0.7), 0.14, 0.65, 2, 0.04), awningMat);
+      awning.position.set(b.cx, 2.8, b.cz + b.depth / 2 + 0.35);
+      near.add(awning);
+    }
     near.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true; }
