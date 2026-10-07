@@ -8,7 +8,6 @@ export class Music {
   private readonly audio = new Audio();
   private index = 0;
   private started = false;
-  private driving = false;
   private readonly tracks = [
     { title: 'Rema - Calm Down', file: '/music/rema-calm-down.mp3' },
     { title: 'Rema - Soundgasm', file: '/music/rema-soundgasm.mp3' },
@@ -34,7 +33,6 @@ export class Music {
   }
 
   setDriving(driving: boolean): void {
-    this.driving = driving;
     // Keep music quieter while driving so engine/road audio remains audible.
     this.audio.volume = driving ? 0.20 : 0.16;
   }
