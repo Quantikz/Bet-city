@@ -61,14 +61,14 @@ export const DEFAULT_CITY: CityConfig = {
   chunkBlocks: 1,
 };
 
-const HALF = 620;
+const HALF = 240;
 const ROAD_W = 11;
 const SIDE = 4.5;
-
-
+const MAP_SCALE = HALF / 620;
+const sx = (v:number):number => v * MAP_SCALE;
 
 const R = (x1:number,z1:number,x2:number,z2:number,width=ROAD_W,name=''): RoadSegment =>
-  ({x1,z1,x2,z2,width,name});
+  ({x1:sx(x1),z1:sx(z1),x2:sx(x2),z2:sx(z2),width,name});
 
 /*
  * Westminster-inspired central London street plan. Coordinates are deliberately
@@ -132,10 +132,10 @@ const ROADS: RoadSegment[] = [
 ];
 
 const PARKS = [
-  {x1:-390,z1:120,x2:-115,z2:285,name:"Green Park"},
-  {x1:-320,z1:205,x2:35,z2:375,name:"St James's Park"},
-  {x1:-620,z1:-535,x2:-390,z2:-240,name:"Hyde Park edge"},
-  {x1:-620,z1:285,x2:-390,z2:500,name:"Belgravia gardens"},
+  {x1:sx(-390),z1:sx(120),x2:sx(-115),z2:sx(285),name:"Green Park"},
+  {x1:sx(-320),z1:sx(205),x2:sx(35),z2:sx(375),name:"St James's Park"},
+  {x1:sx(-620),z1:sx(-535),x2:sx(-390),z2:sx(-240),name:"Hyde Park edge"},
+  {x1:sx(-620),z1:sx(285),x2:sx(-390),z2:sx(500),name:"Belgravia gardens"},
 ];
 
 const LANDMARKS = [
@@ -205,8 +205,8 @@ function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:A
   const buildings:Building[]=[];
   const colliders:Aabb[]=[];
   const props:Prop[]=[];
-  const xs=[-620,-520,-390,-250,-105,35,175,320,455,620];
-  const zs=[-620,-535,-445,-330,-240,-115,20,105,185,285,390,500,590];
+  const xs=[-620,-520,-390,-250,-105,35,175,320,455,620].map(sx);
+  const zs=[-620,-535,-445,-330,-240,-115,20,105,185,285,390,500,590].map(sx);
 
   // Dense frontage blocks between the major road lines. Lots are deliberately
   // narrow/deep, matching the terraced/mansion-block character of Westminster.
@@ -219,7 +219,7 @@ function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:A
       if(pointInPark(cx,cz)||nearRoad(cx,cz,2)) continue;
       if(LANDMARKS.some(l=>intersects({x1,z1,x2,z2},{x1:l.x-l.w/2,z1:l.z-l.d/2,x2:l.x+l.w/2,z2:l.z+l.d/2},4))) continue;
 
-      const lots=Math.max(1,Math.min(4,Math.floor((x2-x1)/32)));
+      const lots=Math.max(1,Math.min(5,Math.floor((x2-x1)/18)));
       const lotW=(x2-x1)/lots;
       for(let i=0;i<lots;i++){
         const bx=x1+lotW*(i+0.5);
@@ -273,7 +273,7 @@ export function generateCity(config:CityConfig=DEFAULT_CITY):City {
   }
   const lanes=roadLanes();
   const extent=HALF*2;
-  const roadCenters=[-520,-390,-250,-105,35,175,320,455,620];
+  const roadCenters=ROADS.flatMap(r => Math.abs(r.x2-r.x1)>Math.abs(r.z2-r.z1) ? [r.z1] : [r.x1]).filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a-b);
   return {
     config,
     cell:100,
