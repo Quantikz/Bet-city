@@ -168,7 +168,8 @@ export class Vehicles {
    * Per-car loops iterate query(Vehicle); the collision pass and player identity
    * stay index-based (`this.cars`/`playerIndex`) since they're pair/index work.
    */
-  private simStep(city: City, dt: number, input: VehicleInput | null, pedestrian: { x: number; z: number } | null): void {
+  private simStep(city: City, dt: number, input: VehicleInput | null, _pedestrian: { x: number; z: number } | null): void {
+    const w = this.world;
     const playerCar = this.playerIndex !== null ? this.cars[this.playerIndex] : null;
 
     // Snapshot the pre-step pose so render() can interpolate up to it.
@@ -192,7 +193,7 @@ export class Vehicles {
     for (const e of w.query(Vehicle)) {
       const car = w.get(e, Vehicle)!;
       if (car === playerCar || !car.active) continue;
-      if (car.role === 'ai') this.driveAi(car, city, dt, this.curPedestrian);
+      if (car.role === 'ai') this.driveAi(car, city, dt, _pedestrian);
       else this.coast(car, dt);
     }
 
