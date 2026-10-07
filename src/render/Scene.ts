@@ -392,44 +392,44 @@ export class SceneEnv {
         box(0xffffff,0.6,3.2,10,x+gx,1.6,z);
       }
     };
-    pitch(-175*sx(1),95*sx(1));
-    pitch(175*sx(1),145*sx(1));
+    pitch(-175*1,95*1);
+    pitch(175*1,145*1);
 
     // Two-storey supermarket.
-    box(0xc7bda9,74*sx(1),9,48*sx(1),0*sx(1),4.5,-115*sx(1));
-    for(let x=-28;x<=28;x+=14) box(0x6c8ca0,7*sx(1),5,0.3, x*sx(1),3.4,-115*sx(1)-24*sx(1));
+    box(0xc7bda9,74*1,9,48*1,0*1,4.5,-115*1);
+    for(let x=-28;x<=28;x+=14) box(0x6c8ca0,7*1,5,0.3, x*1,3.4,-115*1-24*1);
     // Hospital + police station.
-    box(0xd8d8d3,52*sx(1),10,42*sx(1),-190*sx(1),5,35*sx(1));
-    box(0x8fa2ad,48*sx(1),10,38*sx(1),190*sx(1),5,45*sx(1));
+    box(0xd8d8d3,52*1,10,42*1,-190*1,5,35*1);
+    box(0x8fa2ad,48*1,10,38*1,190*1,5,45*1);
     // Cross and police sign.
-    box(0xc52e36,2,5,0.6,-190*sx(1),7,14*sx(1));
-    box(0xc52e36,5,2,0.6,-190*sx(1),7,14*sx(1));
-    box(0x1f4e6e,7,2,0.5,190*sx(1),8,25*sx(1));
+    box(0xc52e36,2,5,0.6,-190*1,7,14*1);
+    box(0xc52e36,5,2,0.6,-190*1,7,14*1);
+    box(0x1f4e6e,7,2,0.5,190*1,8,25*1);
 
     // Three small independent shops.
     for(const [x,label] of [[-185,1],[-150,2],[155,3]] as const){
-      box(label===1?0xd17a55:label===2?0x8a9db5:0x8ca66f,22*sx(1),7,18*sx(1),x*sx(1),3.5,-35*sx(1));
+      box(label===1?0xd17a55:label===2?0x8a9db5:0x8ca66f,22*1,7,18*1,x*1,3.5,-35*1);
     }
 
     // Mosque: square prayer hall, dome and minaret.
-    box(0xe4ded1,34*sx(1),8,26*sx(1),-70*sx(1),4,205*sx(1));
-    const dome=new THREE.Mesh(new THREE.SphereGeometry(9*sx(1),20,12,0,Math.PI*2,0,Math.PI/2),mat(0xb58a3f));
-    dome.position.set(-70*sx(1),8,-0+205*sx(1)); dome.castShadow=true; g.add(dome);
-    box(0xd1bfa0,3*sx(1),18,3*sx(1),-50*sx(1),9,205*sx(1));
+    box(0xe4ded1,34*1,8,26*1,-70*1,4,205*1);
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(9*1,20,12,0,Math.PI*2,0,Math.PI/2),mat(0xb58a3f));
+    dome.position.set(-70*1,8,-0+205*1); dome.castShadow=true; g.add(dome);
+    box(0xd1bfa0,3*1,18,3*1,-50*1,9,205*1);
 
     // Church with small bell tower.
-    box(0xd4c8b5,38*sx(1),10,30*sx(1),70*sx(1),5,205*sx(1));
-    box(0x8c7b6b,7*sx(1),17,7*sx(1),83*sx(1),8.5,205*sx(1));
-    const cross=box(0xb9b0a3,0.8,5,0.8,83*sx(1),19.5,205*sx(1)); void cross;
+    box(0xd4c8b5,38*1,10,30*1,70*1,5,205*1);
+    box(0x8c7b6b,7*1,17,7*1,83*1,8.5,205*1);
+    const cross=box(0xb9b0a3,0.8,5,0.8,83*1,19.5,205*1); void cross;
 
     // Train station and a visible train.
-    box(0xaaa39a,120*sx(1),7,34*sx(1),0,3.5,120*sx(1));
-    box(0x4f5a66,72*sx(1),4.5,5*sx(1),0,3,145*sx(1));
-    for(let x=-30;x<=30;x+=15) box(0x20252b,12*sx(1),4.5,4*sx(1),x*sx(1),3,145*sx(1));
+    box(0xaaa39a,120*1,7,34*1,0,3.5,120*1);
+    box(0x4f5a66,72*1,4.5,5*1,0,3,145*1);
+    for(let x=-30;x<=30;x+=15) box(0x20252b,12*1,4.5,4*1,x*1,3,145*1);
 
     // Compact rail line.
-    box(0x5b4b3b,170*sx(1),0.22,2,0,0.12,165*sx(1));
-    box(0x5b4b3b,170*sx(1),0.22,2,0,0.12,171*sx(1));
+    box(0x5b4b3b,170*1,0.22,2,0,0.12,165*1);
+    box(0x5b4b3b,170*1,0.22,2,0,0.12,171*1);
 
     // Five four-storey homes and open spacing are already generated in City.ts.
     const scale=city.half/280;
