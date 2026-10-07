@@ -88,6 +88,7 @@ export class Vehicles {
   private steer = 0;
   private readonly smoke: Smoke;
   private explosions = 0; // car wrecks since main last consumed them (for SFX)
+  private playerWreckPending = false;
 
   // Cars are ECS entities in the shared game World; the per-car passes run over
   // query(Vehicle). (Collision and player-index logic stay array/index based.)
@@ -381,8 +382,7 @@ export class Vehicles {
     this.explosions++;
     car.health = 0;
     if (i === this.playerIndex) {
-      car.health = CAR_MAX_HEALTH;
-      car.vx = car.vz = 0;
+      this.playerWreckPending = true;
       return;
     }
     if (car.role === 'ai' && city.lanes.length > 0) {
@@ -427,6 +427,34 @@ export class Vehicles {
     return { x: rx, z: rz };
   }
 
+  consumeExplosions(): number {
+    const n = this.explosions;
+    this.explosions = 0;
+    return n;
+  }
+
+  consumePlayerWreck(): boolean {
+    const w = this.playerWreckPending;
+    this.playerWreckPending = false;
+    return w;
+  }
+
+  playerCarName(): string | null {
+    if (this.playerIndex === null) return null;
+    const p = this.cars[this.playerIndex].profile;
+    return `${p.manufacturer} ${p.model}`;
+  }
+
+  playerMaxSpeed(): number {
+    if (this.playerIndex === null) return PLAYER_PROFILE.maxSpeed;
+    return this.cars[this.playerIndex].profile.maxSpeed;
+  }
+
+  playerCarHealth(): number {
+    if (this.playerIndex === null) return CAR_MAX_HEALTH;
+    return Math.max(0, this.cars[this.playerIndex].health);
+  }
+
   /** Index of the nearest enterable car within range, or -1. */
   nearest(x: number, z: number, maxDist: number): number {
     const points = this.cars.map((c, i) =>
@@ -462,6 +490,21 @@ export class Vehicles {
     if (this.playerIndex === null) return null;
     const c = this.cars[this.playerIndex];
     return { x: c.x, z: c.z, heading: c.heading, speed: speedOf(c) };
+  }
+
+  playerVelocity(): { vx: number; vz: number } {
+    if (this.playerIndex === null) return { vx: 0, vz: 0 };
+    const c = this.cars[this.playerIndex];
+    return { vx: c.vx, vz: c.vz };
+  }
+
+  positions(): Array<{ x: number; z: number }> {
+    return this.cars.map((c) => ({ x: c.x, z: c.z }));
+  }
+
+  carPosition(i: number): { x: number; z: number } {
+    const c = this.cars[i];
+    return { x: c.x, z: c.z };
   }
 
   /** Player-car pose interpolated between the last two steps, for the camera. */
