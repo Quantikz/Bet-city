@@ -211,15 +211,11 @@ function drivingInput(): VehicleInput {
 }
 
 function updateFoot(dt: number): void {
-  const yaw = follow.yaw;
   const m = controls.move(true);
-  const cos = Math.cos(yaw);
-  const sin = Math.sin(yaw);
-  const dirX = cos * m.y + sin * m.x;
-  const dirZ = -sin * m.y + cos * m.x;
-
   player.setCrouched(controls.crouchHeld());
-  player.update(dirX, dirZ, controls.sprint(true), dt);
+  // On foot the left stick is deliberately tank-style: vertical = forward/back,
+  // horizontal = gentle turn. This prevents diagonal strafing and rapid spinning.
+  player.updateTank(m.y, m.x, controls.sprint(true), dt);
 
   const fixed = city.grid.resolve(player.x, player.z, FOOT_RADIUS);
   player.x = fixed.x;
