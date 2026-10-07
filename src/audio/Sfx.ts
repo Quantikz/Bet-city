@@ -56,7 +56,7 @@ export class Sfx {
 
   setMasterVolume(v: number): void {
     this.masterVolume = clamp01(v);
-    if (!this.engine.paused) this.engine.volume = this.masterVolume * 0.34;
+    if (!this.engine.paused) this.engine.volume = this.masterVolume * 0.068;
   }
 
   /**
@@ -70,7 +70,7 @@ export class Sfx {
     const a = this.steps[Math.floor(Math.random() * this.steps.length)];
     a.currentTime = 0;
     a.playbackRate = 0.92 + normalized * 0.18;
-    a.volume = this.masterVolume * (0.24 + normalized * 0.12);
+    a.volume = this.masterVolume * (0.048 + normalized * 0.024);
     void a.play().catch(() => {});
   }
 
@@ -87,7 +87,7 @@ export class Sfx {
     // Low-speed idle remains audible; RPM rises non-linearly with road speed.
     const rpm = Math.pow(s, 0.72);
     this.engine.playbackRate = 0.88 + rpm * 0.48;
-    this.engine.volume = this.masterVolume * (0.16 + v * 0.30);
+    this.engine.volume = this.masterVolume * (0.032 + v * 0.060);
 
     if (this.engine.paused && v > 0.01) {
       void this.engine.play().catch(() => {});
