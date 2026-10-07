@@ -179,7 +179,7 @@ export class Menu {
       }),
     );
     wrap.appendChild(
-      this.sliderRow('Zoom', 0.65, 1.6, 0.05, this.opts.cameraZoom, 'menu-camera-zoom', (v) => {
+      this.sliderRow('Zoom', 0.55, 7, 0.05, this.opts.cameraZoom, 'menu-camera-zoom', (v) => {
         this.opts = { ...this.opts, cameraZoom: v };
         this.cb.onOptionsChange(this.opts);
       }),
@@ -205,7 +205,7 @@ export class Menu {
       line('Drive — WASD / arrows · <b>Space</b> handbrake · <b>F</b> enter/exit'),
       line('On foot — WASD · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch · <b>G</b> fire · <b>Z</b> aim · <b>R</b> reload · <b>Q</b> punch · <b>F</b> enter car · drag right side to look'),
       line('Gamepad — RT/LT throttle · stick steer · <b>A</b> enter / hold sprint · <b>B</b> handbrake · <b>X</b> punch'),
-      line('<b>Esc</b> / Start — pause · <b>R</b> reset'),
+      line('<b>Esc</b> / Start — pause · <b>R</b> reset while driving / reload on foot'),
     );
     return wrap;
   }
