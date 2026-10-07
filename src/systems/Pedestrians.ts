@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { City } from '../world/City';
 import { createRng, type Rng } from '../core/rng';
 import { lerp, angleLerp } from '../core/math';
-import { makePed, updateHumanAnimation, freezeHumanAnimation } from '../render/Assets';
+import { makePed, updateHumanAnimation } from '../render/Assets';
 import { Debris } from './Debris';
 import { World, defineComponent } from '../ecs/World';
 
