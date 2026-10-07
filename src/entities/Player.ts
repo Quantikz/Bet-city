@@ -2,7 +2,7 @@ import { angleDelta, clamp } from '../core/math';
 
 const WALK = 4.2;
 const RUN = 8;
-const TURN = 12; // rad/s the avatar rotates toward its travel direction
+const TURN = 8; // rad/s: stable, deliberate foot turning
 const JUMP_SPEED = 6.2;
 const GRAVITY = 18;
 
@@ -38,18 +38,24 @@ export class Player {
     const mag = Math.hypot(dirX, dirZ);
     const maxSpeed = this.crouched ? WALK * 0.55 : (running ? RUN : WALK);
 
-    if (mag > 1e-3) {
+    const input = Math.min(1, mag);
+    const targetSpeed = input * maxSpeed;
+    // Smooth acceleration/braking prevents tiny mobile-stick changes from
+    // instantly snapping the actor into a new direction.
+    const response = targetSpeed > this.speed ? 10 : 14;
+    this.speed += (targetSpeed - this.speed) * Math.min(1, response * dt);
+
+    if (mag > 0.12 && this.speed > 0.08) {
       const nx = dirX / mag;
       const nz = dirZ / mag;
-      this.speed = maxSpeed;
       this.x += nx * this.speed * dt;
       this.z += nz * this.speed * dt;
 
       const target = Math.atan2(-nz, nx);
       this.heading += clamp(angleDelta(this.heading, target), -TURN * dt, TURN * dt);
-    } else {
-      this.speed = 0;
     }
+
+    if (this.speed < 0.02) this.speed = 0;
 
     if (this.y > 0 || this.vy > 0) {
       this.vy -= GRAVITY * dt;
