@@ -154,7 +154,7 @@ function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:A
   }
 
   const special = [
-    [0,-115,74,48,9,0xc7bda9,'Supermarket'],
+    [0,-115,74,48,7.2,0xc7bda9,'Supermarket'],
     [-190,35,52,42,10,0xd0c7b8,'Hospital'],
     [190,45,48,38,10,0x9eaaa0,'Police Station'],
     [-70,205,34,26,9,0xd5d0c7,'Mosque'],
