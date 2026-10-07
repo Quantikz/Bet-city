@@ -137,7 +137,7 @@ const ROADS: RoadSegment[] = [
 // neighbourhood map includes many of these communities; these are used as named
 // districts for map generation rather than as arbitrary procedural zones.
 export interface WestminsterArea { name:string; x:number; z:number; radius:number; character:'historic'|'retail'|'residential'|'civic'|'park'; }
-const WESTMINSTER_AREAS: WestminsterArea[] = [
+const WESTMINSTER_AREAS: Array<[string,number,number,WestminsterArea['character']]> = [
   ['Paddington',-535,-300,'residential'], ['Bayswater',-500,-120,'residential'], ['Queensway',-500,20,'retail'],
   ['Notting Hill East',-500,170,'residential'], ['Westbourne',-430,300,'residential'], ['Queen\'s Park',-420,470,'residential'],
   ['Maida Hill',-300,430,'residential'], ['Maida Vale',-165,465,'residential'], ['Little Venice',-30,470,'park'],
@@ -153,7 +153,7 @@ const WESTMINSTER_AREAS: WestminsterArea[] = [
   ['Regent\'s Park',-260,500,'park'], ['Lancaster Gate',-380,-80,'residential'], ['Hyde Park and Paddington',-400,-230,'park'],
 ];
 const AREA_SCALE = MAP_SCALE;
-const AREA_POINTS = WESTMINSTER_AREAS.map(a => ({...a,x:a.x*AREA_SCALE,z:a.z*AREA_SCALE}));
+const AREA_POINTS: WestminsterArea[] = WESTMINSTER_AREAS.map(([name,x,z,character]) => ({name,x:x*AREA_SCALE,z:z*AREA_SCALE,radius:70,character}));
 function areaAt(x:number,z:number):WestminsterArea {
   let best=AREA_POINTS[0],d=Infinity;
   for(const a of AREA_POINTS){const dx=x-a.x,dz=z-a.z,d2=dx*dx+dz*dz;if(d2<d){d=d2;best=a;}}
