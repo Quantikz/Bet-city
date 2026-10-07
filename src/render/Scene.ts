@@ -93,7 +93,7 @@ export class SceneEnv {
     this.addCompactCityLandmarks(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
-    if (!this.streaming) this.addRoads(city);
+    this.addRoads(city);
 
     window.addEventListener('resize', this.onResize);
     window.addEventListener('orientationchange', this.onResize);

@@ -32,6 +32,7 @@ export class StreamedWorld {
   readonly center = { x: 0, z: 0 };
 
   private readonly fields: WorldFields;
+  private readonly map: City;
   private readonly manager: ChunkManager;
   private readonly loaded = new Map<string, LoadedChunk>();
   private liveStreetlights: Streetlight[] = [];
@@ -43,6 +44,7 @@ export class StreamedWorld {
   constructor(config: CityConfig, hooks: ChunkRenderHooks, loadRadius = 2, unloadRadius = 3) {
     this.config = config;
     this.fields = makeWorldFields(config.seed);
+    this.map = generateCity(config);
     this.viewExtent = cellOf(config) * config.chunkBlocks * (2 * unloadRadius + 1);
     this.grid = new SpatialGrid([], cellOf(config));
     this.manager = new ChunkManager(
