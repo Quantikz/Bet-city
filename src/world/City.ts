@@ -65,11 +65,7 @@ const HALF = 620;
 const ROAD_W = 11;
 const SIDE = 4.5;
 
-type District_UNUSED = {
-  x1: number; z1: number; x2: number; z2: number;
-  minH: number; maxH: number; palette: number[];
-  style: FacadeStyle;
-};
+
 
 const R = (x1:number,z1:number,x2:number,z2:number,width=ROAD_W,name=''): RoadSegment =>
   ({x1,z1,x2,z2,width,name});
