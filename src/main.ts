@@ -443,7 +443,7 @@ function render(alpha: number, frameDt: number): void {
   const pinch = controls.cameraZoomGesture();
   if (pinch !== 0) {
     // Fingers together = camera closer; fingers apart = camera farther.
-    options.cameraZoom = Math.max(0.65, Math.min(1.6, options.cameraZoom + pinch * 0.9));
+    options.cameraZoom = Math.max(0.55, Math.min(7.0, options.cameraZoom + pinch * 1.35));
   }
 
   const baseCam = mode === 'driving' ? CAR_CAM : FOOT_CAM;
