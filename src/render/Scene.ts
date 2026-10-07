@@ -190,31 +190,98 @@ export class SceneEnv {
     this.ground = ground;
   }
 
-  /** Landmark dressing: coastline, beach, market, sport, playground and retail. */
+  /** Landmark dressing: a richer, low-poly city layer built from shared materials. */
   private addLandmarks(city: City): void {
-    const addPlane = (color: number, w: number, d: number, x: number, z: number, y = 0.03): void => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.92 }));
-      m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; this.scene.add(m);
+    const mat = (color: number, roughness = 0.88, emissive = 0): THREE.MeshStandardMaterial =>
+      new THREE.MeshStandardMaterial({ color, roughness, emissive, emissiveIntensity: emissive ? 1.4 : 0 });
+
+    const plane = (color: number, w: number, d: number, x: number, z: number, y = 0.035): THREE.Mesh => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat(color));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, y, z);
+      m.receiveShadow = true;
+      this.scene.add(m);
+      return m;
     };
+    const box = (color: number, w: number, h: number, d: number, x: number, y: number, z: number, roughness = 0.8): THREE.Mesh => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, roughness));
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+      return m;
+    };
+
+    // --- Coastal promenade / beach ---
     const coastZ = city.half - 18;
-    addPlane(0xd8c28b, city.extent, 34, 0, coastZ);
-    addPlane(0x177f9e, city.extent * 1.15, 120, 0, city.half + 42, -0.04);
-    addPlane(0x8b8170, 34, 28, -city.half * 0.42, city.half * 0.12);
-    for (let i = -2; i <= 2; i++) {
-      const stall = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.4, 3.2), new THREE.MeshStandardMaterial({ color: [0xc94d42,0xe0ad43,0x4e86c7][(i+2)%3] }));
-      stall.position.set(-city.half * 0.42 + i * 6, 1.2, city.half * 0.12); stall.castShadow = true; this.scene.add(stall);
+    plane(0xd8c28b, city.extent, 34, 0, coastZ);
+    plane(0x177f9e, city.extent * 1.18, 120, 0, city.half + 42, -0.04);
+    plane(0xb7a88d, city.extent, 3.2, 0, coastZ - 17);
+    for (let x = -city.half + 10; x < city.half - 8; x += 22) {
+      box(0x765f43, 0.45, 2.8, 0.45, x, 1.4, coastZ - 10);
+      box(0xd8c9a7, 3.2, 0.18, 0.75, x, 2.65, coastZ - 10);
     }
-    addPlane(0x2f824b, 42, 26, city.half * 0.35, -city.half * 0.28, 0.04);
-    addPlane(0xe9e1c7, 36, 0.22, city.half * 0.35, -city.half * 0.28, 0.055);
-    addPlane(0xe9e1c7, 0.22, 20, city.half * 0.35, -city.half * 0.28, 0.055);
-    addPlane(0xb98a5d, 28, 22, -city.half * 0.28, -city.half * 0.32, 0.035);
-    const slide = new THREE.Mesh(new THREE.BoxGeometry(2, 2.8, 6), new THREE.MeshStandardMaterial({ color: 0xe66b42 }));
-    slide.position.set(-city.half * 0.28, 1.4, -city.half * 0.32); slide.castShadow = true; this.scene.add(slide);
-    for (const [x,z] of [[city.half*0.28, city.half*0.16], [city.half*0.48, -city.half*0.08]]) {
-      const shop = new THREE.Mesh(new THREE.BoxGeometry(18, 5, 12), new THREE.MeshStandardMaterial({ color: 0xd9d2c7, roughness: 0.7 }));
-      shop.position.set(x, 2.5, z); shop.castShadow = true; shop.receiveShadow = true; this.scene.add(shop);
-      const sign = new THREE.Mesh(new THREE.BoxGeometry(14, 0.9, 0.18), new THREE.MeshStandardMaterial({ color: 0x1e7bd4, emissive: 0x164b88, emissiveIntensity: 1.4 }));
-      sign.position.set(x, 4.4, z - 6.05); this.scene.add(sign);
+    for (let x = -city.half + 8; x < city.half - 6; x += 18) {
+      const trunk = box(0x6b4a2f, 0.45, 3.2, 0.45, x, 1.6, coastZ + 10);
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(2.0, 2.8, 8), mat(0x2f6a3f));
+      crown.position.set(x, 4.0, coastZ + 10);
+      crown.castShadow = true;
+      this.scene.add(crown);
+      trunk.castShadow = true;
+    }
+
+    // --- Market square: stalls, awnings and central seating ---
+    const mx = -city.half * 0.42, mz = city.half * 0.12;
+    plane(0x8b8170, 34, 28, mx, mz);
+    for (let i = -2; i <= 2; i++) {
+      const x = mx + i * 6;
+      box([0xc94d42, 0xe0ad43, 0x4e86c7][(i + 2) % 3], 4.5, 2.4, 3.2, x, 1.2, mz);
+      box([0x8f302f, 0xb57e21, 0x315f98][(i + 2) % 3], 4.9, 0.12, 3.7, x, 2.55, mz);
+      box(0x5a4435, 0.18, 2.1, 0.18, x - 2, 1.05, mz - 1.35);
+      box(0x5a4435, 0.18, 2.1, 0.18, x + 2, 1.05, mz - 1.35);
+    }
+    for (let i = -1; i <= 1; i++) {
+      box(0x4b4036, 2.6, 0.5, 0.6, mx + i * 7, 0.25, mz + 8);
+      box(0x725d46, 2.6, 0.08, 0.7, mx + i * 7, 0.7, mz + 8);
+    }
+
+    // --- Football pitch, goals and simple perimeter ---
+    const fx = city.half * 0.35, fz = -city.half * 0.28;
+    plane(0x2f824b, 42, 26, fx, fz, 0.04);
+    plane(0xe9e1c7, 36, 0.18, fx, fz, 0.055);
+    plane(0xe9e1c7, 0.18, 20, fx, fz, 0.055);
+    for (const gx of [fx - 19, fx + 19]) {
+      for (const side of [-1, 1]) box(0xf4f0df, 0.18, 2.6, 0.18, gx, 1.3, fz + side * 4.2);
+      box(0xf4f0df, 0.18, 2.6, 8.4, gx, 1.3, fz);
+      box(0xf4f0df, 8.4, 0.18, 0.18, gx, 2.6, fz);
+    }
+    for (let i = -3; i <= 3; i++) {
+      box(0x555b61, 0.12, 1.1, 0.12, fx - 20 + i * 6.5, 0.55, fz - 14);
+    }
+
+    // --- Playground: slide, swings and benches ---
+    const px = -city.half * 0.28, pz = -city.half * 0.32;
+    plane(0xb98a5d, 28, 22, px, pz, 0.035);
+    box(0xe66b42, 2, 2.8, 6, px, 1.4, pz);
+    for (let i = -1; i <= 1; i++) {
+      box(0x4f5a63, 0.16, 3.0, 0.16, px + i * 2.4, 1.5, pz + 5);
+      box(0x4f5a63, 0.16, 3.0, 0.16, px + i * 2.4, 1.5, pz + 8);
+      box(0x4f5a63, 4.8, 0.16, 0.16, px + i * 2.4, 3, pz + 6.5);
+      box(0x3b79a9, 0.18, 1.4, 0.18, px + i * 2.4, 0.7, pz - 5);
+    }
+    box(0x45413a, 3.2, 0.5, 0.7, px - 7, 0.25, pz + 6);
+    box(0x6f5b43, 3.2, 0.08, 0.7, px - 7, 0.7, pz + 6);
+
+    // --- Supermarkets: entrance canopies, parking bays and sign bands ---
+    for (const [x, z] of [[city.half * 0.28, city.half * 0.16], [city.half * 0.48, -city.half * 0.08]]) {
+      box(0xd9d2c7, 18, 5, 12, x, 2.5, z);
+      box(0x1e7bd4, 14, 0.9, 0.18, x, 4.4, z - 6.05);
+      box(0xe9e5dd, 10, 0.22, 2.0, x, 4.7, z - 7.0);
+      for (let p = -2; p <= 2; p++) {
+        box(0x85888c, 0.16, 2.8, 0.16, x + p * 2.1, 1.4, z - 7.0);
+        plane(0x6b6f73, 1.5, 5.0, x + p * 2.1, z - 10.0, 0.025);
+      }
+      for (let p = -2; p <= 2; p++) plane(0xd9d9d5, 1.7, 0.16, x + p * 2.1, z - 8.2, 0.028);
     }
   }
 
