@@ -1,4 +1,6 @@
 import { createRng, hashSeed } from '../core/rng';
+import { makeNoise2D, fbm, type Noise2D } from '../core/noise';
+import { classify, BIOMES, type BiomeDef } from './biome';
 import type { Aabb } from '../systems/Collision';
 import { SpatialGrid } from '../systems/SpatialGrid';
 import type { PropType, FacadeStyle } from './biome';
@@ -63,7 +65,7 @@ const HALF = 620;
 const ROAD_W = 11;
 const SIDE = 4.5;
 
-type District = {
+type District_UNUSED = {
   x1: number; z1: number; x2: number; z2: number;
   minH: number; maxH: number; palette: number[];
   style: FacadeStyle;
@@ -304,11 +306,57 @@ export interface LandmarkLocations {
   supermarkets:{x:number;z:number}[];
 }
 export function landmarkLocations(city:Pick<City,'half'|'roadCenters'>):LandmarkLocations {
-  const c=city.half;
-  return {
+    return {
     market:{x:35,z:115},
     football:{x:-220,z:330},
     playground:{x:-420,z:40},
     supermarkets:[{x:160,z:-60},{x:520,z:70}],
   };
+}
+
+
+export interface WorldFields { urbanity: Noise2D; }
+export function makeWorldFields(seed: number): WorldFields {
+  return { urbanity: makeNoise2D(hashSeed(seed, 'urbanity')) };
+}
+const URBANITY_FREQ = 0.012;
+export function urbanityAt(fields: WorldFields, wx: number, wz: number): number {
+  const n = fbm(fields.urbanity, wx, wz, { octaves: 4, frequency: URBANITY_FREQ });
+  return Math.max(0, Math.min(1, 0.5 + n * 1.35));
+}
+function jitterBrightness(hex:number,rng:ReturnType<typeof createRng>,amt:number):number {
+  const f=1+(rng.next()*2-1)*amt;
+  const ch=(s:number)=>Math.max(0,Math.min(255,Math.round(((hex>>s)&255)*f)));
+  return (ch(16)<<16)|(ch(8)<<8)|ch(0);
+}
+function insideAnyCollider(x:number,z:number,cs:Aabb[],pad:number):boolean {
+  return cs.some(c=>x>c.minX-pad&&x<c.maxX+pad&&z>c.minZ-pad&&z<c.maxZ+pad);
+}
+export function addBlock(originX:number,originZ:number,size:number,rng:ReturnType<typeof createRng>,biome:BiomeDef,buildings:Building[],colliders:Aabb[]):void {
+  if(biome.buildingDensity<=0)return;
+  const margin=biome.buildingDensity>=0.72?2.2:biome.buildingDensity>=0.48?2.7:3.2;
+  const lots=biome.buildingDensity>=0.58?2:(rng.chance(0.18+biome.buildingDensity*0.42)?2:1);
+  const lotSize=size/lots;
+  const [hMin,hMax]=biome.heightRange;
+  for(let li=0;li<lots;li++)for(let lj=0;lj<lots;lj++){
+    if(!rng.chance(biome.buildingDensity))continue;
+    const lotX=originX+li*lotSize,lotZ=originZ+lj*lotSize;
+    const width=lotSize-margin*2,depth=lotSize-margin*2;
+    if(width<4||depth<4)continue;
+    const cx=lotX+lotSize/2,cz=lotZ+lotSize/2;
+    buildings.push({cx,cz,width,depth,height:rng.range(hMin,hMax),color:jitterBrightness(rng.pick(biome.palette),rng,0.18),style:rng.pick(biome.facades)});
+    colliders.push({minX:cx-width/2,minZ:cz-depth/2,maxX:cx+width/2,maxZ:cz+depth/2});
+  }
+}
+export function addProps(originX:number,originZ:number,size:number,rng:ReturnType<typeof createRng>,biome:BiomeDef,colliders:Aabb[],props:Prop[]):void {
+  if(biome.propDensity<=0||biome.props.length===0)return;
+  const inset=1.6,slots=Math.max(2,Math.floor(size/9)),span=size-inset*2;
+  for(let edge=0;edge<4;edge++)for(let k=1;k<slots;k++){
+    if(!rng.chance(biome.propDensity))continue;
+    const t=(k/slots)*span+inset;
+    let x:number,z:number;
+    if(edge===0){x=originX+inset;z=originZ+t;}else if(edge===1){x=originX+size-inset;z=originZ+t;}else if(edge===2){x=originX+t;z=originZ+inset;}else{x=originX+t;z=originZ+size-inset;}
+    x+=rng.range(-0.8,0.8);z+=rng.range(-0.8,0.8);
+    if(!insideAnyCollider(x,z,colliders,0.6))props.push({x,z,type:rng.pick(biome.props),rot:rng.range(0,Math.PI*2)});
+  }
 }
