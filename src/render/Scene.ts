@@ -90,7 +90,7 @@ export class SceneEnv {
     });
     this.addGround(city);
     this.addLandmarks(city);
-    this.addWestminsterLandmarks(city);
+    this.addCompactCityLandmarks(city);
     // Streamed roads are everywhere (the grid between blocks); the finite per-
     // roadCenter planes don't apply, so the ground reads as asphalt-dark instead.
     if (!this.streaming) this.addRoads(city);
@@ -351,90 +351,80 @@ export class SceneEnv {
     this.footballBall = ball;
   }
 
-  private addWestminsterLandmarks(city: City): void {
-    const g = new THREE.Group();
-    const mat=(color:number,roughness=0.82)=>new THREE.MeshStandardMaterial({color,roughness});
-    const box=(color:number,w:number,h:number,d:number,x:number,y:number,z:number)=>{
-      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
-      m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; g.add(m); return m;
-    };
-    const plane=(color:number,w:number,d:number,x:number,z:number)=>{
+  private addCompactCityLandmarks(city: City): void {
+    const mat = (color:number, roughness=0.85) =>
+      new THREE.MeshStandardMaterial({color, roughness});
+
+    const plane = (color:number,w:number,d:number,x:number,z:number,y=0.02) => {
       const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat(color));
-      m.rotation.x=-Math.PI/2; m.position.set(x,0.03,z); m.receiveShadow=true; g.add(m);
+      m.rotation.x=-Math.PI/2; m.position.set(x,y,z); m.receiveShadow=true; this.scene.add(m); return m;
+    };
+    const box = (color:number,w:number,h:number,d:number,x:number,y:number,z:number) => {
+      const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
+      m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; this.scene.add(m); return m;
     };
 
-    // Open water and a simple harbour on the northern edge.
-    plane(0x2f7892, city.extent*0.9, city.extent*0.32, 0, city.half*0.83);
-    plane(0xc7b58e, city.extent*0.9, 12, 0, city.half*0.64);
-    for(const x of [-75,0,75]){
-      const hull=box(0x7b4b2b,18,1.8,5,x,1.0,city.half*0.77);
-      hull.rotation.y=x===0?0.08:-0.12;
-      const mast=box(0x6a5138,0.35,8,0.35,x,4.9,city.half*0.77);
-      box(0xe7dfcf,4,5,0.18,x,5.4,city.half*0.77);
-      void mast;
+    // Open green ground: roads are drawn separately, so the city does not look like
+    // one giant sheet of asphalt.
+    plane(0x718064, city.extent*2, city.extent*2, 0, 0, -0.01);
+
+    // Sea and a simple protected shoreline on the south side.
+    plane(0x2e7187, city.extent*1.65, 105, 0, -235, -0.005);
+    box(0x9b9a86, city.extent*1.65, 0.18, 3, 0, 0.09, -182);
+
+    // Two proper football pitches.
+    for(const [x,z] of [[-175,95],[175,145]]){
+      plane(0x3f7d43, 116, 72, x, z, 0.025);
+      const lineMat=mat(0xe8e8d8);
+      const line=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(112,68)),new THREE.LineBasicMaterial({color:0xe8e8d8}));
+      line.rotation.x=-Math.PI/2; line.position.set(x,0.08,z); this.scene.add(line);
+      box(0x6d4c36,1.2,2.5,1.2,x-54,1.25,z);
+      box(0x6d4c36,1.2,2.5,1.2,x+54,1.25,z);
     }
 
-    // Five-storey? No: intentionally low four-storey residential skyline.
-    // The map uses five four-storey blocks already supplied by CityAssets.
+    // Mosque: dome + small minaret.
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(12,20,12,0,Math.PI*2,0,Math.PI/2),mat(0xd8d1c1));
+    dome.scale.y=0.7; dome.position.set(-70,9,205); dome.castShadow=true; this.scene.add(dome);
+    const minaret=box(0xc7c0b0,3.2,18,3.2,-58,9,205);
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(2.5,5,12),mat(0xc7c0b0)); cap.position.set(-58,20.5,205); this.scene.add(cap);
 
-    // Two playable football pitches with simple goals and players.
-    const pitch=(x:number,z:number)=>{
-      plane(0x4d8a50,72,44,x,z);
-      const line=mat(0xe8eadf);
-      const lines=[
-        [0, -22,72,0.3],[0,22,72,0.3],[-36,0,0.3,44],[36,0,0.3,44],[0,0,0.3,44],
-      ];
-      for(const [dx,dz,w,d] of lines){
-        const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.06,d),line);
-        m.position.set(x+dx,0.08,z+dz);g.add(m);
-      }
-      for(const gx of [-36,36]){
-        box(0xffffff,0.6,3.2,10,x+gx,1.6,z);
-      }
-    };
-    pitch(-175*1,95*1);
-    pitch(175*1,145*1);
+    // Church: simple tower and pitched roof silhouette.
+    box(0xc0b9ae,38,10,30,70,5,205);
+    box(0xa69b8d,8,22,8,82,11,205);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(23,12,4),mat(0x746b61));
+    roof.rotation.y=Math.PI/4; roof.position.set(70,11,205); roof.castShadow=true; this.scene.add(roof);
 
-    // Two-storey supermarket.
-    box(0xc7bda9,74*1,9,48*1,0*1,4.5,-115*1);
-    for(let x=-28;x<=28;x+=14) box(0x6c8ca0,7*1,5,0.3, x*1,3.4,-115*1-24*1);
-    // Hospital + police station.
-    box(0xd8d8d3,52*1,10,42*1,-190*1,5,35*1);
-    box(0x8fa2ad,48*1,10,38*1,190*1,5,45*1);
-    // Cross and police sign.
-    box(0xc52e36,2,5,0.6,-190*1,7,14*1);
-    box(0xc52e36,5,2,0.6,-190*1,7,14*1);
-    box(0x1f4e6e,7,2,0.5,190*1,8,25*1);
-
-    // Three small independent shops.
-    for(const [x,label] of [[-185,1],[-150,2],[155,3]] as const){
-      box(label===1?0xd17a55:label===2?0x8a9db5:0x8ca66f,22*1,7,18*1,x*1,3.5,-35*1);
+    // Train line, sleepers and a short passenger train near the station.
+    const railMat=new THREE.MeshStandardMaterial({color:0x46484b,metalness:0.7,roughness:0.5});
+    for(const x of [-32,32]){
+      const rail=box(0x4b4d50,1.1,0.18,220,x,0.12,120); rail.material=railMat;
+      for(let z=18;z<225;z+=9) box(0x6b5a49,70,0.12,1.2,0,0.06,z);
+    }
+    box(0x5c6d77,20,4.5,58,0,2.25,120);
+    for(const x of [-5,5,15]){
+      box(0xb7b9bd,8,3.2,16,x,3.8,120);
     }
 
-    // Mosque: square prayer hall, dome and minaret.
-    box(0xe4ded1,34*1,8,26*1,-70*1,4,205*1);
-    const dome=new THREE.Mesh(new THREE.SphereGeometry(9*1,20,12,0,Math.PI*2,0,Math.PI/2),mat(0xb58a3f));
-    dome.position.set(-70*1,8,-0+205*1); dome.castShadow=true; g.add(dome);
-    box(0xd1bfa0,3*1,18,3*1,-50*1,9,205*1);
+    // Three small storefront signs/awnings make the shops readable.
+    for(const [x,z] of [[-185,-35],[-150,-35],[155,-35]]){
+      box(0x3e5564,18,1.8,1.2,x,5.2,z-9);
+      box(0xd2b36a,20,0.45,1.8,x,3.2,z-9);
+    }
 
-    // Church with small bell tower.
-    box(0xd4c8b5,38*1,10,30*1,70*1,5,205*1);
-    box(0x8c7b6b,7*1,17,7*1,83*1,8.5,205*1);
-    const cross=box(0xb9b0a3,0.8,5,0.8,83*1,19.5,205*1); void cross;
+    // Boats in the sea.
+    for(const [x,z,scale] of [[-120,-215,1],[-5,-225,0.8],[115,-210,1.15]]){
+      const hull=box(0x4b3f36,10*scale,2.2*scale,4*scale,x,1.1,z);
+      hull.rotation.y=0.12;
+      const mast=box(0xe2ddd0,0.35,8*scale,0.35,x,5*scale,z);
+      const sail=new THREE.Mesh(new THREE.ConeGeometry(4*scale,7*scale,3),mat(0xe5dfd0));
+      sail.rotation.z=Math.PI/2; sail.position.set(x+2*scale,5*scale,z); this.scene.add(sail);
+    }
 
-    // Train station and a visible train.
-    box(0xaaa39a,120*1,7,34*1,0,3.5,120*1);
-    box(0x4f5a66,72*1,4.5,5*1,0,3,145*1);
-    for(let x=-30;x<=30;x+=15) box(0x20252b,12*1,4.5,4*1,x*1,3,145*1);
-
-    // Compact rail line.
-    box(0x5b4b3b,170*1,0.22,2,0,0.12,165*1);
-    box(0x5b4b3b,170*1,0.22,2,0,0.12,171*1);
-
-    // Five four-storey homes and open spacing are already generated in City.ts.
-    const scale=city.half/280;
-    g.scale.set(scale,scale,scale);
-    this.scene.add(g);
+    // Small hospital/police visual cues on the existing buildings.
+    box(0xf4f4ee,18,4,0.8,-190,12,14);
+    box(0xc84646,3,0.5,1,-190,12.3,13.5);
+    box(0xf4f4ee,16,3.5,0.8,190,12,25);
+    box(0x3564a8,2.5,0.45,1,190,13,24.5);
   }
 
   /** Advance the ambient football match without adding a full NPC simulation cost. */
