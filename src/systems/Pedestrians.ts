@@ -280,7 +280,7 @@ export class Pedestrians {
     dirX: number,
     dirZ: number,
     range = 48,
-    cone = 0.18,
+    _cone = 0.18,
     colliders: readonly { minX: number; maxX: number; minZ: number; maxZ: number }[] = [],
   ): boolean {
     let best = -1;
