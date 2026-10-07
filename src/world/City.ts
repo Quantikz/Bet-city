@@ -219,19 +219,22 @@ function makeWestminsterBuildings(seed:number):{buildings:Building[];colliders:A
       if(pointInPark(cx,cz)||nearRoad(cx,cz,2)) continue;
       if(LANDMARKS.some(l=>intersects({x1,z1,x2,z2},{x1:l.x-l.w/2,z1:l.z-l.d/2,x2:l.x+l.w/2,z2:l.z+l.d/2},4))) continue;
 
-      const lots=Math.max(1,Math.min(5,Math.floor((x2-x1)/18)));
-      const lotW=(x2-x1)/lots;
-      for(let i=0;i<lots;i++){
-        const bx=x1+lotW*(i+0.5);
-        const width=Math.max(12,lotW-3.5);
-        const depth=Math.max(10,(z2-z1)-3.5);
-        const f=facadeFor(rng,cz);
+      const lotsX=Math.max(1,Math.min(4,Math.floor((x2-x1)/18)));
+      const lotsZ=Math.max(1,Math.min(3,Math.floor((z2-z1)/22)));
+      const lotW=(x2-x1)/lotsX;
+      const lotD=(z2-z1)/lotsZ;
+      for(let ix=0;ix<lotsX;ix++) for(let iz=0;iz<lotsZ;iz++){
+        const bx=x1+lotW*(ix+0.5);
+        const bz=z1+lotD*(iz+0.5);
+        const width=Math.max(8,lotW-3.2);
+        const depth=Math.max(8,lotD-3.2);
+        const f=facadeFor(rng,bz);
         let h=rng.range(f.h[0],f.h[1]);
-        if (Math.abs(bx)<230 && Math.abs(cz)<150) h=rng.range(18,39);
-        if (Math.abs(cz-20)<70) h=rng.range(16,34);
-        buildings.push({cx:bx,cz,width,depth,height:h,color:f.color,style:f.style});
-        addBoxCollider(colliders,bx,cz,width,depth);
-        if(rng.chance(0.35)) props.push({x:bx-width/2+2.5,z:cz+depth/2+1.7,type:rng.pick(['tree','bench','hydrant'] as PropType[]),rot:0});
+        if (Math.abs(bx)<90 && Math.abs(bz)<60) h=rng.range(18,39);
+        if (Math.abs(bz-8)<28) h=rng.range(16,34);
+        buildings.push({cx:bx,cz:bz,width,depth,height:h,color:f.color,style:f.style});
+        addBoxCollider(colliders,bx,bz,width,depth);
+        if(rng.chance(0.28)) props.push({x:bx-width/2+2,z:bz+depth/2+1.4,type:rng.pick(['tree','bench','hydrant'] as PropType[]),rot:0});
       }
     }
   }
