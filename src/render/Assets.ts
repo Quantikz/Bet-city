@@ -215,10 +215,89 @@ export class CityAssets {
       }
     }
     if (b.height <= 14) {
-      const awningMat = new THREE.MeshStandardMaterial({ color: 0xb04c3d, roughness: 0.7 });
-      const awning = new THREE.Mesh(new RoundedBoxGeometry(Math.min(4.2, b.width * 0.7), 0.14, 0.65, 2, 0.04), awningMat);
-      awning.position.set(b.cx, 2.8, b.cz + b.depth / 2 + 0.35);
-      near.add(awning);
+      // Low-rise homes get a much warmer residential treatment: pitched roofs,
+      // a real porch, framed windows and small landscaping details.
+      const roofColor = [0x5a3030, 0x34485b, 0x6a4b32, 0x3d3f46][index % 4];
+      const roofMat = new THREE.MeshStandardMaterial({
+        color: roofColor,
+        roughness: 0.78,
+        metalness: 0.05,
+      });
+      const roofSpan = Math.max(3.5, b.width + 0.5);
+      const roofDepth = Math.max(3.5, b.depth + 0.55);
+      const roofHalf = roofSpan * 0.31;
+      for (const side of [-1, 1]) {
+        const roof = new THREE.Mesh(
+          new RoundedBoxGeometry(roofHalf, 0.22, roofDepth, 2, 0.05),
+          roofMat,
+        );
+        roof.position.set(b.cx + side * roofHalf * 0.44, b.height + 0.48, b.cz);
+        roof.rotation.z = side * 0.48;
+        near.add(roof);
+      }
+
+      // Front porch + canopy gives the smaller homes a recognizable entrance.
+      const porchMat = new THREE.MeshStandardMaterial({ color: 0x6f5846, roughness: 0.82 });
+      const porch = new THREE.Mesh(
+        new RoundedBoxGeometry(Math.min(3.8, b.width * 0.62), 0.16, 1.15, 2, 0.05),
+        porchMat,
+      );
+      porch.position.set(b.cx, 0.12, b.cz + b.depth / 2 + 0.48);
+      near.add(porch);
+      const porchRoof = new THREE.Mesh(
+        new RoundedBoxGeometry(Math.min(3.7, b.width * 0.58), 0.16, 0.9, 2, 0.05),
+        trimMat,
+      );
+      porchRoof.position.set(b.cx, 2.95, b.cz + b.depth / 2 + 0.48);
+      near.add(porchRoof);
+      for (const side of [-1, 1]) {
+        const post = new THREE.Mesh(new RoundedBoxGeometry(0.10, 2.7, 0.10, 2, 0.03), porchMat);
+        post.position.set(b.cx + side * Math.min(1.55, b.width * 0.28), 1.45, b.cz + b.depth / 2 + 0.48);
+        near.add(post);
+      }
+
+      // A small row of luminous framed windows breaks up the procedural facade.
+      const windowMat = new THREE.MeshStandardMaterial({
+        color: 0xb9e5f0,
+        emissive: 0x8fd8ee,
+        emissiveIntensity: 0.85,
+        roughness: 0.18,
+        metalness: 0.2,
+      });
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.7 });
+      const windowCount = b.width > 12 ? 3 : 2;
+      const windowW = Math.min(1.45, (b.width - 3) / windowCount);
+      for (let i = 0; i < windowCount; i++) {
+        const wx = b.cx + (i - (windowCount - 1) / 2) * (windowW + 0.55);
+        const glass = new THREE.Mesh(new RoundedBoxGeometry(windowW, 1.0, 0.07, 2, 0.03), windowMat);
+        glass.position.set(wx, Math.min(2.1, b.height * 0.48), b.cz + b.depth / 2 + 0.06);
+        near.add(glass);
+        const sill = new THREE.Mesh(new RoundedBoxGeometry(windowW + 0.16, 0.09, 0.11, 2, 0.02), frameMat);
+        sill.position.set(wx, glass.position.y - 0.56, b.cz + b.depth / 2 + 0.06);
+        near.add(sill);
+        const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.88, 0.08), frameMat);
+        mullion.position.set(wx, glass.position.y, b.cz + b.depth / 2 + 0.06);
+        near.add(mullion);
+      }
+
+      // Tiny front garden accents make repeated houses feel individually dressed.
+      const gardenMat = new THREE.MeshStandardMaterial({ color: 0x3e7544, roughness: 0.9 });
+      for (const side of [-1, 1]) {
+        const bush = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), gardenMat);
+        bush.position.set(b.cx + side * Math.min(2.4, b.width * 0.38), 0.42, b.cz + b.depth / 2 + 1.0);
+        near.add(bush);
+      }
+    } else if (b.height <= 24) {
+      // Mid-rise residential blocks get a clean balcony rhythm and rooftop trim.
+      const facadeAccent = new THREE.MeshStandardMaterial({ color: [0x9b5b45, 0x49677f, 0x80684c][index % 3], roughness: 0.72 });
+      for (let side of [-1, 1]) {
+        const bay = new THREE.Mesh(
+          new RoundedBoxGeometry(Math.min(3.2, b.width * 0.42), 0.10, 0.95, 2, 0.04),
+          facadeAccent,
+        );
+        bay.position.set(b.cx + side * Math.min(2.0, b.width * 0.24), 3.2, b.cz + b.depth / 2 + 0.32);
+        near.add(bay);
+      }
     }
     near.traverse((o) => {
       const mesh = o as THREE.Mesh;
