@@ -334,7 +334,15 @@ function update(dt: number): void {
 
   // Pedestrians fear the CAR only (not the player on foot): proximity, or a fast
   // car on a vector to hit them. Threat carries velocity for the vector trigger.
-  peds.update(city, dt, runOverQuery, mode === 'driving' ? chaseTarget() : null, resolveCars);
+  function chaseTarget(): { x: number; z: number; vx: number; vz: number } | null {
+  if (mode !== 'driving') return null;
+  const pose = vehicles.playerPose();
+  if (!pose) return null;
+  const velocity = vehicles.playerVelocity();
+  return { x: pose.x, z: pose.z, vx: velocity.vx, vz: velocity.vz };
+}
+
+peds.update(city, dt, runOverQuery, mode === 'driving' ? chaseTarget() : null, resolveCars);
   debris.update(dt); // shared pool, advanced once per frame
   controls.endFrame();
 }
