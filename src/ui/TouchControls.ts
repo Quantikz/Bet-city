@@ -57,7 +57,9 @@ export class TouchControls {
   private stickPointer: number | null = null;
   private readonly base: HTMLElement;
   private readonly knob: HTMLElement;
-  private readonly radius = 58;
+  // Allworld-style mobile joystick: 104px pad, 46px knob, 36px travel,
+  // 6px dead-zone, full deflection = jog.
+  private readonly radius = 36;
 
   constructor(root: HTMLElement) {
     // Kill browser pinch/double-tap zoom that touch-action alone misses on iOS
@@ -78,35 +80,55 @@ export class TouchControls {
     this.base = div(
       root,
       'tc-stick',
-      'position:absolute;left:calc(4vw + env(safe-area-inset-left));' +
-        'bottom:calc(4vw + env(safe-area-inset-bottom));width:140px;height:140px;border-radius:50%;' +
-        'background:rgba(20,26,40,.4);border:2px solid rgba(255,255,255,.18);pointer-events:auto;touch-action:none;',
+      'position:absolute;left:max(12px,env(safe-area-inset-left));' +
+        'bottom:var(--tc-bottom,16px);width:104px;height:104px;border-radius:50%;' +
+        'background:rgba(18,32,28,.3);border:2px solid rgba(255,255,255,.6);pointer-events:auto;touch-action:none;' +
+        'display:block;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;',
     );
     this.knob = div(
       this.base,
       'tc-knob',
-      'position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;' +
-        'background:rgba(230,238,255,.55);border:2px solid rgba(255,255,255,.5);pointer-events:none;',
+      'position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;' +
+        'background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.3);pointer-events:none;',
     );
 
-    this.base.addEventListener('pointerdown', (e) => {
-      if (this.stickPointer !== null) return;
-      this.stickPointer = e.pointerId;
-      this.moveStick(e.clientX, e.clientY);
+    const stickMove = (e: PointerEvent): void => {
+      if (e.pointerId !== this.stickPointer) return;
+      const r = this.base.getBoundingClientRect();
+      let dx = e.clientX - (r.left + r.width / 2);
+      let dy = e.clientY - (r.top + r.height / 2);
+      const size = Math.hypot(dx, dy);
+      if (size > this.radius) {
+        dx *= this.radius / size;
+        dy *= this.radius / size;
+      }
+      const dead = size < 6;
+      this.vec.x = dead ? 0 : dx / this.radius;
+      this.vec.y = dead ? 0 : -dy / this.radius;
+      this.sprintHeld = !dead && size >= this.radius * 0.97;
+      this.knob.style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`;
       e.preventDefault();
-    });
-    window.addEventListener('pointermove', (e) => {
-      if (e.pointerId === this.stickPointer) this.moveStick(e.clientX, e.clientY);
-    });
-    const release = (e: PointerEvent): void => {
+    };
+    const stickEnd = (e: PointerEvent): void => {
       if (e.pointerId !== this.stickPointer) return;
       this.stickPointer = null;
       this.vec.x = 0;
       this.vec.y = 0;
-      this.knob.style.transform = 'translate(0px,0px)';
+      this.sprintHeld = false;
+      this.knob.style.transform = '';
+      try { this.base.releasePointerCapture?.(e.pointerId); } catch { /* already released */ }
+      e.preventDefault();
     };
-    window.addEventListener('pointerup', release);
-    window.addEventListener('pointercancel', release);
+    this.base.addEventListener('pointerdown', (e) => {
+      if (this.stickPointer !== null) return;
+      this.stickPointer = e.pointerId;
+      try { this.base.setPointerCapture?.(e.pointerId); } catch { /* not capturable */ }
+      stickMove(e);
+    });
+    this.base.addEventListener('pointermove', stickMove);
+    this.base.addEventListener('pointerup', stickEnd);
+    this.base.addEventListener('pointercancel', stickEnd);
+    this.base.addEventListener('lostpointercapture', stickEnd);
 
     const trackPointer = (e: PointerEvent): void => {
       if (e.pointerType !== 'touch') return;
@@ -302,8 +324,16 @@ export class TouchControls {
   setMode(onFoot: boolean): void {
     const foot = ['tc-fire','tc-aim','tc-jump','tc-crouch','tc-reload','tc-punch','tc-sprint'];
     const car = ['tc-enter','tc-brake'];
-    for (const id of foot) { const b=this.buttons.get(id); if(b) b.style.display=onFoot?'flex':'none'; }
-    for (const id of car) { const b=this.buttons.get(id); if(b) b.style.display=onFoot?'none':'flex'; }
+    for (const id of foot) {
+      const b=this.buttons.get(id);
+      if(b) b.style.display=onFoot?'flex':'none';
+    }
+    // Enter/exit is valid in BOTH modes: on foot it enters the nearest car;
+    // while driving it exits the current car.
+    const enter=this.buttons.get('tc-enter');
+    if (enter) enter.style.display='flex';
+    const brake=this.buttons.get('tc-brake');
+    if (brake) brake.style.display=onFoot?'none':'flex';
   }
 }
 
