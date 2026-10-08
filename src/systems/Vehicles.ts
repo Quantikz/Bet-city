@@ -3,7 +3,7 @@ import type { City, Lane } from '../world/City';
 import { createRng } from '../core/rng';
 import { damp, lerp, angleLerp, safeApproachSpeed } from '../core/math';
 import { makeCar, CAR_SHAPES, type CarShape } from '../render/Assets';
-import { circleOverlap, nearestIndex, resolveCarImpulse } from './Collision';
+import { circleOverlap, resolveCarImpulse } from './Collision';
 import { Debris } from './Debris';
 import { Smoke } from './Smoke';
 import { World, defineComponent } from '../ecs/World';
