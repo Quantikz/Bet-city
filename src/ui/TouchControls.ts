@@ -1,4 +1,3 @@
-import { stickVector } from '../core/math';
 import {
   createElement,
   type IconNode,
@@ -37,6 +36,7 @@ export class TouchControls {
   private readonly vec = { x: 0, y: 0 };
   private brakeHeld = false;
   private sprintHeld = false;
+  private stickJog = false;
   private enterEdge = false;
   private punchEdge = false;
   private jumpEdge = false;
@@ -105,7 +105,7 @@ export class TouchControls {
       const dead = size < 6;
       this.vec.x = dead ? 0 : dx / this.radius;
       this.vec.y = dead ? 0 : -dy / this.radius;
-      this.sprintHeld = !dead && size >= this.radius * 0.97;
+      this.stickJog = !dead && size >= this.radius * 0.97;
       this.knob.style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`;
       e.preventDefault();
     };
@@ -114,7 +114,7 @@ export class TouchControls {
       this.stickPointer = null;
       this.vec.x = 0;
       this.vec.y = 0;
-      this.sprintHeld = false;
+      this.stickJog = false;
       this.knob.style.transform = '';
       try { this.base.releasePointerCapture?.(e.pointerId); } catch { /* already released */ }
       e.preventDefault();
@@ -256,13 +256,6 @@ export class TouchControls {
     });
   }
 
-  private moveStick(clientX: number, clientY: number): void {
-    const r = this.base.getBoundingClientRect();
-    const v = stickVector(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2), this.radius);
-    this.vec.x = v.x;
-    this.vec.y = v.y;
-    this.knob.style.transform = `translate(${v.x * this.radius}px,${-v.y * this.radius}px)`;
-  }
 
   private holdButton(
     parent: HTMLElement,
@@ -305,7 +298,7 @@ export class TouchControls {
     return this.brakeHeld;
   }
   get sprint(): boolean {
-    return this.sprintHeld;
+    return this.sprintHeld || this.stickJog;
   }
   consumeEnter(): boolean {
     const e = this.enterEdge;
