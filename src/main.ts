@@ -53,7 +53,7 @@ const worldSeed = Number.isFinite(seedParam) && urlParams.get('seed') !== null ?
 // free-roam activities, not chosen at boot. ?mode= still sets the boot mode for testing.
 const gameMode = 'explore';
 // `?stream=1` runs the unbounded streamed world (R007); default is the finite city.
-const streaming = urlParams.get('stream') !== '0';
+const streaming = urlParams.get('stream') === '1';
 const config = { ...DEFAULT_CITY, seed: worldSeed };
 const assets = new CityAssets(config.seed);
 
