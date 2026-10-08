@@ -12,6 +12,8 @@ export interface SceneQuality {
   maxPixelRatio?: number; // cap device pixel ratio (lower = cheaper)
   shadowMapSize?: number; // directional shadow resolution
   streaming?: boolean; // streamed world: ground/shadow/sun follow the player (R007)
+  antialias?: boolean; // MSAA is expensive on mobile
+  shadows?: boolean; // disable entirely on low quality
 }
 
 // In streamed mode the shadow frustum is a tight window around the player rather
@@ -47,23 +49,28 @@ export class SceneEnv {
   private followZ = 0;
   private readonly shadowHalf: number;
   private readonly houseLights: THREE.PointLight[];
+  private houseLightTimer = 0;
   private readonly footballPlayers: { group: THREE.Group; phase: number; lane: number; speed: number }[] = [];
   private footballBall: THREE.Mesh | null = null;
 
   constructor(container: HTMLElement, city: City, quality: SceneQuality = {}) {
-    const maxPixelRatio = quality.maxPixelRatio ?? 2;
-    const shadowMapSize = quality.shadowMapSize ?? 2048;
+    const maxPixelRatio = quality.maxPixelRatio ?? 1.6;
+    const shadowMapSize = quality.shadowMapSize ?? 1024;
+    const shadows = quality.shadows ?? true;
     this.streaming = !!quality.streaming;
     // Finite world: the shadow frustum spans the whole map. Streamed world: a
     // tight window that follows the player (city.half is effectively unbounded).
     this.shadowHalf = this.streaming ? STREAM_SHADOW_HALF : city.half;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: quality.antialias ?? false,
+      powerPreference: 'high-performance',
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.shadowMap.autoUpdate = true;
+    this.renderer.shadowMap.autoUpdate = shadows;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.85;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -82,7 +89,8 @@ export class SceneEnv {
     this.camera.position.set(0, 30, 30);
 
     this.addLights(city, shadowMapSize);
-    this.houseLights = Array.from({ length: 42 }, () => {
+    const houseLightCount = quality.shadows === false ? 0 : 14;
+    this.houseLights = Array.from({ length: houseLightCount }, () => {
       const light = new THREE.PointLight(0xffd6a0, 9, 24, 2);
       light.castShadow = false;
       this.scene.add(light);
@@ -109,7 +117,7 @@ export class SceneEnv {
     const sun = new THREE.DirectionalLight(NIGHT.sun.color, NIGHT.sun.intensity);
     sun.shadow.normalBias = 0.025;
     sun.position.set(city.half * 0.6, city.half * 1.2, city.half * 0.4);
-    sun.castShadow = true;
+    sun.castShadow = this.renderer.shadowMap.enabled;
     sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     const cam = sun.shadow.camera;
     cam.left = -this.shadowHalf;
@@ -421,17 +429,31 @@ export class SceneEnv {
   }
   /** Place a small pool of warm non-shadowing lights at the nearest buildings. */
   updateHouseLights(x: number, z: number, buildings: City['buildings']): void {
-    const nearest = buildings
-      .map((b) => ({ b, d2: (b.cx - x) ** 2 + (b.cz - z) ** 2 }))
-      .sort((a, b) => a.d2 - b.d2)
-      .slice(0, this.houseLights.length);
-    this.houseLights.forEach((light, i) => {
+    if (this.houseLights.length === 0) return;
+    // Recompute the nearest set only a few times per second; sorting the whole
+    // building list every render frame was unnecessary CPU work.
+    this.houseLightTimer -= 1 / 60;
+    if (this.houseLightTimer > 0) return;
+    this.houseLightTimer = 0.25;
+    const nearest: { b: City['buildings'][number]; d2: number }[] = [];
+    for (const b of buildings) {
+      const d2 = (b.cx - x) ** 2 + (b.cz - z) ** 2;
+      if (d2 > 38 * 38) continue;
+      nearest.push({ b, d2 });
+    }
+    nearest.sort((a, b) => a.d2 - b.d2);
+    for (let i = 0; i < this.houseLights.length; i++) {
       const item = nearest[i];
-      if (!item) { light.intensity = 0; return; }
+      const light = this.houseLights[i];
+      if (!item) { light.intensity = 0; continue; }
       const b = item.b;
-      light.position.set(b.cx + Math.min(b.width * 0.45, 4), Math.min(Math.max(2.5, b.height * 0.45), 7), b.cz + b.depth * 0.45);
+      light.position.set(
+        b.cx + Math.min(b.width * 0.45, 4),
+        Math.min(Math.max(2.5, b.height * 0.45), 7),
+        b.cz + b.depth * 0.45,
+      );
       light.intensity = item.d2 < 22 * 22 ? 7 : 0;
-    });
+    }
   }
 
   render(): void {
