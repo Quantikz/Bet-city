@@ -20,7 +20,7 @@ export interface GameOptions {
 
 export const DEFAULT_OPTIONS: GameOptions = {
   masterVolume: 0.8,
-  quality: 'high',
+  quality: 'medium',
   dayLength: 480,
   cameraView: 'normal',
   cameraZoom: 1,
@@ -45,7 +45,7 @@ export function sanitize(raw: unknown): GameOptions {
 
 /** Device-pixel-ratio cap for each quality tier (the cheapest lever to apply live). */
 export const qualityPixelRatio = (q: Quality): number =>
-  q === 'low' ? 1 : q === 'medium' ? 1.5 : 2;
+  q === 'low' ? 0.9 : q === 'medium' ? 1.25 : 1.6;
 
 const STORAGE_KEY = 'gta7.options';
 
