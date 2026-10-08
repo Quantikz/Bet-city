@@ -90,7 +90,9 @@ if (streaming) {
   city = generateCity(config);
 }
 
-const quality = options.quality;
+// Phones should never inherit a desktop "high" profile by accident.
+const quality = touch && options.quality === 'high' ? 'medium' : options.quality;
+if (quality !== options.quality) options = { ...options, quality };
 const env = new SceneEnv(container, city, {
   maxPixelRatio: qualityPixelRatio(quality),
   shadowMapSize: quality === 'high' ? 1536 : 768,
