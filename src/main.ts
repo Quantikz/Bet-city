@@ -90,8 +90,12 @@ if (streaming) {
   city = generateCity(config);
 }
 
+const quality = options.quality;
 const env = new SceneEnv(container, city, {
-  ...(touch ? { maxPixelRatio: 1.5, shadowMapSize: 1024 } : {}),
+  maxPixelRatio: qualityPixelRatio(quality),
+  shadowMapSize: quality === 'high' ? 1536 : 768,
+  antialias: quality === 'high' && !touch,
+  shadows: quality !== 'low',
   streaming,
 });
 
@@ -103,6 +107,16 @@ if (streamedWorld) {
   env.scene.add(assets.makeProps(city.props));
 }
 addUrbanVisuals(env.scene, city);
+
+// Medium/low: keep the main sun and dynamic actors, but don't make every
+// building, tree and street prop a shadow caster. This removes a large shadow
+// rendering pass while preserving the scene's lighting and depth.
+if (quality !== 'high') {
+  env.scene.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (mesh.isMesh) mesh.castShadow = false;
+  });
+}
 
 const avatar = makePed(0x2266dd);
 env.scene.add(avatar);
@@ -135,8 +149,20 @@ const world = new World();
 const debris = new Debris(env.scene, world);
 // Stream mode (MVP): no ambient traffic/peds yet — they spawn player-relative in
 // a follow-up (Phase C). The player car still spawns at the origin intersection.
-const vehicles = new Vehicles(env.scene, city, world, debris, streaming ? 0 : touch ? 24 : 40);
-const peds = new Pedestrians(env.scene, city, world, debris, streaming ? 0 : touch ? 28 : 60);
+const vehicles = new Vehicles(
+  env.scene,
+  city,
+  world,
+  debris,
+  streaming ? 0 : quality === 'low' ? 12 : quality === 'medium' ? 20 : touch ? 28 : 34,
+);
+const peds = new Pedestrians(
+  env.scene,
+  city,
+  world,
+  debris,
+  streaming ? 0 : quality === 'low' ? 16 : quality === 'medium' ? 28 : touch ? 36 : 48,
+);
 const hud = new HUD(container, city, touch, streaming);
 
 let touchRoot: HTMLElement | undefined;
@@ -304,16 +330,25 @@ peds.update(city, dt, runOverQuery, mode === 'driving' ? chaseTarget() : null, r
   controls.endFrame();
 }
 
+let streetlightPoolTimer = 0;
 function updateStreetlightPool(ax: number, az: number): void {
   const sl = city.streetlights;
   if (sl.length === 0) return;
-  // Nearest-first each call (the streamed set changes as chunks load/unload, so
-  // we can't keep a persistent index array).
-  const d2 = (i: number): number => (sl[i].x - ax) ** 2 + (sl[i].z - az) ** 2;
-  const order = sl.map((_, i) => i).sort((a, b) => d2(a) - d2(b));
+  streetlightPoolTimer -= 1 / 60;
+  if (streetlightPoolTimer > 0) return;
+  streetlightPoolTimer = 0.25;
+  const nearest: { x: number; z: number; d2: number }[] = [];
+  for (const s of sl) {
+    const d2 = (s.x - ax) ** 2 + (s.z - az) ** 2;
+    if (d2 < 55 * 55) nearest.push({ x: s.x, z: s.z, d2 });
+  }
+  nearest.sort((a, b) => a.d2 - b.d2);
   for (let i = 0; i < streetlightPool.length; i++) {
-    const s = sl[order[Math.min(i, order.length - 1)]];
-    streetlightPool[i].position.set(s.x, 4.8, s.z);
+    const s = nearest[i] ?? nearest[0];
+    const l = streetlightPool[i];
+    if (!s) { l.intensity = 0; continue; }
+    l.position.set(s.x, 4.8, s.z);
+    l.intensity = 45;
   }
 }
 
