@@ -60,7 +60,6 @@ for(let x=-28;x<=28;x+=7){cyl(scene,M.dark,x,.1,-25,.08,.18);sphere(scene,M.ligh
 const sx=-17,sz=-7,sw=19,sd=17,sh=4.8;
 box(scene,M.concrete,sx,.16,sz,sw+.7,.3,sd+.7);
 box(scene,M.inner,sx,.34,sz,sw,.12,sd);
-box(scene,M.dark,sx,.52,sz-sw*0,.18,sh,sd); // back wall
 // open glass front; solid side walls and rear wall, flat roof frame
 box(scene,M.wall,sx-sw/2+.12, .35+sh/2,sz,.24,sh,sd);
 box(scene,M.wall,sx+sw/2-.12,.35+sh/2,sz,.24,sh,sd);
