@@ -112,10 +112,22 @@ const civic=[
  {name:'MARKET NEWS',sub:'FX NEWS · ECONOMIC CALENDAR',x:0,z:32,w:7,d:7,h:9}
 ];
 for(const h of civic){mesh(boxGeo,M.sidewalk,[h.x,.3,h.z],[h.w+1,.5,h.d+1]);mesh(boxGeo,M.glass,[h.x,h.h/2+.5,h.z],[h.w,h.h,h.d]);mesh(boxGeo,M.roof,[h.x,h.h+.7,h.z],[h.w+.4,.4,h.d+.4]);const s=sign(h.name,h.sub,9,2);s.position.set(h.x,h.h*.55,h.z+h.d/2+.1);scene.add(s)}
-// Repeated low-poly trees and street lamps are batched into instanced meshes.
-for(let z=-65;z<=65;z+=10)for(let x=-65;x<=65;x+=10){if(Math.abs(x)%30<5||Math.abs(z)%30<5)continue;let near=false;for(const h of hubs)if(Math.abs(x-h.x)<h.w/2+3&&Math.abs(z-h.z)<h.d/2+3)near=true;for(const h of civic)if(Math.abs(x-h.x)<h.w/2+2&&Math.abs(z-h.z)<h.d/2+2)near=true;if(!near){trunks.push({p:[x,.9,z],s:[1,2,1]});trees.push({p:[x,2.5,z],s:[1.5,1.5,1.5]})}}
+// Trees are restricted to the actual 90x90 city parcel and planted only in green lots.
+const streetAxes=[-38,-11,11,38];
+for(let z=-42;z<=42;z+=7)for(let x=-42;x<=42;x+=7){
+ let blocked=false;
+ for(const a of streetAxes)if(Math.abs(x-a)<4.6||Math.abs(z-a)<4.6)blocked=true;
+ for(const h of hubs)if(Math.abs(x-h.x)<h.w/2+3.2&&Math.abs(z-h.z)<h.d/2+3.2)blocked=true;
+ for(const h of civic)if(Math.abs(x-h.x)<h.w/2+2.5&&Math.abs(z-h.z)<h.d/2+2.5)blocked=true;
+ if(!blocked){trunks.push({p:[x,.9,z],s:[.75,1.8,.75]});trees.push({p:[x,2.15,z],s:[1.15,1.15,1.15]})}
+}
 instanced(treeGeo,M.trunk,trunks);instanced(leafGeo,M.leaf,trees);
-for(let z=-60;z<=60;z+=20)for(let x=-60;x<=60;x+=20){lamps.push({p:[x,2.4,z],s:[1,4.8,1]})}
+// Street lamps stay inside the city parcel and beside the inner road grid.
+for(const v of streetAxes)for(let q=-40;q<=40;q+=20){
+ for(const p of [[v-2.7,q],[v+2.7,q],[q,v-2.7],[q,v+2.7]]){
+  if(Math.abs(p[0])<=43&&Math.abs(p[1])<=43)lamps.push({p:[p[0],2.4,p[1]],s:[1,4.8,1]})
+ }
+}
 instanced(lampGeo,M.steel,lamps);
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=null,day=true,mode='orbit';const keys={};
 function notice(t){const n=document.querySelector('#notice');n.textContent=t;n.style.opacity=1;clearTimeout(notice.t);notice.t=setTimeout(()=>n.style.opacity=0,2200)}
