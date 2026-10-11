@@ -23,15 +23,15 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
-const scene=new THREE.Scene();scene.background=new THREE.Color('#9bb8c8');scene.fog=new THREE.Fog('#9bb8c8',150,280);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#b8d3df');scene.fog=new THREE.Fog('#b8d3df',210,360);
 const camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,400);camera.position.set(94,88,105);
-const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'low-power'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.15));renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.NoToneMapping;document.body.appendChild(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'low-power'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.appendChild(renderer.domElement);
 const orbit=new OrbitControls(camera,renderer.domElement);orbit.target.set(0,5,0);orbit.enableDamping=true;orbit.dampingFactor=.075;orbit.maxPolarAngle=Math.PI*.49;orbit.minDistance=16;orbit.maxDistance=220;
 const mat=(color,roughness=.8,metalness=0,extra={})=>new THREE.MeshStandardMaterial({color,roughness,metalness,...extra});
 const M={
- road:mat('#303b43'),sidewalk:mat('#aeb8ba'),grass:mat('#56775b'),ground:mat('#718d78'),
- concrete:mat('#c6ccca'),glass:mat('#355666',.55,.1,{emissive:'#203d4a',emissiveIntensity:.18}),
- darkGlass:mat('#1a2b37',.45,.1),gold:mat('#dcb65f',.55,.2),white:mat('#e4e8e7'),
+ road:mat('#29343d'),sidewalk:mat('#c8d0cf'),grass:mat('#47764f'),ground:mat('#668a70'),
+ concrete:mat('#d4d9d6'),glass:mat('#5f9caf',.3,.12,{emissive:'#244a5a',emissiveIntensity:.42}),
+ darkGlass:mat('#233b49',.36,.1,{emissive:'#142b37',emissiveIntensity:.18}),gold:mat('#dcb65f',.4,.25),white:mat('#f0f3ef'),
  steel:mat('#697984',.65,.15),roof:mat('#24333c'),wood:mat('#76583a'),
  screen:mat('#0a151e',.8),leaf:mat('#477b54'),trunk:mat('#765a3e'),lamp:mat('#ffe5a4',.5,0,{emissive:'#ffe0a0',emissiveIntensity:.7})
 };
@@ -41,7 +41,7 @@ function instanced(geo,material,items){const im=new THREE.InstancedMesh(geo,mate
 function signTexture(title,sub){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.fillStyle='#101a22';g.fillRect(0,0,512,128);g.fillStyle='#dcb65f';g.fillRect(0,0,8,128);g.fillStyle='#f6f7f4';g.font='bold 34px Arial';g.fillText(title.toUpperCase(),25,55,460);g.fillStyle='#dcb65f';g.font='18px Arial';g.fillText(sub.toUpperCase(),27,91,460);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 function sign(title,sub,w=12,h=3){return new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:signTexture(title,sub)}))}
 const chartCanvas=document.createElement('canvas');chartCanvas.width=256;chartCanvas.height=144;const cg=chartCanvas.getContext('2d');cg.fillStyle='#0a151e';cg.fillRect(0,0,256,144);cg.strokeStyle='#243845';for(let x=0;x<256;x+=32){cg.beginPath();cg.moveTo(x,20);cg.lineTo(x,132);cg.stroke()}for(let y=20;y<144;y+=24){cg.beginPath();cg.moveTo(0,y);cg.lineTo(256,y);cg.stroke()}cg.fillStyle='#dcb65f';cg.font='bold 14px Arial';cg.fillText('XAUUSD · EURUSD',9,15);let cv=80;for(let i=0;i<40;i++){let next=cv+(Math.random()-.47)*18;cg.strokeStyle=next>=cv?'#42c995':'#f07878';cg.beginPath();cg.moveTo(i*6+2,126-cv);cg.lineTo(i*6+2,126-next);cg.stroke();cv=next}const chartTex=new THREE.CanvasTexture(chartCanvas);chartTex.colorSpace=THREE.SRGBColorSpace;
-scene.add(new THREE.HemisphereLight('#f4f8ff','#56645b',2.25));const sun=new THREE.DirectionalLight('#fff0d4',2.15);sun.position.set(-40,100,50);scene.add(sun);
+scene.add(new THREE.HemisphereLight('#f4f8ff','#596653',2.45));const sun=new THREE.DirectionalLight('#fff3df',2.6);sun.position.set(-40,100,50);scene.add(sun);
 mesh(boxGeo,M.ground,[0,-.65,0],[170,1.2,170]);
 const hubs=[
  {name:'GOATFUNDED',sub:'FLAGSHIP FOREX CAMPUS',x:0,z:0,w:17,d:15,h:19,color:'#dcb65f',desc:'Flagship hub · trading floor · academy · community'},
@@ -54,13 +54,13 @@ const hubs=[
  {name:'FXIFY',sub:'FOREX WORKSPACE',x:36,z:0,w:12,d:12,h:12,color:'#ad9be5',desc:'Forex workspace · shared trading floor'}
 ];
 // Street grid and walkable sidewalks; buildings are spaced on 36-unit blocks.
-mesh(boxGeo,M.road,[0,-.02,0],[155,.18,155]);
-const sidewalks=[],roadlines=[];
-for(let v=-60;v<=60;v+=30){
- sidewalks.push({p:[v,.09,0],s:[4,.22,150]},{p:[0,.09,v],s:[150,.22,4]});
- for(let q=-65;q<=65;q+=5){roadlines.push({p:[q,.085,v+2.7],s:[2,.025,.12]},{p:[v+2.7,.085,q],s:[.12,.025,2]})}
+const roadItems=[],walkItems=[],roadlines=[];
+for(const v of [-75,-45,-15,15,45,75]){
+ roadItems.push({p:[v,.015,0],s:[7,.12,155]},{p:[0,.015,v],s:[155,.12,7]});
+ walkItems.push({p:[v-4.5,.12,0],s:[1.8,.18,155]},{p:[v+4.5,.12,0],s:[1.8,.18,155]},{p:[0,.12,v-4.5],s:[155,.18,1.8]},{p:[0,.12,v+4.5],s:[155,.18,1.8]});
+ for(let q=-72;q<=72;q+=6){roadlines.push({p:[q,.083,v],s:[2.1,.018,.12]},{p:[v,.083,q],s:[.12,.018,2.1]})}
 }
-instanced(boxGeo,M.sidewalk,sidewalks);instanced(boxGeo,M.white,roadlines);
+instanced(boxGeo,M.road,roadItems);instanced(boxGeo,M.sidewalk,walkItems);instanced(boxGeo,M.gold,roadlines);
 // Central plaza and small landscaped pockets.
 mesh(boxGeo,M.sidewalk,[0,.13,0],[24,.18,24]);mesh(boxGeo,M.road,[0,.24,0],[17,.08,17]);
 const goldRing=new THREE.Mesh(new THREE.TorusGeometry(5.2,.12,5,32),new THREE.MeshBasicMaterial({color:'#dcb65f'}));goldRing.rotation.x=Math.PI/2;goldRing.position.set(0,.36,0);scene.add(goldRing);
@@ -68,21 +68,25 @@ const plinth=mesh(new THREE.CylinderGeometry(3,3.4,.6,12),M.roof,[0,.55,0],[1,1,
 mesh(new THREE.SphereGeometry(1,8,6),statueMat,[0,1.55,0],[1.1,.65,.55]);mesh(new THREE.SphereGeometry(.45,8,6),statueMat,[.9,2.05,0],[1,1,1]);
 for(const s of [-1,1]){const horn=new THREE.Mesh(new THREE.TorusGeometry(.28,.07,5,10,Math.PI),statueMat);horn.position.set(.88+s*.2,2.5,0);horn.rotation.z=s*.6;scene.add(horn)}
 // Each tower uses unique dimensions and signage, but shares all base geometry and materials.
-const windowItems=[],trees=[],trunks=[],lamps=[],desks=[],screenItems=[];
+const windowItems=[],trees=[],trunks=[],lamps=[],desks=[],screenItems=[],accentItems=[],roofItems=[],entryItems=[];
 const hubMeshes=[];
 for(const h of hubs){
  const baseY=.25;
- mesh(boxGeo,M.sidewalk,[h.x,baseY,h.z],[h.w+1.8,.5,h.d+1.8]);
- mesh(boxGeo,M.darkGlass,[h.x,baseY+h.h/2,h.z],[h.w,h.h,h.d]);
- mesh(boxGeo,M.roof,[h.x,baseY+h.h+.3,h.z],[h.w+.6,.5,h.d+.6]);
- mesh(boxGeo,mat(h.color,.6,.12),[h.x,baseY+1.05,h.z+h.d/2+.16],[h.w,.5,.35]);
- const front=sign(h.name,h.sub,Math.min(13,h.w),2.5);front.position.set(h.x,Math.min(h.h-1.5,4.5)+baseY,h.z+h.d/2+.25);scene.add(front);
- const roofSign=sign(h.name,'FOREX TRADING STATION',Math.min(11,h.w),1.8);roofSign.position.set(h.x,baseY+h.h+.65,h.z);roofSign.rotation.x=-Math.PI/2;scene.add(roofSign);
+ mesh(boxGeo,M.sidewalk,[h.x,baseY,h.z],[h.w+2.4,.5,h.d+2.4]);
+ mesh(boxGeo,M.concrete,[h.x,baseY+.7,h.z],[h.w+.25,1.1,h.d+.25]);
+ mesh(boxGeo,M.darkGlass,[h.x,baseY+h.h/2+1,h.z],[h.w,h.h-1.5,h.d]);
+ mesh(boxGeo,M.roof,[h.x,baseY+h.h+1.1,h.z],[h.w+.8,.6,h.d+.8]);
+ mesh(boxGeo,mat(h.color,.42,.2),[h.x,baseY+1.45,h.z+h.d/2+.2],[h.w,.55,.4]);
+ roofItems.push({p:[h.x-h.w*.27,baseY+h.h+1.65,h.z-h.d*.18],s:[h.w*.22,.65,h.d*.28]},{p:[h.x+h.w*.25,baseY+h.h+1.65,h.z+h.d*.2],s:[h.w*.18,.65,h.d*.24]});
+ entryItems.push({p:[h.x,baseY+1.45,h.z+h.d/2+.23],s:[Math.min(3.2,h.w*.28),2.2,.14]});
+ for(let fin of [-1,1])accentItems.push({p:[h.x+fin*(h.w/2-.32),baseY+h.h/2+.8,h.z+h.d/2+.12],s:[.22,h.h-2,.22]});
+ const front=sign(h.name,h.sub,Math.min(13,h.w),2.5);front.position.set(h.x,baseY+2.2,h.z+h.d/2+.43);scene.add(front);
+ const roofSign=sign(h.name,'FOREX TRADING STATION',Math.min(11,h.w),1.8);roofSign.position.set(h.x,baseY+h.h+1.42,h.z);roofSign.rotation.x=-Math.PI/2;scene.add(roofSign);
  for(let floor=1;floor<h.h-1;floor+=2.4)for(let xx=-h.w/2+1.2;xx<h.w/2;xx+=2.4){
-  windowItems.push({p:[h.x+xx,baseY+floor,h.z+h.d/2+.035],s:[1.45,1.15,.08]});
-  windowItems.push({p:[h.x+xx,baseY+floor,h.z-h.d/2-.035],s:[1.45,1.15,.08]});
-  windowItems.push({p:[h.x+h.w/2+.035,baseY+floor,h.z+xx*h.d/h.w],s:[.08,1.15,1.45]});
-  windowItems.push({p:[h.x-h.w/2-.035,baseY+floor,h.z+xx*h.d/h.w],s:[.08,1.15,1.45]});
+  windowItems.push({p:[h.x+xx,baseY+floor+1,h.z+h.d/2+.075],s:[1.55,1.28,.09]});
+  windowItems.push({p:[h.x+xx,baseY+floor+1,h.z-h.d/2-.075],s:[1.55,1.28,.09]});
+  windowItems.push({p:[h.x+h.w/2+.075,baseY+floor+1,h.z+xx*h.d/h.w],s:[.09,1.28,1.55]});
+  windowItems.push({p:[h.x-h.w/2-.075,baseY+floor+1,h.z+xx*h.d/h.w],s:[.09,1.28,1.55]});
  }
  // One reusable workstation module per hub; repeated furniture shares the same geometry and chart texture.
  for(let row=0;row<2;row++)for(let col=0;col<3;col++){
@@ -94,6 +98,7 @@ for(const h of hubs){
 }
 // Shared instanced window, furniture, screens and vegetation batches: no duplicate geometry/material per copy.
 instanced(windowGeo,M.glass,windowItems);
+instanced(boxGeo,M.gold,accentItems);instanced(boxGeo,M.roof,roofItems);instanced(boxGeo,M.darkGlass,entryItems);
 instanced(deskGeo,M.wood,desks);
 instanced(boxGeo,M.screen,screenItems);
 const screenPlaneItems=screenItems.map(s=>({p:[s.p[0],s.p[1],s.p[2]-.075],s:[1.25,.68,1]}));
@@ -114,9 +119,9 @@ instanced(lampGeo,M.steel,lamps);
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=null,day=true,mode='orbit';const keys={};
 function notice(t){const n=document.querySelector('#notice');n.textContent=t;n.style.opacity=1;clearTimeout(notice.t);notice.t=setTimeout(()=>n.style.opacity=0,2200)}
 function choose(h){selected=h;const p=document.querySelector('#selected');p.style.display=h?'block':'none';if(h){document.querySelector('#hubname').textContent=h.name;document.querySelector('#hubdesc').textContent=h.desc||'Forex services · trading workspace · trader community'}}
-function setMode(m){mode=m;orbit.enabled=m!=='walk';document.querySelector('#orbit').classList.toggle('active',m==='orbit');document.querySelector('#walk').classList.toggle('active',m==='walk');document.querySelector('#top').classList.toggle('active',m==='top');document.querySelector('#mode').textContent=m==='walk'?'STREET EXPLORATION':m==='top'?'CITY MAP':'CITY OVERVIEW';document.querySelector('#instructions').textContent=m==='walk'?'Tap a street to move there · drag to look around · use the map button to return.':m==='top'?'Overhead city plan · drag to pan · scroll to zoom.':'Drag to orbit · pinch/scroll to zoom · tap a trading hub to inspect it.';if(m==='walk'){camera.position.set(0,5,65);orbit.target.set(0,3,45)}else if(m==='top'){camera.position.set(0,145,.1);orbit.target.set(0,0,0);orbit.maxPolarAngle=Math.PI/2.02}else{orbit.maxPolarAngle=Math.PI*.49}}
+function setMode(m){mode=m;orbit.enabled=m!=='walk';document.querySelector('#orbit').classList.toggle('active',m==='orbit');document.querySelector('#walk').classList.toggle('active',m==='walk');document.querySelector('#top').classList.toggle('active',m==='top');document.querySelector('#mode').textContent=m==='walk'?'STREET EXPLORATION':m==='top'?'CITY MAP':'CITY OVERVIEW';document.querySelector('#instructions').textContent=m==='walk'?'Tap a street to move there · drag to look around · use the map button to return.':m==='top'?'Overhead city plan · drag to pan · scroll to zoom.':'Drag to orbit · pinch/scroll to zoom · tap a trading hub to inspect it.';if(m==='walk'){camera.position.set(0,5,65);orbit.target.set(0,3,45)}else if(m==='top'){camera.position.set(0,125,.1);orbit.target.set(0,0,0);orbit.maxPolarAngle=Math.PI/2.02}else{orbit.maxPolarAngle=Math.PI*.49}}
 document.querySelector('#orbit').onclick=()=>setMode('orbit');document.querySelector('#walk').onclick=()=>setMode('walk');document.querySelector('#top').onclick=()=>setMode('top');document.querySelector('#reset').onclick=()=>{setMode('orbit');camera.position.set(94,88,105);orbit.target.set(0,5,0);orbit.update();choose(null)};
-document.querySelector('#day').onclick=()=>{day=!day;scene.background.set(day?'#9bb8c8':'#101923');scene.fog.color.set(day?'#9bb8c8':'#101923');sun.intensity=day?2.15:.55;document.querySelector('#day').textContent=day?'☼ Day lighting':'☾ Evening lighting'};
+document.querySelector('#day').onclick=()=>{day=!day;scene.background.set(day?'#b8d3df':'#101923');scene.fog.color.set(day?'#b8d3df':'#101923');sun.intensity=day?2.6:.7;document.querySelector('#day').textContent=day?'☼ Day lighting':'☾ Evening lighting'};
 document.querySelector('#focus').onclick=()=>{if(!selected)return;setMode('orbit');orbit.target.set(selected.x,selected.h/2,selected.z);camera.position.set(selected.x+selected.w*1.7,selected.h*.9+8,selected.z+selected.d*2.3);orbit.update()};
 renderer.domElement.addEventListener('pointerdown',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);if(mode==='walk'){const groundHit=ray.intersectObjects(scene.children,false).find(i=>Math.abs(i.point.y)<1.2);if(groundHit){camera.position.x=THREE.MathUtils.clamp(groundHit.point.x,-72,72);camera.position.z=THREE.MathUtils.clamp(groundHit.point.z,-72,72);orbit.target.set(camera.position.x,3,camera.position.z-12);orbit.update()}return}const hits=ray.intersectObjects(hubMeshes.map(x=>x.hit),false);if(hits.length){const found=hubMeshes.find(x=>x.hit===hits[0].object);if(found){choose(found.h);notice(found.h.name+' · selected trading hub')}}});
 document.addEventListener('keydown',e=>keys[e.code]=true);document.addEventListener('keyup',e=>keys[e.code]=false);
