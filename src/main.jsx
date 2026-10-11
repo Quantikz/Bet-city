@@ -141,6 +141,14 @@ sphere(car,M.red,0,.78,1.6,1.18,.38,1.15);
 box(car,M.black,0,1.08,-.2,1.62,.55,2.15);
 const wind=new THREE.Mesh(new THREE.BoxGeometry(1.52,.08,1.12),M.glass);wind.position.set(0,1.35,-.42);wind.rotation.x=-.36;car.add(wind);
 box(car,M.black,0,1.32,.62,1.5,.08,1.05);
+// Visible cockpit equipment: bucket seats, center console, dashboard, wheel and pedals.
+for(const x of [-.43,.43]){box(car,M.leather,x,1.02,.1,.48,.22,.58);box(car,M.leather,x,1.3,.34,.45,.58,.18);box(car,M.dark,x,1.58,.39,.43,.08,.12);}
+box(car,M.dark,0,1.2,-.68,1.42,.28,.28);box(car,M.black,0,1.34,-.52,1.15,.16,.08);
+box(car,M.screen,-.37,1.43,-.47,.42,.22,.025);box(car,M.screen,.22,1.43,-.47,.36,.18,.025);
+const steering=new THREE.Mesh(new THREE.TorusGeometry(.19,.035,8,24),M.black);steering.position.set(-.43,1.34,-.15);steering.rotation.y=.25;car.add(steering);
+box(car,M.dark,0,.91,.66,.32,.12,.68);box(car,M.chrome,0,.98,.65,.09,.24,.1);
+for(let i=0;i<3;i++)box(car,M.chrome,-.32+i*.2,.76,-.38,.08,.035,.14);
+box(car,M.leather,0,1.13,.98,.72,.13,.2);
 for(const x of [-1,1]){box(car,M.black,x*.78,1.02,-1.25,.22,.08,.65);box(car,M.chrome,x*.92,.84,-2.18,.32,.1,.07);box(car,M.light,x*.91,.91,-2.2,.28,.08,.04);box(car,M.black,x*1.22,.7,0,.1,.22,2.2);}
 for(const x of [-1,1])for(const z of [-1.55,1.55]){
  const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.28,24),M.rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x*1.17,.5,z);car.add(wheel);
@@ -196,9 +204,9 @@ renderer.domElement.addEventListener("pointerup",e=>{
  else if(Math.abs(point.x-hx)<hw/2&&Math.abs(point.z-hz)<hd/2)selectZone(zones[1]);
 });
 ui.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.action==="enter"){enterSelected();}if(b.dataset.action==="exit"){exitInterior();}if(b.dataset.action==="reset"){if(inside)exitInterior();walking=false;ui.querySelector(".enter").hidden=true;moveCamera(0,3,0,43);ui.querySelector(".bottomhint").textContent="Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect";}if(b.dataset.action==="map"){camera.position.set(0,70,.1);controls.target.set(0,0,0);controls.update();}if(b.dataset.action==="light"){evening=!evening;scene.background.set(evening?"#172237":"#a9c4ce");scene.fog.color.copy(scene.background);moon.intensity=evening?1.15:2.1;warm.intensity=evening?100:28;renderer.toneMappingExposure=evening?1.22:1.4;}if(b.dataset.action==="walk"){if(inside==="car")return;walking=!walking;controls.enabled=true;ui.querySelector(".bottomhint").textContent=walking?"Walk mode: use the arrow pad or WASD to move around the compound":"Orbit mode enabled";}if(b.dataset.move){walking=true;const v={forward:[0,-.8],back:[0,.8],left:[-.8,0],right:[.8,0]}[b.dataset.move];tryMove(v[0],v[1]);}}}));
-function blocked(x,z){if(inside==="house"){const left=hx-hw/2+.65,right=hx+hw/2-.65,back=hz-hd/2+.65,front=hz+hd/2-.65;if(x<left||x>right||z<back||z>front)return true;if(Math.abs(x-(hx+1))<.38&&Math.abs(z-hz)<7.4)return true;if(Math.abs(z-(hz-2))<.38&&x>hx+1.6&&x<hx+hw/2-1)return true;if(Math.abs(z-(hz-5))<.38&&x>hx+1&&x<hx+hw/2-.5)return true;return false;}
+function blocked(x,z){if(!inside){const hit=(cx,cz,w,d)=>Math.abs(x-cx)<w/2&&Math.abs(z-cz)<d/2;const stationWall=(Math.abs(x-sx)<sw/2&&Math.abs(z-(sz+sd/2))<.45&&Math.abs(x-sx)>1.45)||(Math.abs(x-sx)<sw/2&&Math.abs(z-(sz-sd/2))<.45)||(Math.abs(z-sz)<sd/2&&Math.abs(x-(sx-sw/2))<.45)||(Math.abs(z-sz)<sd/2&&Math.abs(x-(sx+sw/2))<.45);const houseWall=(Math.abs(x-hx)<hw/2&&Math.abs(z-(hz+hd/2))<.45&&Math.abs(x-hx)>1.5)||(Math.abs(x-hx)<hw/2&&Math.abs(z-(hz-hd/2))<.45)||(Math.abs(z-hz)<hd/2&&Math.abs(x-(hx-hw/2))<.45)||(Math.abs(z-hz)<hd/2&&Math.abs(x-(hx+hw/2))<.45);return stationWall||houseWall||hit(1,12,2.8,5.1);}if(inside==="house"){const left=hx-hw/2+.65,right=hx+hw/2-.65,back=hz-hd/2+.65,front=hz+hd/2-.65;if(x<left||x>right||z<back||z>front)return true;if(Math.abs(x-(hx+1))<.38&&Math.abs(z-hz)<7.4)return true;if(Math.abs(z-(hz-2))<.38&&x>hx+1.6&&x<hx+hw/2-1)return true;if(Math.abs(z-(hz-5))<.38&&x>hx+1&&x<hx+hw/2-.5)return true;return false;}
 if(inside==="station"){return x<sx-sw/2+.5||x>sx+sw/2-.5||z<sz-sd/2+.5||z>sz+sd/2-.5;}return false;}
-function tryMove(dx,dz){const nx=controls.target.x+dx,nz=controls.target.z+dz;if(inside&&inside!=="car"&&blocked(nx,nz))return;camera.position.x+=dx;camera.position.z+=dz;controls.target.x=nx;controls.target.z=nz;}
+function tryMove(dx,dz){const nx=controls.target.x+dx,nz=controls.target.z+dz;if(inside!=="car"&&blocked(nx,nz))return;camera.position.x+=dx;camera.position.z+=dz;controls.target.x=nx;controls.target.z=nz;}
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 function animate(){requestAnimationFrame(animate);if(walking&&inside!=="car"){const speed=.09;if(keys.w||keys.arrowup)tryMove(0,-speed);if(keys.s||keys.arrowdown)tryMove(0,speed);if(keys.a||keys.arrowleft)tryMove(-speed,0);if(keys.d||keys.arrowright)tryMove(speed,0);}controls.update();renderer.render(scene,camera);}
 moveCamera(0,3,0,43);animate();document.querySelector("#boot")?.remove();
