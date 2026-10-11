@@ -175,8 +175,21 @@ const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
 let walking=false,keys={},evening=true;
 function moveCamera(x,y,z,dist=20){controls.target.set(x,y,z);const dir=new THREE.Vector3(.95,.72,1).normalize();camera.position.set(x+dir.x*dist,y+dir.y*dist,z+dir.z*dist);controls.update();}
 function selectZone(z){document.querySelectorAll(".panel").forEach(p=>p.classList.remove("selected"));const cls=z.name.startsWith("Trading")?".station":z.name==="House"?".house":".carinfo";ui.querySelector(cls).classList.add("selected");const hint=ui.querySelector(".bottomhint");hint.textContent=z.name+" — "+z.desc;moveCamera(z.x,z.name==="Ferrari 488"?1.1:2.4,z.z,z.r);}
-renderer.domElement.addEventListener("pointerdown",e=>{ptr.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ptr,camera);const hits=ray.intersectObjects([car],true);if(hits.length){selectZone(zones[2]);return;}const p=new THREE.Plane(new THREE.Vector3(0,1,0),0);const point=new THREE.Vector3();ray.ray.intersectPlane(p,point);if(point&&Math.abs(point.x-sx)<sw&&Math.abs(point.z-sz)<sd)selectZone(zones[0]);else if(point&&Math.abs(point.x-hx)<hw/2&&Math.abs(point.z-hz)<hd/2)selectZone(zones[1]);});
-ui.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.action==="reset"){walking=false;moveCamera(0,3,0,43);ui.querySelector(".bottomhint").textContent="Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect";}if(b.dataset.action==="map"){camera.position.set(0,70,.1);controls.target.set(0,0,0);controls.update();}if(b.dataset.action==="light"){evening=!evening;scene.background.set(evening?"#172237":"#a9c4ce");scene.fog.color.copy(scene.background);moon.intensity=evening?1.15:2.1;warm.intensity=evening?100:28;renderer.toneMappingExposure=evening?1.22:1.4;}if(b.dataset.action==="walk"){walking=!walking;controls.enabled=!walking;ui.querySelector(".bottomhint").textContent=walking?"Walk mode: use the arrow pad to move around the compound":"Orbit mode enabled";}if(b.dataset.move){const v={forward:[0,-2],back:[0,2],left:[-2,0],right:[2,0]}[b.dataset.move];camera.position.x+=v[0];camera.position.z+=v[1];controls.target.x+=v[0];controls.target.z+=v[1];}}));
+let pressStart=null;
+renderer.domElement.addEventListener("pointerdown",e=>{pressStart={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener("pointerup",e=>{
+ if(!pressStart)return;
+ const moved=Math.hypot(e.clientX-pressStart.x,e.clientY-pressStart.y);pressStart=null;
+ if(moved>8)return; // Orbit/zoom gestures must not trigger object selection.
+ ptr.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(ptr,camera);
+ const carHits=ray.intersectObject(car,true);
+ if(carHits.length){selectZone(zones[2]);return;}
+ const p=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3();
+ if(!ray.ray.intersectPlane(p,point))return;
+ if(Math.abs(point.x-sx)<sw/2&&Math.abs(point.z-sz)<sd/2)selectZone(zones[0]);
+ else if(Math.abs(point.x-hx)<hw/2&&Math.abs(point.z-hz)<hd/2)selectZone(zones[1]);
+});
+ui.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.action==="reset"){walking=false;moveCamera(0,3,0,43);ui.querySelector(".bottomhint").textContent="Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect";}if(b.dataset.action==="map"){camera.position.set(0,70,.1);controls.target.set(0,0,0);controls.update();}if(b.dataset.action==="light"){evening=!evening;scene.background.set(evening?"#172237":"#a9c4ce");scene.fog.color.copy(scene.background);moon.intensity=evening?1.15:2.1;warm.intensity=evening?100:28;renderer.toneMappingExposure=evening?1.22:1.4;}if(b.dataset.action==="walk"){walking=!walking;controls.enabled=true;ui.querySelector(".bottomhint").textContent=walking?"Walk mode: use the arrow pad or WASD to move around the compound":"Orbit mode enabled";}if(b.dataset.move){walking=true;const v={forward:[0,-2],back:[0,2],left:[-2,0],right:[2,0]}[b.dataset.move];camera.position.x+=v[0];camera.position.z+=v[1];controls.target.x+=v[0];controls.target.z+=v[1];}}));
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 function animate(){requestAnimationFrame(animate);if(walking){const speed=.12;if(keys.w||keys.arrowup){camera.position.z-=speed;controls.target.z-=speed;}if(keys.s||keys.arrowdown){camera.position.z+=speed;controls.target.z+=speed;}if(keys.a||keys.arrowleft){camera.position.x-=speed;controls.target.x-=speed;}if(keys.d||keys.arrowright){camera.position.x+=speed;controls.target.x+=speed;}}controls.update();renderer.render(scene,camera);}
 moveCamera(0,3,0,43);animate();document.querySelector("#boot")?.remove();
