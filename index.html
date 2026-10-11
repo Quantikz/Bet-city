@@ -13,11 +13,11 @@
  <div id="brand" class="panel">🐐 GOATFUNDED <small>FOREX CITY · TRADER DISTRICT</small></div>
  <div id="stats" class="panel"><div><small>Trading hubs</small><b>8</b></div><div><small>City blocks</small><b>16</b></div><div><small>Market</small><b>FX · GOLD</b></div></div>
  <div id="controls" class="panel"><button id="orbit" class="active">◉ Orbit city</button><button id="walk">⌖ Explore streets</button><button id="top">▦ City map</button><button id="reset">↺ Reset view</button><button id="day">☼ Day lighting</button></div>
- <div id="help" class="panel"><b id="mode">CITY OVERVIEW</b><p id="instructions">Drag to orbit · pinch/scroll to zoom · tap a trading hub to inspect it. Repeated city assets share geometry and materials for lower GPU use.</p></div>
+ <div id="help" class="panel"><b id="mode">CITY OVERVIEW</b><p id="instructions">Drag to orbit · pinch/scroll to zoom · tap a trading hub to inspect it. Buildings now include visible floor plates, partitions, workstations, chairs, stairs and ceiling lights.</p></div>
  <div id="selected" class="panel"><b class="gold">TRADING HUB</b><h3 id="hubname">GOATFUNDED</h3><p id="hubdesc">Forex trading floor · education · trader community</p><button id="focus">Focus this hub</button></div>
  <div id="notice" class="panel"></div>
 </div>
-<div id="loading"><div><b>BUILDING GOATFUNDED FOREX CITY</b><strong>Assembling streets and trading hubs…</strong></div></div>
+<div id="loading"><div><b>BUILDING GOATFUNDED FOREX CITY</b><strong>Fitting floors, desks, lighting and interiors…</strong></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -31,7 +31,7 @@ const mat=(color,roughness=.8,metalness=0,extra={})=>new THREE.MeshStandardMater
 const M={
  road:mat('#29343d'),sidewalk:mat('#c8d0cf'),grass:mat('#47764f'),ground:mat('#668a70'),
  concrete:mat('#d4d9d6'),glass:mat('#5f9caf',.3,.12,{emissive:'#244a5a',emissiveIntensity:.42}),
- darkGlass:mat('#233b49',.36,.1,{emissive:'#142b37',emissiveIntensity:.18}),gold:mat('#dcb65f',.4,.25),white:mat('#f0f3ef'),
+ darkGlass:mat('#233b49',.36,.1,{emissive:'#142b37',emissiveIntensity:.18,transparent:true,opacity:.22,depthWrite:false}),gold:mat('#dcb65f',.4,.25),white:mat('#f0f3ef'),
  steel:mat('#697984',.65,.15),roof:mat('#24333c'),wood:mat('#76583a'),
  screen:mat('#0a151e',.8),leaf:mat('#477b54'),trunk:mat('#765a3e'),lamp:mat('#ffe5a4',.5,0,{emissive:'#ffe0a0',emissiveIntensity:.7})
 };
@@ -69,6 +69,9 @@ mesh(new THREE.SphereGeometry(1,8,6),statueMat,[0,1.55,0],[1.1,.65,.55]);mesh(ne
 for(const s of [-1,1]){const horn=new THREE.Mesh(new THREE.TorusGeometry(.28,.07,5,10,Math.PI),statueMat);horn.position.set(.88+s*.2,2.5,0);horn.rotation.z=s*.6;scene.add(horn)}
 // Each tower uses unique dimensions and signage, but shares all base geometry and materials.
 const windowItems=[],trees=[],trunks=[],lamps=[],desks=[],screenItems=[],accentItems=[],roofItems=[],entryItems=[];
+const interiorFloors=[],interiorColumns=[],partitionItems=[],lightFixtures=[],chairSeats=[],chairBacks=[],chairStems=[],chairBases=[],stairTreads=[],interiorScreens=[];
+const interiorLightMat=new THREE.MeshStandardMaterial({color:'#ffe8b0',emissive:'#ffe0a0',emissiveIntensity:1.8,roughness:.4});
+const partitionMat=mat('#b8c3c7',.9),floorMat=mat('#8b969c',.85),seatMat=mat('#252f37',.75),metalMat=mat('#53636d',.5,.45);
 const hubMeshes=[];
 for(const h of hubs){
  const baseY=.25;
@@ -88,17 +91,49 @@ for(const h of hubs){
   windowItems.push({p:[h.x+h.w/2+.075,baseY+floor+1,h.z+xx*h.d/h.w],s:[.09,1.28,1.55]});
   windowItems.push({p:[h.x-h.w/2-.075,baseY+floor+1,h.z+xx*h.d/h.w],s:[.09,1.28,1.55]});
  }
- // One reusable workstation module per hub; repeated furniture shares the same geometry and chart texture.
- for(let row=0;row<2;row++)for(let col=0;col<3;col++){
-  const dx=h.x+(col-1)*3.2,dz=h.z+(row-.5)*3.2;
-  desks.push({p:[dx,1.05,dz],s:[2.3,.16,1.25]});
-  screenItems.push({p:[dx,1.95,dz-.35],s:[1.35,.82,.12]});
+ // REAL INTERIOR MODULES: floor plates, structural columns, partitions, lit ceiling panels and circulation stairs.
+ const floorHeight=4.0, usableW=h.w-2.4, usableD=h.d-2.4;
+ for(let fy=0;fy<h.h-1;fy+=floorHeight){
+  const y=baseY+fy+.18;
+  interiorFloors.push({p:[h.x,y,h.z],s:[usableW,.28,usableD]});
+  for(const sx of [-1,1])for(const sz of [-1,1])interiorColumns.push({p:[h.x+sx*(h.w/2-1.15),y+1.85,h.z+sz*(h.d/2-1.15)],s:[.35,3.7,.35]});
+  for(let lx=-usableW/2+1.5;lx<usableW/2-1;lx+=Math.max(3,usableW/5)){
+   lightFixtures.push({p:[h.x+lx,y+3.55,h.z-usableD*.12],s:[Math.min(2.5,usableW/5),.08,.28]});
+   lightFixtures.push({p:[h.x+lx,y+3.55,h.z+usableD*.12],s:[Math.min(2.5,usableW/5),.08,.28]});
+  }
+  // Reception/office partitions on each floor leave a central circulation spine.
+  partitionItems.push({p:[h.x-usableW*.27,y+1.15,h.z],s:[.12,2.3,usableD*.32]});
+  partitionItems.push({p:[h.x+usableW*.27,y+1.15,h.z],s:[.12,2.3,usableD*.32]});
+  // Open-plan desk rows, with a clear central aisle and matching chairs/monitors.
+  const cols=Math.max(2,Math.floor(usableW/3.2)),rows=Math.max(2,Math.floor(usableD/3.1));
+  for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){
+   const dx=h.x+(cc-(cols-1)/2)*Math.min(3.2,usableW/(cols+.4));
+   const dz=h.z+(rr-(rows-1)/2)*Math.min(3.1,usableD/(rows+.4));
+   if(Math.abs(dx-h.x)<1.5)continue;
+   const topY=y+.85;
+   desks.push({p:[dx,topY,dz],s:[Math.min(2.4,usableW/cols*.82),.13,1.05]});
+   screenItems.push({p:[dx,topY+.52,dz-.25],s:[Math.min(1.45,usableW/cols*.55),.82,.1]});
+   interiorScreens.push({p:[dx,topY+.53,dz-.31],s:[Math.min(1.34,usableW/cols*.51),.68,1]});
+   chairSeats.push({p:[dx,topY-.18,dz+.92],s:[.72,.18,.72]});
+   chairBacks.push({p:[dx,topY+.25,dz+1.22],s:[.68,.68,.14]});
+   chairStems.push({p:[dx,topY-.48,dz+.92],s:[.12,.48,.12]});
+   chairBases.push({p:[dx,topY-.7,dz+.92],s:[.68,.09,.68]});
+  }
+  // Compact stair flight represented as individually placed treads within a dedicated side bay.
+  for(let st=0;st<10;st++)stairTreads.push({p:[h.x-usableW*.38+st*.22,y+.2+st*.18,h.z+usableD*.3],s:[1.4,.12,.55]});
  }
  hubMeshes.push({h,hit:mesh(boxGeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,colorWrite:false,depthWrite:false}),[h.x,baseY+h.h/2,h.z],[h.w,h.h,h.d])});
 }
 // Shared instanced window, furniture, screens and vegetation batches: no duplicate geometry/material per copy.
 instanced(windowGeo,M.glass,windowItems);
 instanced(boxGeo,M.gold,accentItems);instanced(boxGeo,M.roof,roofItems);instanced(boxGeo,M.darkGlass,entryItems);
+instanced(boxGeo,floorMat,interiorFloors);
+instanced(boxGeo,metalMat,interiorColumns);
+instanced(boxGeo,partitionMat,partitionItems);
+instanced(boxGeo,interiorLightMat,lightFixtures);
+instanced(boxGeo,seatMat,chairSeats);instanced(boxGeo,seatMat,chairBacks);
+instanced(boxGeo,metalMat,chairStems);instanced(boxGeo,metalMat,chairBases);
+instanced(boxGeo,M.wood,stairTreads);
 instanced(deskGeo,M.wood,desks);
 instanced(boxGeo,M.screen,screenItems);
 const screenPlaneItems=screenItems.map(s=>({p:[s.p[0],s.p[1],s.p[2]-.075],s:[1.25,.68,1]}));
