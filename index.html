@@ -85,7 +85,7 @@ campusZone('WELCOME ATRIUM','GOATFUNDED MEMBER SERVICES',0,47,'welcome');
 // Signature golden goat-inspired abstract sculpture on a circular plinth at the atrium.
 const statueMat=mat('#e0b650',.24,.78);
 cyl(scene,mat('#121b22',.3,.5),[0,.25,41],4.2,4.2,.5,48);
-cyl(scene,trim,[0,.53,41],3.8,3.8,.08,48);
+cyl(scene,statueMat,[0,.53,41],3.8,3.8,.08,48);
 const goatBody=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),statueMat);goatBody.position.set(0,1.55,41);goatBody.scale.set(1.25,.7,.52);scene.add(goatBody);
 const goatHead=new THREE.Mesh(new THREE.SphereGeometry(.48,16,12),statueMat);goatHead.position.set(.9,2.1,40.8);scene.add(goatHead);
 for(let s of [-1,1]){let horn=new THREE.Mesh(new THREE.TorusGeometry(.32,.075,8,18,Math.PI*1.15),statueMat);horn.position.set(.9+s*.22,2.65,40.8);horn.rotation.z=s===-1?-.65:.65;scene.add(horn);}
