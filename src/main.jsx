@@ -24,9 +24,9 @@ const mat=(color,roughness=.7,metalness=0,extra={})=>new THREE.MeshStandardMater
 const M={
  ground:mat("#293b39"),grass:mat("#426047"),stone:mat("#8c8a82"),paver:mat("#b6b0a2"),dark:mat("#151a21"),black:mat("#080b10",.22,.25),
  concrete:mat("#777a7a"),wall:mat("#c9c2b4"),inner:mat("#e1d6c2"),wood:mat("#6e4931"),woodLight:mat("#a47a50"),gold:mat("#d5ad61",.35,.5),
- glass:mat("#5f91a1",.16,.25,{transparent:true,opacity:.28,side:THREE.DoubleSide}),window:mat("#172b3b",.16,.35),
+ glass:mat("#5f91a1",.16,.25,{transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide}),window:mat("#172b3b",.16,.35),
  red:mat("#b50920",.22,.62),rubber:mat("#111318",.95),chrome:mat("#b6c4c9",.2,.85),leather:mat("#252b31",.65),screen:mat("#06131d",.24,.1),
- green:mat("#315c3d"),leaf:mat("#476c48"),leaf2:mat("#70885a"),water:mat("#1689a6",.14,.22,{transparent:true,opacity:.9}),
+ green:mat("#315c3d"),leaf:mat("#476c48"),leaf2:mat("#70885a"),water:mat("#1689a6",.14,.22,{transparent:true,opacity:.9,depthWrite:false}),
  white:mat("#eee8dd"),rug:mat("#333b43"),sofa:mat("#b7aa98"),tile:mat("#c9c6bc",.34),light:mat("#ffe2a1",.25,0,{emissive:"#ffc76a",emissiveIntensity:1.5})
 };
 const geo=new THREE.BoxGeometry(1,1,1);
@@ -50,7 +50,7 @@ for(let z=-8;z<=19;z+=3.5)box(scene,M.stone,0,.09,z,71,.012,.035,{cast:false});
 for(let x=-35;x<=35;x+=1.4){box(scene,M.dark,x,1.15,-27,.1,2.3,.16);box(scene,M.dark,x,1.15,27,.1,2.3,.16);}
 box(scene,M.wall,0,.9,-27,72,1.8,.45);box(scene,M.wall,-36,.9,0,.45,1.8,54);box(scene,M.wall,36,.9,0,.45,1.8,54);
 box(scene,M.dark,-12,1.2,27,19,2.4,.3);for(let x=-21;x<=-3;x+=.8)box(scene,M.chrome,x,1.2,27,.055,2.3,.12);
-box(scene,M.wall,0,2.1,27,4,.35,.7);textPanel("GOATFUNDED",0,3.5,26.72,7.2,1.8);
+box(scene,M.wall,0,2.1,27,4,.35,.7);textPanel("GOATFUNDED",0,3.5,26.79,7.2,1.8);
 // stepping stones, shrubs and planting
 for(let x=-32;x<=32;x+=4){box(scene,M.stone,x,.11,-22,2.8,.16,2.2);if(x%8===0){tree(x,-18,.7);sphere(scene,M.leaf,x+1,.5,-20,.6,.35,.5);}}
 for(let z=-20;z<=20;z+=5){tree(-32,z,.8);tree(32,z,.8);}
@@ -64,7 +64,7 @@ box(scene,M.inner,sx,.34,sz,sw,.12,sd);
 box(scene,M.wall,sx-sw/2+.12, .35+sh/2,sz,.24,sh,sd);
 box(scene,M.wall,sx+sw/2-.12,.35+sh/2,sz,.24,sh,sd);
 box(scene,M.wall,sx,.35+sh-.12,sz-sd/2+.12,sw, .24,.24);
-box(scene,M.glass,sx,.35+sh/2,sz+sd/2-.08,sw-.5,sh-.25,.1,{cast:false});
+box(scene,M.glass,sx,.35+sh/2,sz+sd/2-.14,sw-.5,sh-.25,.08,{cast:false});
 box(scene,M.dark,sx,.35+sh,sz,sw+.5,.28,sd+.5);
 box(scene,M.dark,sx,.35+sh+.18,sz+sd/2,sw+.8,.18,.7);
 lightStrip(scene,sx,.35+sh-.22,sz+sd/2-.5,sw-1);
@@ -98,7 +98,7 @@ box(scene,M.concrete,hx,.15,hz,hw+.6,.3,hd+.6);box(scene,M.tile,hx,.33,hz,hw,.12
 box(scene,M.wall,hx,.34+hh/2,hz-hd/2,hw,hh,.25);
 box(scene,M.wall,hx-hw/2,.34+hh/2,hz,.25,hh,hd);
 box(scene,M.wall,hx+hw/2,.34+hh/2,hz,.25,hh,hd);
-box(scene,M.glass,hx,.34+hh/2,hz+hd/2-.1,hw-.4,hh-.3,.1,{cast:false});
+box(scene,M.glass,hx,.34+hh/2,hz+hd/2-.14,hw-.4,hh-.3,.08,{cast:false});
 box(scene,M.wall,hx,.34+hh,hz,hw+.5,.22,hd+.5);
 // interior room dividers (leave door gaps)
 box(scene,M.wall,hx+1,.4+hh/2,hz-2, .18,hh-0.2,hd*.8);
@@ -128,7 +128,7 @@ lightStrip(scene,hx,.34+hh-.18,hz+9,hw-1);
 // outdoor patio and pool
 box(scene,M.woodLight,15,.18,10,25,.22,9,{cast:false});
 box(scene,M.stone,16,.25,17,20,.28,9,{cast:false});
-box(scene,M.water,16,.42,17,17,.12,6.2,{cast:false});
+box(scene,M.water,16,.46,17,17,.1,6.2,{cast:false});
 for(let x=7;x<=25;x+=3)box(scene,M.wood,x,.32,13,.08,.05,4,{cast:false});
 for(let x=5;x<=27;x+=5){box(scene,M.white,x,.45,11,2.2,.15,.8);box(scene,M.woodLight,x,.62,11,2.1,.25,.55);}
 for(const [x,z] of [[3,11],[28,12],[3,21],[29,21]])tree(x,z,.75);
