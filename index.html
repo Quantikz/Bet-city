@@ -198,26 +198,26 @@ addSign('VISITOR PARKING','STAFF · GUESTS · ACCESSIBLE',[-55,2.2,98],13,1.8,0)
 
 // Garden and pool zone: walkable paths, pool basin, water surface, loungers, planters and shaded pergola.
 const gardenRoot=new THREE.Group();scene.add(gardenRoot);
-box(M.grass,[69,.04,17],[45,.18,63],gardenRoot);
-box(M.path,[69,.18,17],[3,.12,59],gardenRoot);
-box(M.path,[69,.18,17],[41,.12,3],gardenRoot);
-box(M.poolTile,[79,.28,19],[19,.45,31],gardenRoot);
-box(M.frame,[79,.53,19],[17.8,.18,29.8],gardenRoot);
-box(M.water,[79,.66,19],[16.7,.12,28.7],gardenRoot);
-for(const x of [68,90])for(const z of [8,30])box(M.gold,[x,.75,z],[.18,.12,.18],gardenRoot);
+box(M.grass,[80,.04,30],[45,.18,63],gardenRoot);
+box(M.path,[80,.18,30],[3,.12,59],gardenRoot);
+box(M.path,[80,.18,30],[41,.12,3],gardenRoot);
+box(M.poolTile,[87,.28,30],[19,.45,31],gardenRoot);
+box(M.frame,[87,.53,30],[17.8,.18,29.8],gardenRoot);
+box(M.water,[87,.66,30],[16.7,.12,28.7],gardenRoot);
+for(const x of [76,98])for(const z of [19,41])box(M.gold,[x,.75,z],[.18,.12,.18],gardenRoot);
 for(let i=0;i<6;i++){
  const x=61+(i%3)*7,z=53+Math.floor(i/3)*5;
  box(M.white,[x,.45,z],[2.1,.22,1.0],gardenRoot);
  box(M.wood,[x,.63,z],[1.8,.12,.8],gardenRoot);
 }
-box(M.wood,[59,3.2,4],[10,.3,6],gardenRoot);
-for(const x of [55,63])for(const z of [2,6])box(M.metal,[x,1.7,z],[.18,3,.18],gardenRoot);
+box(M.wood,[70,3.2,17],[10,.3,6],gardenRoot);
+for(const x of [66,74])for(const z of [15,19])box(M.metal,[x,1.7,z],[.18,3,.18],gardenRoot);
 for(let i=0;i<18;i++){
  const a=i*Math.PI*2/18,x=80+Math.cos(a)*21,z=30+Math.sin(a)*29;
  const nearPool=Math.abs(x-87)<12.5&&Math.abs(z-30)<18;
  if(!nearPool){box(M.grass,[x,.24,z],[2.4,.3,2.4],gardenRoot);add(new THREE.CylinderGeometry(.13,.2,2.5,6),M.trunk,[x,1.45,z],[1,1,1],gardenRoot);add(new THREE.IcosahedronGeometry(1,1),M.leaf,[x,3,z],[1.5,1.7,1.5],gardenRoot)}
 }
-for(let i=0;i<10;i++){const x=59+(i%5)*7,z= 9+Math.floor(i/5)*5;box(M.path,[x,.22,z],[2.4,.16,1.4],gardenRoot);box(M.wood,[x,.55,z],[1.9,.35,.65],gardenRoot)}
+for(let i=0;i<10;i++){const x=59+(i%5)*7,z= 9+Math.floor(i/5)*5;if(!(x>75&&x<99&&z>12&&z<48)){box(M.path,[x,.22,z],[2.4,.16,1.4],gardenRoot);box(M.wood,[x,.55,z],[1.9,.35,.65],gardenRoot)}}
 addSign('GARDEN & POOL','REST · RESET · RECONNECT',[80,2.6,-2],13,2,0);
 
 // Broader landscape, perimeter trees and campus lighting.
