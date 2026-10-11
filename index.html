@@ -75,14 +75,14 @@ box(M.ground,[0,-.7,0],[240,1.3,240]);
 
 // Measured master plan: site boundary ±120m; HQ central-west; amenities east; pool/garden southeast; parking south.
 const zones=[
- {id:'hq',name:'GOATFUNDED TRADER HQ',kind:'FLAGSHIP HEADQUARTERS',desc:'Multi-level headquarters with a 100-seat trading floor, reception, management suites, meeting rooms and training spaces.',x:-25,z:-24,w:54,d:38,h:27},
- {id:'academy',name:'TRADER ACADEMY',kind:'LEARNING & DEVELOPMENT',desc:'Classrooms, seminar room, mentor offices and practical chart-analysis labs.',x:42,z:-39,w:26,d:22,h:13},
- {id:'operations',name:'OPERATIONS & RISK',kind:'RISK AND OPERATIONS',desc:'Risk management, trader support, compliance, account operations and quiet work rooms.',x:42,z:-8,w:24,d:18,h:11},
- {id:'data',name:'MARKET DATA CENTRE',kind:'TECHNICAL INFRASTRUCTURE',desc:'Secure network, monitoring, backup power and technical operations facility.',x:-75,z:-39,w:17,d:15,h:8},
- {id:'cafe',name:'TRADER LOUNGE',kind:'FOOD & COMMUNITY',desc:'Cafe, indoor lounge, outdoor tables and a social space for the trading community.',x:42,z:24,w:23,d:17,h:9},
- {id:'wellness',name:'WELLNESS PAVILION',kind:'WELLNESS & EVENTS',desc:'A calm pavilion beside the garden for rest, small events and team gatherings.',x:70,z:57,w:19,d:14,h:7},
- {id:'parking',name:'VISITOR & STAFF PARKING',kind:'ARRIVAL AND PARKING',desc:'Marked vehicle bays, accessible spaces, drop-off lane, landscape islands and a pedestrian route to reception.',x:-18,z:79,w:88,d:32,h:1},
- {id:'garden',name:'GARDEN & SWIMMING POOL',kind:'LANDSCAPE AND RECREATION',desc:'Swimming pool, pool deck, planted garden, shaded seating, walking paths and a water-side lounge.',x:69,z:15,w:45,d:63,h:1}
+ {id:'hq',name:'GOATFUNDED TRADER HQ',kind:'FLAGSHIP HEADQUARTERS',desc:'Multi-level headquarters with a 100-seat trading floor, reception, management suites, meeting rooms and training spaces.',x:-28,z:-28,w:54,d:38,h:27},
+ {id:'academy',name:'TRADER ACADEMY',kind:'LEARNING & DEVELOPMENT',desc:'Classrooms, seminar room, mentor offices and practical chart-analysis labs.',x:44,z:-47,w:26,d:22,h:13},
+ {id:'operations',name:'OPERATIONS & RISK',kind:'RISK AND OPERATIONS',desc:'Risk management, trader support, compliance, account operations and quiet work rooms.',x:44,z:-15,w:24,d:18,h:11},
+ {id:'data',name:'MARKET DATA CENTRE',kind:'TECHNICAL INFRASTRUCTURE',desc:'Secure network, monitoring, backup power and technical operations facility.',x:-80,z:-47,w:17,d:15,h:8},
+ {id:'cafe',name:'TRADER LOUNGE',kind:'FOOD & COMMUNITY',desc:'Cafe, indoor lounge, outdoor tables and a social space for the trading community.',x:43,z:22,w:23,d:17,h:9},
+ {id:'wellness',name:'WELLNESS PAVILION',kind:'WELLNESS & EVENTS',desc:'A calm pavilion beside the garden for rest, small events and team gatherings.',x:85,z:72,w:19,d:14,h:7},
+ {id:'parking',name:'VISITOR & STAFF PARKING',kind:'ARRIVAL AND PARKING',desc:'Marked vehicle bays, accessible spaces, drop-off lane, landscape islands and a pedestrian route to reception.',x:-55,z:80,w:88,d:32,h:1},
+ {id:'garden',name:'GARDEN & SWIMMING POOL',kind:'LANDSCAPE AND RECREATION',desc:'Swimming pool, pool deck, planted garden, shaded seating, walking paths and a water-side lounge.',x:80,z:30,w:45,d:63,h:1}
 ];
 const zoneMeshes=[];
 const cutaway=new THREE.Group();scene.add(cutaway);
@@ -162,39 +162,39 @@ const buildings=zones.filter(z=>!['parking','garden'].includes(z.id));
 buildings.forEach(makeBuilding);
 
 // Main access road and arrival loop. 1 world unit = 1 metre.
-box(M.road,[-18,.02,45],[18,.16,100]);
-box(M.road,[-18,.025,4],[65,.16,12]);
-box(M.road,[-45,.025,15],[12,.16,43]);
-box(M.road,[8,.025,15],[12,.16,43]);
+box(M.road,[15,.02,43],[10,.16,94]);
+box(M.road,[-20,.025,58],[80,.16,10]);
+box(M.road,[15,.025,2],[64,.16,10]);
 const laneMarks=[];
-for(let z=-6;z<90;z+=7)laneMarks.push({p:[-18,.115,z],s:[.22,.025,3]});
+for(let z=7;z<91;z+=7)laneMarks.push({p:[15,.115,z],s:[.22,.025,3]});
+for(let x=-54;x<12;x+=7)laneMarks.push({p:[x,.115,58],s:[3,.025,.22]});
 batch(G,M.line,laneMarks);
-addSign('GOATFUNDED TRADER','PRIVATE TRADING CAMPUS',[-18,5,-4],15,2.4,0);
-const gate=box(M.frame,[-18,3,-1],[22,5,1.1]);box(M.gold,[-18,5.65,-1],[22,.16,1.15]);
+addSign('GOATFUNDED TRADER','PRIVATE TRADING CAMPUS',[15,5,-5],15,2.4,0);
+const gate=box(M.frame,[15,3,-1],[22,5,1.1]);box(M.gold,[15,5.65,-1],[22,.16,1.15]);
 
 // Parking: 60 clearly marked bays, two aisles, accessible spaces, islands, parked cars and pedestrian path.
 const parkingRoot=new THREE.Group();scene.add(parkingRoot);
-box(M.asphalt,[-18,.08,79],[88,.2,33],parkingRoot);
+box(M.asphalt,[-55,.08,80],[88,.2,33],parkingRoot);
 const bayLines=[],cars=[];
 for(let row=0;row<2;row++){
- const z=68+row*21;
+ const z=69+row*21;
  for(let col=0;col<30;col++){
-  const x=-59+col*2.8;
+  const x=-96+col*2.8;
   bayLines.push({p:[x,.205,z],s:[.075,.025,8.5]});
   if(col%5===2){cars.push({p:[x,1.0,z+4.2],s:[1.8,1.25,3.9]});}
  }
 }
 batch(G,M.white,bayLines,parkingRoot);
 for(let i=0;i<8;i++){
- const x=-55+i*10.5;
- box(M.grass,[x,.28,89],[4,.4,4],parkingRoot);
- const trunk=add(new THREE.CylinderGeometry(.13,.2,2.4,6),M.trunk,[x,1.5,89],[1,1,1],parkingRoot);
- const crown=add(new THREE.IcosahedronGeometry(1,1),M.leaf,[x,3.1,89],[1.6,1.7,1.6],parkingRoot);
+ const x=-92+i*10.5;
+ box(M.grass,[x,.28,80],[4,.4,4],parkingRoot);
+ const trunk=add(new THREE.CylinderGeometry(.13,.2,2.4,6),M.trunk,[x,1.5,80],[1,1,1],parkingRoot);
+ const crown=add(new THREE.IcosahedronGeometry(1,1),M.leaf,[x,3.1,80],[1.6,1.7,1.6],parkingRoot);
 }
 const carPaints=['#d9dfe0','#263a49','#8e9da1','#dfbb65','#354e45'];
 cars.forEach((c,i)=>{const color=mat(carPaints[i%carPaints.length],.35,.28);box(color,c.p,c.s,parkingRoot);box(M.dark,[c.p[0],c.p[1]+.48,c.p[2]],[1.45,.65,2.0],parkingRoot);for(const sx of [-1,1])for(const sz of [-1,1])add(new THREE.CylinderGeometry(.22,.22,.15,10),M.dark,[c.p[0]+sx*.9,c.p[1]-.35,c.p[2]+sz*1.2],[1,1,1],parkingRoot).rotation.z=Math.PI/2});
-box(M.path,[17,.2,65],[3,.2,20],parkingRoot);
-addSign('VISITOR PARKING','STAFF · GUESTS · ACCESSIBLE',[-18,2.2,96],13,1.8,0);
+box(M.path,[-7,.2,66],[3,.2,16],parkingRoot);
+addSign('VISITOR PARKING','STAFF · GUESTS · ACCESSIBLE',[-55,2.2,98],13,1.8,0);
 
 // Garden and pool zone: walkable paths, pool basin, water surface, loungers, planters and shaded pergola.
 const gardenRoot=new THREE.Group();scene.add(gardenRoot);
@@ -206,27 +206,26 @@ box(M.frame,[79,.53,19],[17.8,.18,29.8],gardenRoot);
 box(M.water,[79,.66,19],[16.7,.12,28.7],gardenRoot);
 for(const x of [68,90])for(const z of [8,30])box(M.gold,[x,.75,z],[.18,.12,.18],gardenRoot);
 for(let i=0;i<6;i++){
- const x=57+(i%3)*7,z=42+Math.floor(i/3)*5;
+ const x=61+(i%3)*7,z=53+Math.floor(i/3)*5;
  box(M.white,[x,.45,z],[2.1,.22,1.0],gardenRoot);
  box(M.wood,[x,.63,z],[1.8,.12,.8],gardenRoot);
 }
-box(M.wood,[52,3.2,5],[10,.3,6],gardenRoot);
-for(const x of [48,56])for(const z of [3,7])box(M.metal,[x,1.7,z],[.18,3,.18],gardenRoot);
+box(M.wood,[59,3.2,4],[10,.3,6],gardenRoot);
+for(const x of [55,63])for(const z of [2,6])box(M.metal,[x,1.7,z],[.18,3,.18],gardenRoot);
 for(let i=0;i<18;i++){
- const a=i*Math.PI*2/18,x=69+Math.cos(a)*21,z=17+Math.sin(a)*29;
- box(M.grass,[x,.24,z],[2.4,.3,2.4],gardenRoot);
- add(new THREE.CylinderGeometry(.13,.2,2.5,6),M.trunk,[x,1.45,z],[1,1,1],gardenRoot);
- add(new THREE.IcosahedronGeometry(1,1),M.leaf,[x,3,z],[1.5,1.7,1.5],gardenRoot);
+ const a=i*Math.PI*2/18,x=80+Math.cos(a)*21,z=30+Math.sin(a)*29;
+ const nearPool=Math.abs(x-87)<12.5&&Math.abs(z-30)<18;
+ if(!nearPool){box(M.grass,[x,.24,z],[2.4,.3,2.4],gardenRoot);add(new THREE.CylinderGeometry(.13,.2,2.5,6),M.trunk,[x,1.45,z],[1,1,1],gardenRoot);add(new THREE.IcosahedronGeometry(1,1),M.leaf,[x,3,z],[1.5,1.7,1.5],gardenRoot)}
 }
-for(let i=0;i<10;i++){const x=55+(i%5)*7,z= -1+Math.floor(i/5)*5;box(M.path,[x,.22,z],[2.4,.16,1.4],gardenRoot);box(M.wood,[x,.55,z],[1.9,.35,.65],gardenRoot)}
-addSign('GARDEN & POOL','REST · RESET · RECONNECT',[69,2.6,-15],13,2,0);
+for(let i=0;i<10;i++){const x=59+(i%5)*7,z= 9+Math.floor(i/5)*5;box(M.path,[x,.22,z],[2.4,.16,1.4],gardenRoot);box(M.wood,[x,.55,z],[1.9,.35,.65],gardenRoot)}
+addSign('GARDEN & POOL','REST · RESET · RECONNECT',[80,2.6,-2],13,2,0);
 
 // Broader landscape, perimeter trees and campus lighting.
 const trees=[],trunks=[],lamps=[];
 for(let z=-108;z<=108;z+=12)for(let x=-108;x<=108;x+=12){
  let blocked=false;
  if(Math.abs(x)<49&&Math.abs(z)<47)blocked=true;
- if(x>25&&x<98&&z>-23&&z<55)blocked=true;
+ if(x>52&&x<108&&z>-4&&z<64)blocked=true;
  if(x>-66&&x<30&&z>59&&z<101)blocked=true;
  if(Math.abs(x)<30&&z> -5&&z<105)blocked=true;
  if(Math.abs(x)>100||Math.abs(z)>100)blocked=true;
