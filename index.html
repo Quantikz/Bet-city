@@ -90,14 +90,14 @@ for(const h of hubs){
   desks.push({p:[dx,1.05,dz],s:[2.3,.16,1.25]});
   screenItems.push({p:[dx,1.95,dz-.35],s:[1.35,.82,.12]});
  }
- hubMeshes.push({h,hit:mesh(boxGeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0}),[h.x,baseY+h.h/2,h.z],[h.w,h.h,h.d])});
+ hubMeshes.push({h,hit:mesh(boxGeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,colorWrite:false,depthWrite:false}),[h.x,baseY+h.h/2,h.z],[h.w,h.h,h.d])});
 }
 // Shared instanced window, furniture, screens and vegetation batches: no duplicate geometry/material per copy.
 instanced(windowGeo,M.glass,windowItems);
 instanced(deskGeo,M.wood,desks);
 instanced(boxGeo,M.screen,screenItems);
-const chartPlanes=[];
-for(const s of screenItems){const p=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.68),new THREE.MeshBasicMaterial({map:chartTex}));p.position.set(s.p[0],s.p[1],s.p[2]-.075);scene.add(p);chartPlanes.push(p)}
+const screenPlaneItems=screenItems.map(s=>({p:[s.p[0],s.p[1],s.p[2]-.075],s:[1.25,.68,1]}));
+instanced(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:chartTex}),screenPlaneItems);
 // Compact civic services around the trading district.
 const civic=[
  {name:'FX ACADEMY',sub:'EDUCATION · TRAINING',x:-57,z:0,w:10,d:10,h:8},
