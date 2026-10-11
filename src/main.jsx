@@ -6,9 +6,9 @@ document.title = "GOATFUNDED | Private Trading Compound";
 document.body.innerHTML = '<main id="world"><div id="boot">BUILDING YOUR WORLD…</div></main>';
 const root=document.querySelector("#world");
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.35));
 renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.info.autoReset=true;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
 root.prepend(renderer.domElement);
@@ -17,7 +17,7 @@ const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);
 camera.position.set(27,22,31);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,3,0);controls.enableDamping=true;controls.dampingFactor=.065;controls.minDistance=4;controls.maxDistance=100;controls.maxPolarAngle=Math.PI*.49;
 scene.add(new THREE.HemisphereLight("#c9dcff","#43372c",1.65));
-const moon=new THREE.DirectionalLight("#d3ddff",1.15);moon.position.set(-20,35,20);scene.add(moon);
+const moon=new THREE.DirectionalLight("#d3ddff",2.0);moon.position.set(-20,35,20);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);moon.shadow.camera.left=-45;moon.shadow.camera.right=45;moon.shadow.camera.top=45;moon.shadow.camera.bottom=-45;moon.shadow.bias=-0.00025;scene.add(moon);
 const warm=new THREE.PointLight("#ffbd71",100,52,2);warm.position.set(-5,8,-3);scene.add(warm);
 const fill=new THREE.PointLight("#6b8dff",42,48,2);fill.position.set(13,5,1);scene.add(fill);
 const mat=(color,roughness=.7,metalness=0,extra={})=>new THREE.MeshStandardMaterial({color,roughness,metalness,...extra});
@@ -64,8 +64,8 @@ box(scene,M.inner,sx,.34,sz,sw,.12,sd);
 box(scene,M.wall,sx-sw/2+.12, .35+sh/2,sz,.24,sh,sd);
 box(scene,M.wall,sx+sw/2-.12,.35+sh/2,sz,.24,sh,sd);
 box(scene,M.wall,sx,.35+sh-.12,sz-sd/2+.12,sw, .24,.24);
-box(scene,M.glass,sx,.35+sh/2,sz+sd/2-.14,sw-.5,sh-.25,.08,{cast:false});
-box(scene,M.dark,sx,.35+sh,sz,sw+.5,.28,sd+.5);
+const stationFront=box(scene,M.glass,sx,.35+sh/2,sz+sd/2-.14,sw-.5,sh-.25,.08,{cast:false});
+const stationRoof=box(scene,M.dark,sx,.35+sh,sz,sw+.5,.28,sd+.5);
 box(scene,M.dark,sx,.35+sh+.18,sz+sd/2,sw+.8,.18,.7);
 lightStrip(scene,sx,.35+sh-.22,sz+sd/2-.5,sw-1);
 textPanel("GOATFUNDED TRADING STATION",sx,.35+sh-1.0,sz-sd/2-.14,8.2,1.35);
@@ -98,8 +98,8 @@ box(scene,M.concrete,hx,.15,hz,hw+.6,.3,hd+.6);box(scene,M.tile,hx,.33,hz,hw,.12
 box(scene,M.wall,hx,.34+hh/2,hz-hd/2,hw,hh,.25);
 box(scene,M.wall,hx-hw/2,.34+hh/2,hz,.25,hh,hd);
 box(scene,M.wall,hx+hw/2,.34+hh/2,hz,.25,hh,hd);
-box(scene,M.glass,hx,.34+hh/2,hz+hd/2-.14,hw-.4,hh-.3,.08,{cast:false});
-box(scene,M.wall,hx,.34+hh,hz,hw+.5,.22,hd+.5);
+const houseFront=box(scene,M.glass,hx,.34+hh/2,hz+hd/2-.14,hw-.4,hh-.3,.08,{cast:false});
+const houseRoof=box(scene,M.wall,hx,.34+hh,hz,hw+.5,.22,hd+.5);
 // interior room dividers (leave door gaps)
 box(scene,M.wall,hx+1,.4+hh/2,hz-2, .18,hh-0.2,hd*.8);
 box(scene,M.wall,hx+5,.4+hh/2,hz-5,8,hh-.2,.18);
@@ -164,7 +164,7 @@ ui.innerHTML=`<div class="panel station"><span class="glyph">▣</span><div><str
 <div class="topbuttons"><button data-action="light" aria-label="Lighting">☼</button><button data-action="map" aria-label="Overview">◫</button><button data-action="reset" aria-label="Reset view">⚙</button></div>
 <div class="navpad"><button data-move="forward">⌃</button><div><button data-move="left">‹</button><button data-move="back">⌄</button><button data-move="right">›</button></div></div>
 <button class="walk" data-action="walk" aria-label="Walk mode">♟</button>
-<div class="bottomhint">Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect</div>`;
+<button class="enter" data-action="enter" hidden>ENTER</button><div class="bottomhint">Tap a building or the Ferrari, then choose ENTER · drag to orbit</div>`;
 root.appendChild(ui);
 const zones=[
  {name:"Trading Station",x:sx,z:sz,r:13,desc:"One dedicated trading desk with four chart displays, plus a separate gaming desk and RGB PC."},
@@ -172,9 +172,15 @@ const zones=[
  {name:"Ferrari 488",x:1,z:12,r:6,desc:"Red mid-engine supercar with sculpted body, wheels, cabin glass and illuminated details."}
 ];
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
-let walking=false,keys={},evening=true;
+let walking=false,keys={},evening=true,selectedZone=null,inside=null,previousView=null;
 function moveCamera(x,y,z,dist=20){controls.target.set(x,y,z);const dir=new THREE.Vector3(.95,.72,1).normalize();camera.position.set(x+dir.x*dist,y+dir.y*dist,z+dir.z*dist);controls.update();}
-function selectZone(z){document.querySelectorAll(".panel").forEach(p=>p.classList.remove("selected"));const cls=z.name.startsWith("Trading")?".station":z.name==="House"?".house":".carinfo";ui.querySelector(cls).classList.add("selected");const hint=ui.querySelector(".bottomhint");hint.textContent=z.name+" — "+z.desc;moveCamera(z.x,z.name==="Ferrari 488"?1.1:2.4,z.z,z.r);}
+function selectZone(z){selectedZone=z;document.querySelectorAll(".panel").forEach(p=>p.classList.remove("selected"));const cls=z.name.startsWith("Trading")?".station":z.name==="House"?".house":".carinfo";ui.querySelector(cls).classList.add("selected");const hint=ui.querySelector(".bottomhint");hint.textContent=z.name+" — "+z.desc+" Tap ENTER to explore inside.";ui.querySelector(".enter").hidden=false;moveCamera(z.x,z.name==="Ferrari 488"?1.1:2.4,z.z,z.r);}
+function enterSelected(){if(!selectedZone||inside)return;previousView={p:camera.position.clone(),t:controls.target.clone(),enabled:controls.enabled};inside=selectedZone.name.startsWith("Trading")?"station":selectedZone.name==="House"?"house":"car";walking=inside!=="car";ui.querySelector(".enter").textContent="EXIT";ui.querySelector(".enter").dataset.action="exit";
+if(inside==="house"){houseRoof.visible=false;houseFront.visible=false;stationRoof.visible=true;camera.position.set(hx-5,1.75,hz+5);controls.target.set(hx-4,1.65,hz+1);controls.minDistance=.15;controls.maxDistance=14;controls.maxPolarAngle=Math.PI*.88;ui.querySelector(".bottomhint").textContent="HOUSE INTERIOR · drag to look · WASD / arrow keys to walk · EXIT to return";}
+else if(inside==="station"){stationRoof.visible=false;stationFront.visible=false;camera.position.set(sx-4,1.75,sz+5);controls.target.set(sx-4,1.65,sz);controls.minDistance=.15;controls.maxDistance=13;controls.maxPolarAngle=Math.PI*.88;ui.querySelector(".bottomhint").textContent="TRADING STATION INTERIOR · inspect the trading and gaming desks · WASD to walk";}
+else{walking=false;controls.minDistance=.05;controls.maxDistance=4;camera.position.set(car.position.x,car.position.y+1.28,car.position.z+.1);controls.target.set(car.position.x,car.position.y+1.25,car.position.z-4);ui.querySelector(".bottomhint").textContent="FERRARI COCKPIT · dashboard, steering wheel and cabin view · EXIT to return";}
+controls.update();}
+function exitInterior(){if(!inside||!previousView)return;if(inside==="house"){houseRoof.visible=true;houseFront.visible=true;}if(inside==="station"){stationRoof.visible=true;stationFront.visible=true;}camera.position.copy(previousView.p);controls.target.copy(previousView.t);controls.enabled=previousView.enabled;controls.minDistance=4;controls.maxDistance=100;controls.maxPolarAngle=Math.PI*.49;inside=null;walking=false;previousView=null;ui.querySelector(".enter").hidden=true;ui.querySelector(".enter").textContent="ENTER";ui.querySelector(".enter").dataset.action="enter";controls.update();}
 let pressStart=null;
 renderer.domElement.addEventListener("pointerdown",e=>{pressStart={x:e.clientX,y:e.clientY};});
 renderer.domElement.addEventListener("pointerup",e=>{
@@ -189,8 +195,11 @@ renderer.domElement.addEventListener("pointerup",e=>{
  if(Math.abs(point.x-sx)<sw/2&&Math.abs(point.z-sz)<sd/2)selectZone(zones[0]);
  else if(Math.abs(point.x-hx)<hw/2&&Math.abs(point.z-hz)<hd/2)selectZone(zones[1]);
 });
-ui.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.action==="reset"){walking=false;moveCamera(0,3,0,43);ui.querySelector(".bottomhint").textContent="Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect";}if(b.dataset.action==="map"){camera.position.set(0,70,.1);controls.target.set(0,0,0);controls.update();}if(b.dataset.action==="light"){evening=!evening;scene.background.set(evening?"#172237":"#a9c4ce");scene.fog.color.copy(scene.background);moon.intensity=evening?1.15:2.1;warm.intensity=evening?100:28;renderer.toneMappingExposure=evening?1.22:1.4;}if(b.dataset.action==="walk"){walking=!walking;controls.enabled=true;ui.querySelector(".bottomhint").textContent=walking?"Walk mode: use the arrow pad or WASD to move around the compound":"Orbit mode enabled";}if(b.dataset.move){walking=true;const v={forward:[0,-2],back:[0,2],left:[-2,0],right:[2,0]}[b.dataset.move];camera.position.x+=v[0];camera.position.z+=v[1];controls.target.x+=v[0];controls.target.z+=v[1];}}));
+ui.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.action==="enter"){enterSelected();}if(b.dataset.action==="exit"){exitInterior();}if(b.dataset.action==="reset"){if(inside)exitInterior();walking=false;ui.querySelector(".enter").hidden=true;moveCamera(0,3,0,43);ui.querySelector(".bottomhint").textContent="Drag to orbit · pinch to zoom · tap the station, house or Ferrari to inspect";}if(b.dataset.action==="map"){camera.position.set(0,70,.1);controls.target.set(0,0,0);controls.update();}if(b.dataset.action==="light"){evening=!evening;scene.background.set(evening?"#172237":"#a9c4ce");scene.fog.color.copy(scene.background);moon.intensity=evening?1.15:2.1;warm.intensity=evening?100:28;renderer.toneMappingExposure=evening?1.22:1.4;}if(b.dataset.action==="walk"){if(inside==="car")return;walking=!walking;controls.enabled=true;ui.querySelector(".bottomhint").textContent=walking?"Walk mode: use the arrow pad or WASD to move around the compound":"Orbit mode enabled";}if(b.dataset.move){walking=true;const v={forward:[0,-.8],back:[0,.8],left:[-.8,0],right:[.8,0]}[b.dataset.move];tryMove(v[0],v[1]);}}}));
+function blocked(x,z){if(inside==="house"){const left=hx-hw/2+.65,right=hx+hw/2-.65,back=hz-hd/2+.65,front=hz+hd/2-.65;if(x<left||x>right||z<back||z>front)return true;if(Math.abs(x-(hx+1))<.38&&Math.abs(z-hz)<7.4)return true;if(Math.abs(z-(hz-2))<.38&&x>hx+1.6&&x<hx+hw/2-1)return true;if(Math.abs(z-(hz-5))<.38&&x>hx+1&&x<hx+hw/2-.5)return true;return false;}
+if(inside==="station"){return x<sx-sw/2+.5||x>sx+sw/2-.5||z<sz-sd/2+.5||z>sz+sd/2-.5;}return false;}
+function tryMove(dx,dz){const nx=controls.target.x+dx,nz=controls.target.z+dz;if(inside&&inside!=="car"&&blocked(nx,nz))return;camera.position.x+=dx;camera.position.z+=dz;controls.target.x=nx;controls.target.z=nz;}
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-function animate(){requestAnimationFrame(animate);if(walking){const speed=.12;if(keys.w||keys.arrowup){camera.position.z-=speed;controls.target.z-=speed;}if(keys.s||keys.arrowdown){camera.position.z+=speed;controls.target.z+=speed;}if(keys.a||keys.arrowleft){camera.position.x-=speed;controls.target.x-=speed;}if(keys.d||keys.arrowright){camera.position.x+=speed;controls.target.x+=speed;}}controls.update();renderer.render(scene,camera);}
+function animate(){requestAnimationFrame(animate);if(walking&&inside!=="car"){const speed=.09;if(keys.w||keys.arrowup)tryMove(0,-speed);if(keys.s||keys.arrowdown)tryMove(0,speed);if(keys.a||keys.arrowleft)tryMove(-speed,0);if(keys.d||keys.arrowright)tryMove(speed,0);}controls.update();renderer.render(scene,camera);}
 moveCamera(0,3,0,43);animate();document.querySelector("#boot")?.remove();
 window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));});
