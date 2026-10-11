@@ -106,10 +106,10 @@ const screenPlaneItems=screenItems.map(s=>({p:[s.p[0],s.p[1],s.p[2]-.075],s:[1.2
 instanced(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:chartTex}),screenPlaneItems);
 // Compact civic services around the trading district.
 const civic=[
- {name:'FX ACADEMY',sub:'EDUCATION · TRAINING',x:-30,z:0,w:8,d:8,h:8},
- {name:'TRADER CAFE',sub:'COFFEE · COMMUNITY',x:30,z:0,w:8,d:8,h:7},
- {name:'RISK & RULES',sub:'RISK DESK · FIRM RULES',x:0,z:-30,w:8,d:8,h:8},
- {name:'MARKET NEWS',sub:'FX NEWS · ECONOMIC CALENDAR',x:0,z:30,w:8,d:8,h:9}
+ {name:'FX ACADEMY',sub:'EDUCATION · TRAINING',x:-32,z:0,w:7,d:7,h:8},
+ {name:'TRADER CAFE',sub:'COFFEE · COMMUNITY',x:32,z:0,w:7,d:7,h:7},
+ {name:'RISK & RULES',sub:'RISK DESK · FIRM RULES',x:0,z:-32,w:7,d:7,h:8},
+ {name:'MARKET NEWS',sub:'FX NEWS · ECONOMIC CALENDAR',x:0,z:32,w:7,d:7,h:9}
 ];
 for(const h of civic){mesh(boxGeo,M.sidewalk,[h.x,.3,h.z],[h.w+1,.5,h.d+1]);mesh(boxGeo,M.glass,[h.x,h.h/2+.5,h.z],[h.w,h.h,h.d]);mesh(boxGeo,M.roof,[h.x,h.h+.7,h.z],[h.w+.4,.4,h.d+.4]);const s=sign(h.name,h.sub,9,2);s.position.set(h.x,h.h*.55,h.z+h.d/2+.1);scene.add(s)}
 // Repeated low-poly trees and street lamps are batched into instanced meshes.
